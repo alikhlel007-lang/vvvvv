@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -56,3 +56,15 @@ jobs:
           name: Cafe-Menu-Debug-APK
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 14
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        with:
+          tag_name: "latest"
+          name: "Cafe Menu APK (جاهز للتثبيت)"
+          body: "تطبيق منيو الكافيه الإلكتروني - اضغط بالأسفل على ملف .apk لتحميله وتثبيته مباشرة على الهاتف."
+          files: app/build/outputs/apk/debug/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
