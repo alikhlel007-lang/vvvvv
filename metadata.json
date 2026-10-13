@@ -1,0 +1,6 @@
+{
+  "name": "Cafe Menu",
+  "description": "نظام المنيو الإلكتروني الذكي وباركود الطاولات ولوحة الكاشير لأصحاب الكفتريات والمطاعم",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
