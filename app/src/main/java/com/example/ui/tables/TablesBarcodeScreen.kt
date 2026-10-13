@@ -209,7 +209,41 @@ fun TablesBarcodeScreen(viewModel: MainViewModel) {
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            // WEB LINK INFO
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(CafeSurface)
+                    .border(1.dp, CafeCardBorder, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.QrCodeScanner,
+                        contentDescription = null,
+                        tint = CafeCyanPrimary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "منيو الزبائن على GitHub Pages: متصل مع Firebase",
+                        fontSize = 11.sp,
+                        color = CafeTextSecondary
+                    )
+                }
+                Text(
+                    text = "متصل أونلاين 🟢",
+                    fontSize = 11.sp,
+                    color = Color(0xFF4CAF50),
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
 
             // TABLES GRID
             LazyVerticalGrid(

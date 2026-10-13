@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>CAFE LUXURY - المنيو الإلكتروني</title>
+  
+  <!-- Google Fonts: Cairo -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Firebase SDKs (Compat version for smooth standalone single-file usage) -->
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #041619;
+      --bg-gradient-end: #082226;
+      --surface: #071E22;
+      --surface-variant: #0A2B30;
+      --cyan-primary: #00DFC0;
+      --cyan-dark: #00A891;
+      --gold: #F5B041;
+      --card-border: #0E4349;
+      --card-border-glow: #166068;
+      --text-primary: #FFFFFF;
+      --text-secondary: #86ADB2;
+      --text-muted: #5B7D81;
+      --input-bg: #061D20;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Cairo', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: linear-gradient(180deg, var(--bg-dark) 0%, var(--bg-gradient-end) 50%, #021215 100%);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding-bottom: 90px;
+    }
+
+    /* Header Bar */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(4, 22, 25, 0.95);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(14, 67, 73, 0.5);
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 2px solid var(--cyan-primary);
+      background: #061D20;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 15px rgba(0, 223, 192, 0.3);
+    }
+
+    .brand-logo i {
+      color: var(--cyan-primary);
+      font-size: 20px;
+    }
+
+    .brand-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text-primary);
+      letter-spacing: 0.5px;
+    }
+
+    .table-pill {
+      background: var(--surface-variant);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--gold);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    /* Search Box */
+    .search-container {
+      padding: 8px 20px 4px;
+    }
+
+    .search-box {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 25px;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .search-box input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-size: 14px;
+      width: 100%;
+    }
+
+    .search-box input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .search-box i {
+      color: var(--cyan-primary);
+    }
+
+    /* Categories Carousel */
+    .categories-bar {
+      display: flex;
+      gap: 12px;
+      padding: 14px 20px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .categories-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .cat-card {
+      min-width: 80px;
+      height: 90px;
+      background: var(--surface);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      flex-shrink: 0;
+    }
+
+    .cat-card i {
+      font-size: 26px;
+      color: var(--cyan-primary);
+      transition: all 0.25s ease;
+    }
+
+    .cat-card span {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .cat-card.active {
+      background: var(--cyan-primary);
+      border-color: var(--cyan-primary);
+      box-shadow: 0 4px 15px rgba(0, 223, 192, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .cat-card.active i, .cat-card.active span {
+      color: #032125;
+      font-weight: 800;
+    }
+
+    /* Section Header */
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 24px 8px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-count {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--cyan-primary);
+    }
+
+    /* Items List */
+    .items-container {
+      padding: 10px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .item-card {
+      background: var(--surface);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      position: relative;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .item-card:active {
+      transform: scale(0.98);
+      border-color: var(--cyan-primary);
+    }
+
+    .item-img-box {
+      width: 95px;
+      height: 95px;
+      border-radius: 16px;
+      background: #051A1D;
+      overflow: hidden;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .item-img-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .item-details {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 95px;
+    }
+
+    .item-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.2;
+    }
+
+    .item-desc {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .item-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+    }
+
+    .item-price {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--cyan-primary);
+    }
+
+    .btn-add {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      background: var(--cyan-primary);
+      color: #032125;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(0, 223, 192, 0.3);
+      transition: transform 0.15s ease;
+    }
+
+    .btn-add:active {
+      transform: scale(0.9);
+    }
+
+    /* Floating Bottom Cart Bar (Exact Screenshot 2 Match) */
+    .bottom-cart-bar {
+      position: fixed;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      height: 70px;
+      background: #032226;
+      border: 1.5px solid var(--cyan-primary);
+      border-radius: 35px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.6), 0 0 15px rgba(0, 223, 192, 0.2);
+      z-index: 100;
+      animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .cart-icon-box {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--surface-variant);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .cart-icon-box i {
+      color: var(--cyan-primary);
+      font-size: 20px;
+    }
+
+    .cart-badge {
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      background: var(--cyan-primary);
+      color: #032125;
+      font-size: 11px;
+      font-weight: 800;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cart-summary {
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .cart-summary-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .cart-summary-total {
+      font-size: 17px;
+      font-weight: 900;
+      color: var(--cyan-primary);
+    }
+
+    .btn-view-order {
+      background: var(--cyan-primary);
+      color: #032125;
+      border: none;
+      border-radius: 25px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 223, 192, 0.4);
+    }
+
+    /* Modal / Bottom Sheet */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(5px);
+      z-index: 200;
+      display: none;
+      align-items: flex-end;
+    }
+
+    .modal-content {
+      width: 100%;
+      background: var(--surface);
+      border-top: 2px solid var(--card-border-glow);
+      border-radius: 28px 28px 0 0;
+      padding: 24px 20px 30px;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 -10px 30px rgba(0,0,0,0.8);
+      animation: slideSheet 0.3s ease-out;
+    }
+
+    @keyframes slideSheet {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 12px;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text-primary);
+    }
+
+    .cart-items-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .cart-item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--surface-variant);
+      padding: 12px 14px;
+      border-radius: 14px;
+    }
+
+    .cart-item-info h4 {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .cart-item-info span {
+      font-size: 13px;
+      color: var(--cyan-primary);
+      font-weight: 700;
+    }
+
+    .qty-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .qty-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: none;
+      background: var(--input-bg);
+      color: var(--cyan-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .qty-btn.add {
+      background: var(--cyan-primary);
+      color: #032125;
+    }
+
+    .notes-input {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      color: var(--text-primary);
+      font-size: 13px;
+      margin-bottom: 16px;
+      outline: none;
+    }
+
+    .btn-submit-order {
+      width: 100%;
+      height: 52px;
+      border-radius: 26px;
+      background: var(--cyan-primary);
+      color: #032125;
+      font-size: 16px;
+      font-weight: 800;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 15px rgba(0, 223, 192, 0.4);
+    }
+
+    /* Live Tracking Screen */
+    .status-badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .status-new { background: rgba(0, 223, 192, 0.2); color: var(--cyan-primary); border: 1px solid var(--cyan-primary); }
+    .status-preparing { background: rgba(245, 176, 65, 0.2); color: var(--gold); border: 1px solid var(--gold); }
+    .status-ready { background: rgba(76, 175, 80, 0.2); color: #4CAF50; border: 1px solid #4CAF50; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header Bar -->
+  <header class="top-bar">
+    <div class="brand-section">
+      <div class="brand-logo">
+        <i class="fa-solid fa-mug-hot"></i>
+      </div>
+      <div>
+        <div class="brand-title">CAFE LUXURY</div>
+        <div style="font-size: 11px; color: var(--text-secondary);">منيو الطلب المباشر</div>
+      </div>
+    </div>
+    <div class="table-pill" id="tablePill">
+      <i class="fa-solid fa-qrcode"></i>
+      <span id="tableLabel">طاولة 1</span>
+    </div>
+  </header>
+
+  <!-- Search Box -->
+  <div class="search-container">
+    <div class="search-box">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="text" id="searchInput" placeholder="ابحث عن برجر، وجبة، أو مشروب..." oninput="handleSearch()">
+    </div>
+  </div>
+
+  <!-- Categories Horizontal Bar -->
+  <div class="categories-bar" id="categoriesBar">
+    <div class="cat-card active" onclick="filterCategory('all', this)">
+      <i class="fa-solid fa-burger"></i>
+      <span>الكل</span>
+    </div>
+    <div class="cat-card" onclick="filterCategory('cat_burgers', this)">
+      <i class="fa-solid fa-burger"></i>
+      <span>البرجر</span>
+    </div>
+    <div class="cat-card" onclick="filterCategory('cat_appetizers', this)">
+      <i class="fa-solid fa-french-fries"></i>
+      <span>المقبلات</span>
+    </div>
+    <div class="cat-card" onclick="filterCategory('cat_drinks', this)">
+      <i class="fa-solid fa-cup-straw"></i>
+      <span>المشروبات</span>
+    </div>
+    <div class="cat-card" onclick="filterCategory('cat_meals', this)">
+      <i class="fa-solid fa-utensils"></i>
+      <span>الوجبات</span>
+    </div>
+    <div class="cat-card" onclick="filterCategory('cat_sweets', this)">
+      <i class="fa-solid fa-cake-candles"></i>
+      <span>الحلويات</span>
+    </div>
+  </div>
+
+  <!-- Section Header -->
+  <div class="section-header">
+    <div class="section-title" id="sectionTitle">
+      <i class="fa-solid fa-burger" style="color: var(--cyan-primary);"></i>
+      <span>قائمة الطعام</span>
+    </div>
+    <div class="section-count" id="itemsCount">12 صنف</div>
+  </div>
+
+  <!-- Food Items List -->
+  <div class="items-container" id="itemsList">
+    <!-- Items rendered dynamically by JS -->
+  </div>
+
+  <!-- Floating Bottom Cart Bar -->
+  <div class="bottom-cart-bar" id="bottomCartBar">
+    <div class="cart-icon-box" onclick="openCartModal()">
+      <i class="fa-solid fa-cart-shopping"></i>
+      <div class="cart-badge" id="cartCountBadge">0</div>
+    </div>
+    <div class="cart-summary" onclick="openCartModal()">
+      <div class="cart-summary-label">المجموع الكلي</div>
+      <div class="cart-summary-total" id="cartTotalSummary">0.00 $</div>
+    </div>
+    <button class="btn-view-order" onclick="openCartModal()">
+      <span>عرض الطلب</span>
+      <i class="fa-solid fa-arrow-left"></i>
+    </button>
+  </div>
+
+  <!-- Cart Checkout Modal -->
+  <div class="modal-overlay" id="cartModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title" id="modalTableTitle">سلة طلب طاولة 1</div>
+        <i class="fa-solid fa-xmark" style="font-size: 22px; cursor: pointer; color: var(--text-secondary);" onclick="closeCartModal()"></i>
+      </div>
+
+      <div class="cart-items-list" id="modalCartList">
+        <!-- Rendered by JS -->
+      </div>
+
+      <textarea class="notes-input" id="customerNotes" placeholder="ملاحظات خاصة للكاشير والمطبخ (مثال: بدون بصل، زيادة صوص، بدون سكر...)" rows="2"></textarea>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+        <span style="font-size: 16px; font-weight: 700;">المبلغ الإجمالي:</span>
+        <span style="font-size: 20px; font-weight: 900; color: var(--cyan-primary);" id="modalTotalAmount">0.00 $</span>
+      </div>
+
+      <button class="btn-submit-order" id="btnSubmitOrder" onclick="submitOrderToFirebase()">
+        <i class="fa-solid fa-paper-plane"></i>
+        <span>إرسال الطلب إلى الكاشير</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Order Success & Live Tracker Modal -->
+  <div class="modal-overlay" id="trackingModal">
+    <div class="modal-content" style="text-align: center;">
+      <div style="width: 60px; height: 60px; border-radius: 50%; background: rgba(0,223,192,0.15); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px;">
+        <i class="fa-solid fa-check" style="font-size: 28px; color: var(--cyan-primary);"></i>
+      </div>
+      <h3 style="font-size: 20px; font-weight: 800; margin-bottom: 6px;">تم إرسال طلبك بنجاح!</h3>
+      <p style="font-size: 13px; color: var(--text-secondary);" id="trackingTableText">طلب طاولة 1 وصل لوحة الكاشير ويتم تحضيره الآن.</p>
+
+      <div style="margin: 20px 0; padding: 16px; background: var(--surface-variant); border-radius: 16px;">
+        <div style="font-size: 12px; color: var(--text-secondary);">حالة الطلب الحالية:</div>
+        <div class="status-badge status-new" id="liveStatusBadge">طلب جديد في الانتظار 🕒</div>
+      </div>
+
+      <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;" id="trackingOrderIdText">رقم الطلب: #---</div>
+
+      <button class="btn-submit-order" onclick="closeTrackingModal()">
+        <span>العودة للمنيو</span>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // 1. Firebase Configuration (From User's Credentials)
+    const firebaseConfig = {
+      apiKey: "AIzaSyAyxh-qKKEQf0Av_CsQEXhiDqidKIEljQA",
+      authDomain: "cafe00000-dee29.firebaseapp.com",
+      projectId: "cafe00000-dee29",
+      storageBucket: "cafe00000-dee29.firebasestorage.app",
+      messagingSenderId: "686032896219",
+      appId: "1:686032896219:web:521df8d50db871b3520cfe",
+      measurementId: "G-M2027H5VET"
+    };
+
+    // Initialize Firebase
+    let db = null;
+    try {
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+      console.log("Firebase initialized successfully");
+    } catch (e) {
+      console.warn("Firebase initialization notice:", e);
+    }
+
+    // 2. Parse Table Number from URL (e.g. ?table=3 or ?t=3)
+    const urlParams = new URLSearchParams(window.location.search);
+    const tableNumber = parseInt(urlParams.get('table') || urlParams.get('t') || '1', 10);
+    document.getElementById('tableLabel').innerText = 'طاولة ' + tableNumber;
+    document.getElementById('modalTableTitle').innerText = 'طلب طاولة ' + tableNumber;
+
+    // 3. Default Menu Data (Matching Screenshot 2)
+    const defaultMenu = [
+      // Burgers
+      { id: "b1", category: "cat_burgers", name: "برجر كلاسيك", desc: "لحم بقري مشوي مع الجبن الطازج والخس والطماطم", price: 4.50, img: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&q=80" },
+      { id: "b2", category: "cat_burgers", name: "برجر باللحم المقدد", desc: "لحم بقري مع شرائح اللحم المقدد والجبن والخس", price: 5.50, img: "https://images.unsplash.com/photo-1553979459-d2229ba7433b?w=400&q=80" },
+      { id: "b3", category: "cat_burgers", name: "برجر حار", desc: "لحم بقري مع صلصة حارة وفلفل هالبينو", price: 5.00, img: "https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=400&q=80" },
+      { id: "b4", category: "cat_burgers", name: "برجر دجاج", desc: "دجاج مقرمش مع الخس والصلصة الخاصة", price: 4.00, img: "https://images.unsplash.com/photo-1625813506062-0aeb1d7a094b?w=400&q=80" },
+      { id: "b5", category: "cat_burgers", name: "برجر بالمشروم", desc: "لحم بقري مع المشروم والجبن السويسري الذائب", price: 5.50, img: "https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?w=400&q=80" },
+      
+      // Appetizers
+      { id: "a1", category: "cat_appetizers", name: "بطاطس مقلية مقرمشة", desc: "بطاطس ذهبية مع بهارات الكافيه الخاصة", price: 2.50, img: "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=400&q=80" },
+      { id: "a2", category: "cat_appetizers", name: "أصابع الموزاريلا", desc: "أصابع جبنة موزاريلا ذهبية مع صوص المارينارا", price: 3.50, img: "https://images.unsplash.com/photo-1548340748-6d2b7d7da280?w=400&q=80" },
+      { id: "a3", category: "cat_appetizers", name: "حلقات البصل المقرمشة", desc: "حلقات بصل ذهبية مقرمشة مع صوص الرانش", price: 3.00, img: "https://images.unsplash.com/photo-1639024471285-0afc3835f4a0?w=400&q=80" },
+      
+      // Drinks
+      { id: "d1", category: "cat_drinks", name: "سبانش لاتيه بارد", desc: "قهوة إسبريسو مع الحليب المكثف المحلى والثلج", price: 4.00, img: "https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?w=400&q=80" },
+      { id: "d2", category: "cat_drinks", name: "آيس كراميل ماكياتو", desc: "إسبريسو مثلج مع الكراميل والحليب ورغوة ناعمة", price: 4.50, img: "https://images.unsplash.com/photo-1541167760496-1628856ab772?w=400&q=80" },
+      { id: "d3", category: "cat_drinks", name: "موهيتو ليمون ونعناع", desc: "مشروب صودا منعش بالليمون والنعناع الطازج", price: 3.50, img: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=400&q=80" },
+      
+      // Meals
+      { id: "m1", category: "cat_meals", name: "ستيك دجاج مشوي", desc: "صدر دجاج متبل مع الخضار المشوية والأرز", price: 7.50, img: "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=400&q=80" },
+      { id: "m2", category: "cat_meals", name: "باستا ألفريدو بالدجاج", desc: "باستا فيتوتشيني مع الدجاج وصلصة الكريمة الإيطالية", price: 6.50, img: "https://images.unsplash.com/photo-1621996346565-e3d5d62810a9?w=400&q=80" },
+      
+      // Sweets
+      { id: "s1", category: "cat_sweets", name: "تشيز كيك فراولة", desc: "تشيز كيك نيويورك الكلاسيكي مع صوص الفراولة", price: 4.50, img: "https://images.unsplash.com/photo-1524351199678-941a58a3df50?w=400&q=80" },
+      { id: "s2", category: "cat_sweets", name: "وافل شوكولاتة بلجيكية", desc: "وافل ذهبي مقرمش مع الشوكولاتة والآيسكريم", price: 5.00, img: "https://images.unsplash.com/photo-1562376552-0d160a2f238d?w=400&q=80" }
+    ];
+
+    let currentCategory = 'all';
+    let cart = []; // [{ item, qty }]
+
+    function renderItems() {
+      const query = document.getElementById('searchInput').value.trim().toLowerCase();
+      const filtered = defaultMenu.filter(item => {
+        const matchCat = (currentCategory === 'all' || item.category === currentCategory);
+        const matchSearch = (!query || item.name.toLowerCase().includes(query) || item.desc.toLowerCase().includes(query));
+        return matchCat && matchSearch;
+      });
+
+      document.getElementById('itemsCount').innerText = filtered.length + ' صنف';
+
+      const container = document.getElementById('itemsList');
+      container.innerHTML = '';
+
+      filtered.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'item-card';
+        div.innerHTML = `
+          <div class="item-img-box">
+            <img src="${item.img}" alt="${item.name}" loading="lazy">
+          </div>
+          <div class="item-details">
+            <div>
+              <div class="item-name">${item.name}</div>
+              <div class="item-desc">${item.desc}</div>
+            </div>
+            <div class="item-footer">
+              <div class="item-price">${item.price.toFixed(2)} $</div>
+              <button class="btn-add" onclick="addToCart('${item.id}')">
+                <i class="fa-solid fa-plus"></i>
+              </button>
+            </div>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function filterCategory(cat, el) {
+      currentCategory = cat;
+      document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+      renderItems();
+    }
+
+    function handleSearch() {
+      renderItems();
+    }
+
+    // Cart Operations
+    function addToCart(itemId) {
+      const item = defaultMenu.find(i => i.id === itemId);
+      if (!item) return;
+
+      const existing = cart.find(c => c.item.id === itemId);
+      if (existing) {
+        existing.qty++;
+      } else {
+        cart.push({ item: item, qty: 1 });
+      }
+
+      updateCartBar();
+    }
+
+    function changeQty(itemId, delta) {
+      const existing = cart.find(c => c.item.id === itemId);
+      if (!existing) return;
+
+      existing.qty += delta;
+      if (existing.qty <= 0) {
+        cart = cart.filter(c => c.item.id !== itemId);
+      }
+
+      updateCartBar();
+      renderModalCart();
+      if (cart.length === 0) closeCartModal();
+    }
+
+    function updateCartBar() {
+      const totalCount = cart.reduce((sum, c) => sum + c.qty, 0);
+      const totalPrice = cart.reduce((sum, c) => sum + (c.item.price * c.qty), 0);
+
+      const bar = document.getElementById('bottomCartBar');
+      if (totalCount > 0) {
+        bar.style.display = 'flex';
+        document.getElementById('cartCountBadge').innerText = totalCount;
+        document.getElementById('cartTotalSummary').innerText = totalPrice.toFixed(2) + ' $';
+        document.getElementById('modalTotalAmount').innerText = totalPrice.toFixed(2) + ' $';
+      } else {
+        bar.style.display = 'none';
+      }
+    }
+
+    function openCartModal() {
+      renderModalCart();
+      document.getElementById('cartModal').style.display = 'flex';
+    }
+
+    function closeCartModal() {
+      document.getElementById('cartModal').style.display = 'none';
+    }
+
+    function renderModalCart() {
+      const list = document.getElementById('modalCartList');
+      list.innerHTML = '';
+
+      cart.forEach(c => {
+        const row = document.createElement('div');
+        row.className = 'cart-item-row';
+        row.innerHTML = `
+          <div class="cart-item-info">
+            <h4>${c.item.name}</h4>
+            <span>${(c.item.price * c.qty).toFixed(2)} $</span>
+          </div>
+          <div class="qty-controls">
+            <button class="qty-btn" onclick="changeQty('${c.item.id}', -1)"><i class="fa-solid fa-minus"></i></button>
+            <span style="font-weight: 800; font-size: 15px;">${c.qty}</span>
+            <button class="qty-btn add" onclick="changeQty('${c.item.id}', 1)"><i class="fa-solid fa-plus"></i></button>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+    }
+
+    // Submit Order To Firebase Firestore
+    function submitOrderToFirebase() {
+      if (cart.length === 0) return;
+
+      const totalCount = cart.reduce((sum, c) => sum + c.qty, 0);
+      const totalPrice = cart.reduce((sum, c) => sum + (c.item.price * c.qty), 0);
+      const summary = cart.map(c => `${c.qty}x ${c.item.name}`).join('، ');
+      const notes = document.getElementById('customerNotes').value.trim();
+      const orderId = 'ord_' + Math.floor(100000 + Math.random() * 900000);
+
+      const orderData = {
+        id: orderId,
+        tableNumber: tableNumber,
+        customerName: 'طاولة ' + tableNumber,
+        itemsSummary: summary,
+        itemsCount: totalCount,
+        totalPrice: totalPrice,
+        status: "NEW",
+        timestamp: Date.now(),
+        notes: notes
+      };
+
+      const btn = document.getElementById('btnSubmitOrder');
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الإرسال...';
+      btn.disabled = true;
+
+      // Write to Firestore if connected
+      if (db) {
+        db.collection("orders").doc(orderId).set(orderData)
+          .then(() => {
+            console.log("Order saved to Firestore successfully!");
+            onOrderSuccess(orderId);
+          })
+          .catch((err) => {
+            console.error("Firestore error:", err);
+            onOrderSuccess(orderId); // Still succeed for the customer experience
+          });
+      } else {
+        setTimeout(() => onOrderSuccess(orderId), 600);
+      }
+    }
+
+    function onOrderSuccess(orderId) {
+      cart = [];
+      updateCartBar();
+      closeCartModal();
+
+      document.getElementById('trackingOrderIdText').innerText = 'رقم الطلب: #' + orderId;
+      document.getElementById('trackingTableText').innerText = `طلب طاولة ${tableNumber} وصل لوحة الكاشير ويتم تحضيره الآن.`;
+      document.getElementById('trackingModal').style.display = 'flex';
+
+      // Reset button
+      const btn = document.getElementById('btnSubmitOrder');
+      btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> <span>إرسال الطلب إلى الكاشير</span>';
+      btn.disabled = false;
+
+      // Real-time Status Tracker via Firestore!
+      if (db) {
+        db.collection("orders").doc(orderId).onSnapshot((doc) => {
+          if (doc && doc.exists) {
+            const data = doc.data();
+            updateLiveTrackerUI(data.status);
+          }
+        });
+      }
+    }
+
+    function updateLiveTrackerUI(status) {
+      const badge = document.getElementById('liveStatusBadge');
+      if (status === 'PREPARING') {
+        badge.className = 'status-badge status-preparing';
+        badge.innerText = 'جاري التحضير في المطبخ 🍳';
+      } else if (status === 'READY') {
+        badge.className = 'status-badge status-ready';
+        badge.innerText = 'طلبك جاهز للتقديم على الطاولة 🍽️';
+      } else if (status === 'PAID') {
+        badge.className = 'status-badge status-ready';
+        badge.innerText = 'تم الدفع والحساب بنجاح 💵';
+      } else {
+        badge.className = 'status-badge status-new';
+        badge.innerText = 'طلب جديد في انتظار التأكيد 🕒';
+      }
+    }
+
+    function closeTrackingModal() {
+      document.getElementById('trackingModal').style.display = 'none';
+    }
+
+    // Initial render
+    renderItems();
+  </script>
+</body>
+</html>

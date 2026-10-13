@@ -36,6 +36,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         val db = CafeDatabase.getDatabase(application, viewModelScope)
         repository = CafeRepository(db.cafeDao())
+        repository.startFirestoreOrdersListener(viewModelScope)
     }
 
     // Navigation & Screen State

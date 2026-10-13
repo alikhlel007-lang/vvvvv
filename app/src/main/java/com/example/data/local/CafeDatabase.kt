@@ -286,7 +286,7 @@ abstract class CafeDatabase : RoomDatabase() {
                     tableNumber = number,
                     label = "طاولة $number",
                     capacity = if (number % 2 == 0) 4 else 2,
-                    qrPayload = "https://cafe.menu/table?id=$number&cafe=CAFE_LUXURY"
+                    qrPayload = "https://alikhlel007-lang.github.io/vvvvv/?table=$number"
                 )
             }
             dao.insertTables(tables)
