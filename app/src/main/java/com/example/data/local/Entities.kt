@@ -19,7 +19,8 @@ data class CategoryEntity(
     val nameAr: String,
     val nameEn: String,
     val iconType: String,
-    val sortOrder: Int
+    val sortOrder: Int,
+    val customImageUri: String? = null
 )
 
 @Entity(tableName = "menu_items")
@@ -32,7 +33,12 @@ data class MenuItemEntity(
     val descriptionEn: String,
     val price: Double,
     val imageType: String,
-    val isAvailable: Boolean
+    val isAvailable: Boolean,
+    val imageUri: String? = null,
+    val bgImageUri: String? = null,
+    val isOffer: Boolean = false,
+    val offerDiscountPercent: Int = 0,
+    val offerTag: String = "عرض خاص"
 )
 
 @Entity(tableName = "cafe_tables")

@@ -73,14 +73,15 @@ class CafeRepository(private val dao: CafeDao) {
         list.map { it.toDomain() }
     }
 
-    suspend fun addCategory(nameAr: String, nameEn: String, iconType: String) {
+    suspend fun addCategory(nameAr: String, nameEn: String, iconType: String, customImageUri: String? = null) {
         val catId = "cat_" + UUID.randomUUID().toString().take(8)
         val entity = CategoryEntity(
             id = catId,
             nameAr = nameAr,
             nameEn = nameEn,
             iconType = iconType,
-            sortOrder = 99
+            sortOrder = 99,
+            customImageUri = customImageUri
         )
         dao.insertCategory(entity)
         try {
@@ -89,7 +90,8 @@ class CafeRepository(private val dao: CafeDao) {
                 "nameAr" to nameAr,
                 "nameEn" to nameEn,
                 "iconType" to iconType,
-                "sortOrder" to 99
+                "sortOrder" to 99,
+                "customImageUri" to (customImageUri ?: "")
             )
             firestore?.collection("categories")?.document(catId)?.set(map)
         } catch (_: Exception) {}
@@ -104,7 +106,8 @@ class CafeRepository(private val dao: CafeDao) {
                     "nameAr" to category.nameAr,
                     "nameEn" to category.nameEn,
                     "iconType" to category.iconType,
-                    "sortOrder" to category.sortOrder
+                    "sortOrder" to category.sortOrder,
+                    "customImageUri" to (category.customImageUri ?: "")
                 )
             )
         } catch (_: Exception) {}
@@ -132,7 +135,12 @@ class CafeRepository(private val dao: CafeDao) {
         descriptionAr: String,
         descriptionEn: String,
         price: Double,
-        imageType: String = "burger"
+        imageType: String = "burger",
+        imageUri: String? = null,
+        bgImageUri: String? = null,
+        isOffer: Boolean = false,
+        offerDiscountPercent: Int = 0,
+        offerTag: String = "عرض خاص"
     ) {
         val itemId = "item_" + UUID.randomUUID().toString().take(8)
         val entity = MenuItemEntity(
@@ -144,7 +152,12 @@ class CafeRepository(private val dao: CafeDao) {
             descriptionEn = descriptionEn,
             price = price,
             imageType = imageType,
-            isAvailable = true
+            isAvailable = true,
+            imageUri = imageUri,
+            bgImageUri = bgImageUri,
+            isOffer = isOffer,
+            offerDiscountPercent = offerDiscountPercent,
+            offerTag = offerTag
         )
         dao.insertMenuItem(entity)
         try {
@@ -157,7 +170,12 @@ class CafeRepository(private val dao: CafeDao) {
                 "descriptionEn" to descriptionEn,
                 "price" to price,
                 "imageType" to imageType,
-                "isAvailable" to true
+                "isAvailable" to true,
+                "imageUri" to (imageUri ?: ""),
+                "bgImageUri" to (bgImageUri ?: ""),
+                "isOffer" to isOffer,
+                "offerDiscountPercent" to offerDiscountPercent,
+                "offerTag" to offerTag
             )
             firestore?.collection("menu_items")?.document(itemId)?.set(itemMap)
         } catch (_: Exception) {}
@@ -175,7 +193,12 @@ class CafeRepository(private val dao: CafeDao) {
                 "descriptionEn" to item.descriptionEn,
                 "price" to item.price,
                 "imageType" to item.imageType,
-                "isAvailable" to item.isAvailable
+                "isAvailable" to item.isAvailable,
+                "imageUri" to (item.imageUri ?: ""),
+                "bgImageUri" to (item.bgImageUri ?: ""),
+                "isOffer" to item.isOffer,
+                "offerDiscountPercent" to item.offerDiscountPercent,
+                "offerTag" to item.offerTag
             )
             firestore?.collection("menu_items")?.document(item.id)?.set(itemMap)
         } catch (_: Exception) {}
@@ -316,7 +339,8 @@ class CafeRepository(private val dao: CafeDao) {
         nameAr = nameAr,
         nameEn = nameEn,
         iconType = iconType,
-        sortOrder = sortOrder
+        sortOrder = sortOrder,
+        customImageUri = customImageUri
     )
 
     private fun MenuCategory.toEntity() = CategoryEntity(
@@ -324,7 +348,8 @@ class CafeRepository(private val dao: CafeDao) {
         nameAr = nameAr,
         nameEn = nameEn,
         iconType = iconType,
-        sortOrder = sortOrder
+        sortOrder = sortOrder,
+        customImageUri = customImageUri
     )
 
     private fun MenuItemEntity.toDomain() = MenuItem(
@@ -336,7 +361,12 @@ class CafeRepository(private val dao: CafeDao) {
         descriptionEn = descriptionEn,
         price = price,
         imageType = imageType,
-        isAvailable = isAvailable
+        isAvailable = isAvailable,
+        imageUri = imageUri,
+        bgImageUri = bgImageUri,
+        isOffer = isOffer,
+        offerDiscountPercent = offerDiscountPercent,
+        offerTag = offerTag
     )
 
     private fun MenuItem.toEntity() = MenuItemEntity(
@@ -348,7 +378,12 @@ class CafeRepository(private val dao: CafeDao) {
         descriptionEn = descriptionEn,
         price = price,
         imageType = imageType,
-        isAvailable = isAvailable
+        isAvailable = isAvailable,
+        imageUri = imageUri,
+        bgImageUri = bgImageUri,
+        isOffer = isOffer,
+        offerDiscountPercent = offerDiscountPercent,
+        offerTag = offerTag
     )
 
     private fun TableEntity.toDomain() = CafeTable(

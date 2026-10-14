@@ -24,6 +24,7 @@ import com.example.ui.auth.RegisterScreen
 import com.example.ui.cashier.CashierOrdersScreen
 import com.example.ui.customer.CustomerMenuScreen
 import com.example.ui.menu_management.MenuManagementScreen
+import com.example.ui.settings.SettingsScreen
 import com.example.ui.tables.TablesBarcodeScreen
 import com.example.ui.theme.CafeDarkBg
 import com.example.ui.theme.CafeTheme
@@ -79,16 +80,23 @@ fun CafeAppNavHost(viewModel: MainViewModel = viewModel()) {
 
         AppScreen.MENU_MANAGEMENT -> {
             BackHandler {
-                viewModel.navigateTo(AppScreen.CASHIER_ORDERS)
+                viewModel.navigateTo(AppScreen.SETTINGS)
             }
             MenuManagementScreen(viewModel = viewModel)
         }
 
         AppScreen.TABLES_BARCODE -> {
             BackHandler {
-                viewModel.navigateTo(AppScreen.CASHIER_ORDERS)
+                viewModel.navigateTo(AppScreen.SETTINGS)
             }
             TablesBarcodeScreen(viewModel = viewModel)
+        }
+
+        AppScreen.SETTINGS -> {
+            BackHandler {
+                viewModel.navigateTo(AppScreen.CASHIER_ORDERS)
+            }
+            SettingsScreen(viewModel = viewModel)
         }
 
         AppScreen.CUSTOMER_MENU -> {

@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.RestaurantMenu
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -92,6 +93,8 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
     val todayRevenue = orders.filter { it.status == OrderStatus.PAID || it.status == OrderStatus.READY }.sumOf { it.totalPrice }
     val activeTablesCount = orders.filter { it.status != OrderStatus.PAID && it.status != OrderStatus.CANCELLED }.map { it.tableNumber }.distinct().size
 
+    val cafeName by viewModel.cafeName.collectAsState()
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -108,80 +111,105 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // TOP BAR
+            // TOP BAR: Right (Switcher: Cashier/Menu), Center (Cafe Name), Left (Settings Gear)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // RIGHT SIDE (Start in RTL): Fast Switcher between Cashier & Menu Inspection
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(CafeSurfaceVariant)
+                        .border(1.dp, CafeCardBorder, RoundedCornerShape(20.dp))
+                        .padding(3.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Active Cashier Tab
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(CafeSurfaceVariant),
-                        contentAlignment = Alignment.Center
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(CafeCyanPrimary)
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.NotificationsActive,
-                            contentDescription = null,
-                            tint = if (newOrdersCount > 0) CafeCyanPrimary else CafeTextSecondary,
-                            modifier = Modifier.size(22.dp)
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Payment,
+                                contentDescription = null,
+                                tint = Color(0xFF032125),
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "الكاشير",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF032125)
+                            )
+                        }
                     }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
-                        Text(
-                            text = "لوحة الكاشير والطلبات",
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = CafeTextPrimary
-                        )
-                        Text(
-                            text = currentUser?.cafeName ?: "CAFE LUXURY",
-                            fontSize = 12.sp,
-                            color = CafeGold
-                        )
+
+                    // Inactive Menu Tab (Click to inspect menu)
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable { viewModel.navigateTo(AppScreen.CUSTOMER_MENU) }
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                            .testTag("cashier_to_menu_switch_btn")
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Visibility,
+                                contentDescription = null,
+                                tint = CafeCyanPrimary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "تفقد المنيو",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = CafeTextSecondary
+                            )
+                        }
                     }
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Switch to live customer menu preview
-                    IconButton(
-                        onClick = { viewModel.navigateTo(AppScreen.CUSTOMER_MENU) },
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(CafeSurfaceVariant)
-                            .testTag("cashier_to_customer_preview_btn")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Visibility,
-                            contentDescription = "معاينة المنيو",
-                            tint = CafeCyanPrimary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                // CENTER: Cafe Name & Subtitle
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = cafeName,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = CafeTextPrimary
+                    )
+                    Text(
+                        text = if (newOrdersCount > 0) "$newOrdersCount طلبات جديدة" else "لوحة الكاشير",
+                        fontSize = 11.sp,
+                        color = if (newOrdersCount > 0) CafeCyanPrimary else CafeGold,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
 
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Logout
-                    IconButton(
-                        onClick = { viewModel.logout() },
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(CafeSurfaceVariant)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Logout,
-                            contentDescription = "تسجيل خروج",
-                            tint = Color(0xFFFF6B6B),
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
+                // LEFT SIDE (End in RTL): Settings Gear Icon
+                IconButton(
+                    onClick = { viewModel.navigateTo(AppScreen.SETTINGS) },
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(CafeSurfaceVariant)
+                        .border(1.2.dp, CafeCardBorderGlow, CircleShape)
+                        .testTag("cashier_gear_settings_btn")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "الإعدادات",
+                        tint = CafeCyanPrimary,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
             }
 
@@ -278,7 +306,7 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                         .weight(1f)
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
-                    contentPadding = PaddingValues(top = 4.dp, bottom = 80.dp),
+                    contentPadding = PaddingValues(top = 4.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(filteredOrders) { order ->
@@ -293,49 +321,6 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                         )
                     }
                 }
-            }
-        }
-
-        // BOTTOM NAVIGATION BAR (Cashier, Menu, Tables, Customer Mode)
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .background(CafeSurface)
-                .border(1.dp, CafeCardBorder, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-                .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-                .padding(vertical = 8.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                BottomNavItem(
-                    title = "الكاشير",
-                    icon = Icons.Default.Payment,
-                    isSelected = true,
-                    onClick = { /* already here */ },
-                    badgeCount = newOrdersCount
-                )
-                BottomNavItem(
-                    title = "القوائم والأصناف",
-                    icon = Icons.Default.RestaurantMenu,
-                    isSelected = false,
-                    onClick = { viewModel.navigateTo(AppScreen.MENU_MANAGEMENT) }
-                )
-                BottomNavItem(
-                    title = "باركود الطاولات",
-                    icon = Icons.Default.QrCode,
-                    isSelected = false,
-                    onClick = { viewModel.navigateTo(AppScreen.TABLES_BARCODE) }
-                )
-                BottomNavItem(
-                    title = "منيو الزبائن",
-                    icon = Icons.Default.Fastfood,
-                    isSelected = false,
-                    onClick = { viewModel.navigateTo(AppScreen.CUSTOMER_MENU) }
-                )
             }
         }
     }

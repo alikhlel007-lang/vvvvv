@@ -26,7 +26,8 @@ enum class AppScreen {
     CASHIER_ORDERS,
     MENU_MANAGEMENT,
     TABLES_BARCODE,
-    CUSTOMER_MENU
+    CUSTOMER_MENU,
+    SETTINGS
 }
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -95,6 +96,70 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Cashier filter
     private val _orderStatusFilter = MutableStateFlow<OrderStatus?>(null)
     val orderStatusFilter: StateFlow<OrderStatus?> = _orderStatusFilter.asStateFlow()
+
+    // Cafe Profile & Branding Settings
+    private val _cafeName = MutableStateFlow("CAFE LUXURY")
+    val cafeName: StateFlow<String> = _cafeName.asStateFlow()
+
+    private val _cafeOwnerName = MutableStateFlow("صاحب الكافتيريا")
+    val cafeOwnerName: StateFlow<String> = _cafeOwnerName.asStateFlow()
+
+    private val _cafePhone = MutableStateFlow("+964 780 000 0000")
+    val cafePhone: StateFlow<String> = _cafePhone.asStateFlow()
+
+    private val _cafeEmail = MutableStateFlow("cafe.owner@gmail.com")
+    val cafeEmail: StateFlow<String> = _cafeEmail.asStateFlow()
+
+    private val _cafeAddress = MutableStateFlow("الفرع الرئيسي - صالة العوائل والشباب")
+    val cafeAddress: StateFlow<String> = _cafeAddress.asStateFlow()
+
+    private val _cafeWelcomeNote = MutableStateFlow("أهلاً وسهلاً بكم في كافتيريتنا، نتمنى لكم أطيب الأوقات!")
+    val cafeWelcomeNote: StateFlow<String> = _cafeWelcomeNote.asStateFlow()
+
+    private val _cafeLogoType = MutableStateFlow("custom")
+    val cafeLogoType: StateFlow<String> = _cafeLogoType.asStateFlow()
+
+    private val _cafeCustomLogoUri = MutableStateFlow<String?>(null)
+    val cafeCustomLogoUri: StateFlow<String?> = _cafeCustomLogoUri.asStateFlow()
+
+    private val _webMenuUrl = MutableStateFlow(repository.baseWebMenuUrl)
+    val webMenuUrl: StateFlow<String> = _webMenuUrl.asStateFlow()
+
+    fun setCustomLogoUri(uri: String?) {
+        _cafeCustomLogoUri.value = uri
+    }
+
+    fun updateCafeProfile(
+        name: String,
+        phone: String,
+        address: String = _cafeAddress.value,
+        welcomeNote: String = _cafeWelcomeNote.value,
+        logoType: String = _cafeLogoType.value,
+        menuUrl: String = _webMenuUrl.value,
+        ownerName: String = _cafeOwnerName.value,
+        email: String = _cafeEmail.value,
+        customLogoUri: String? = _cafeCustomLogoUri.value
+    ) {
+        _cafeName.value = name.ifBlank { "CAFE LUXURY" }
+        _cafePhone.value = phone
+        _cafeOwnerName.value = ownerName.ifBlank { "صاحب الكافتيريا" }
+        _cafeEmail.value = email.ifBlank { "cafe.owner@gmail.com" }
+        _cafeCustomLogoUri.value = customLogoUri
+        _cafeAddress.value = address
+        _cafeWelcomeNote.value = welcomeNote
+        _cafeLogoType.value = logoType
+        _webMenuUrl.value = menuUrl.ifBlank { repository.baseWebMenuUrl }
+        repository.baseWebMenuUrl = _webMenuUrl.value
+
+        // Also update currentUser if available
+        _currentUser.value?.let { current ->
+            _currentUser.value = current.copy(
+                cafeName = _cafeName.value,
+                fullName = _cafeOwnerName.value,
+                email = _cafeEmail.value
+            )
+        }
+    }
 
     fun navigateTo(screen: AppScreen) {
         _currentScreen.value = screen
@@ -178,16 +243,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // Customer Menu Page Tab: 0 = Menu Orders, 1 = Offers & New Items, 2 = Games & Entertainment
+    private val _customerMenuTab = MutableStateFlow(0)
+    val customerMenuTab: StateFlow<Int> = _customerMenuTab.asStateFlow()
+
+    fun setCustomerMenuTab(tab: Int) {
+        _customerMenuTab.value = tab
+    }
+
     // Categories & Items CRUD
-    fun addCategory(nameAr: String, nameEn: String, iconType: String) {
+    fun addCategory(nameAr: String, nameEn: String, iconType: String, customImageUri: String? = null) {
         viewModelScope.launch {
-            repository.addCategory(nameAr, nameEn, iconType)
+            repository.addCategory(nameAr, nameEn, iconType, customImageUri)
+        }
+    }
+
+    fun updateCategory(category: MenuCategory) {
+        viewModelScope.launch {
+            repository.updateCategory(category)
         }
     }
 
     fun deleteCategory(category: MenuCategory) {
         viewModelScope.launch {
             repository.deleteCategory(category)
+            if (_selectedCategoryId.value == category.id) {
+                _selectedCategoryId.value = null
+            }
         }
     }
 
@@ -198,10 +280,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         descriptionAr: String,
         descriptionEn: String,
         price: Double,
-        imageType: String = "burger"
+        imageType: String = "burger",
+        imageUri: String? = null,
+        bgImageUri: String? = null,
+        isOffer: Boolean = false,
+        offerDiscountPercent: Int = 0,
+        offerTag: String = "عرض خاص"
     ) {
         viewModelScope.launch {
-            repository.addMenuItem(categoryId, nameAr, nameEn, descriptionAr, descriptionEn, price, imageType)
+            repository.addMenuItem(
+                categoryId = categoryId,
+                nameAr = nameAr,
+                nameEn = nameEn,
+                descriptionAr = descriptionAr,
+                descriptionEn = descriptionEn,
+                price = price,
+                imageType = imageType,
+                imageUri = imageUri,
+                bgImageUri = bgImageUri,
+                isOffer = isOffer,
+                offerDiscountPercent = offerDiscountPercent,
+                offerTag = offerTag
+            )
         }
     }
 

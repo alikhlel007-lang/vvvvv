@@ -13,7 +13,8 @@ data class MenuCategory(
     val nameAr: String,
     val nameEn: String,
     val iconType: String, // burger, fries, drink, meals, sweets, pizza
-    val sortOrder: Int = 0
+    val sortOrder: Int = 0,
+    val customImageUri: String? = null
 )
 
 data class MenuItem(
@@ -25,7 +26,12 @@ data class MenuItem(
     val descriptionEn: String,
     val price: Double,
     val imageType: String = "burger", // burger, drink, fries, sweets, default
-    val isAvailable: Boolean = true
+    val isAvailable: Boolean = true,
+    val imageUri: String? = null,
+    val bgImageUri: String? = null,
+    val isOffer: Boolean = false,
+    val offerDiscountPercent: Int = 0,
+    val offerTag: String = "عرض خاص"
 )
 
 data class CafeTable(

@@ -31,19 +31,28 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Cake
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Fastfood
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.LocalCafe
 import androidx.compose.material.icons.filled.LocalDrink
+import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.LocalPizza
-import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Payment
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -59,6 +68,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -73,11 +83,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.R
-import com.example.data.model.CartItem
 import com.example.data.model.MenuCategory
 import com.example.data.model.MenuItem
 import com.example.ui.AppScreen
@@ -106,6 +117,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
     val selectedTableNumber by viewModel.selectedTableNumber.collectAsState()
     val cart by viewModel.cart.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+    val activeMenuTab by viewModel.customerMenuTab.collectAsState()
 
     var showSearchBox by remember { mutableStateOf(false) }
     var showCartSheet by remember { mutableStateOf(false) }
@@ -117,7 +129,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
     val activeCatId = selectedCategory ?: categories.firstOrNull()?.id ?: "cat_burgers"
     val activeCat = categories.find { it.id == activeCatId } ?: categories.firstOrNull()
 
-    // Filter items
+    // Filter items for regular menu
     val filteredItems = allItems.filter { item ->
         val matchesCategory = (selectedCategory == null || item.categoryId == activeCatId)
         val matchesSearch = searchQuery.isBlank() ||
@@ -127,6 +139,9 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
         matchesCategory && matchesSearch
     }
 
+    // Filter items for offers page (isOffer == true)
+    val offerItems = allItems.filter { it.isOffer }
+
     val cartCount = cart.sumOf { it.quantity }
     val cartTotal = cart.sumOf { it.menuItem.price * it.quantity }
 
@@ -135,87 +150,158 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    listOf(
-                        CafeDarkBg,
-                        CafeDarkBgGradientEnd,
-                        Color(0xFF031417)
-                    )
+                    listOf(CafeDarkBg, CafeDarkBgGradientEnd, Color(0xFF031417))
                 )
             )
     ) {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // TOP HEADER BAR (Hamburger, CAFE LOGO, Search)
+            // TOP HEADER BAR: Right (Switcher), Middle (Logo & Table), Left (Search & Gear)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Return to Cashier Dashboard / Drawer icon
-                IconButton(
-                    onClick = { viewModel.navigateTo(AppScreen.CASHIER_ORDERS) },
+                // RIGHT SIDE: Fast Switcher between Cashier & Menu
+                Row(
                     modifier = Modifier
-                        .size(42.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(20.dp))
                         .background(CafeSurfaceVariant)
-                        .testTag("menu_to_cashier_btn")
+                        .border(1.dp, CafeCardBorder, RoundedCornerShape(20.dp))
+                        .padding(3.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Dashboard,
-                        contentDescription = "لوحة الكاشير",
-                        tint = CafeCyanPrimary,
-                        modifier = Modifier.size(22.dp)
-                    )
+                    // Inactive Cashier Tab
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable { viewModel.navigateTo(AppScreen.CASHIER_ORDERS) }
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                            .testTag("menu_to_cashier_btn")
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Payment,
+                                contentDescription = null,
+                                tint = CafeCyanPrimary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "الكاشير",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = CafeTextSecondary
+                            )
+                        }
+                    }
+
+                    // Active Menu Tab
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(CafeCyanPrimary)
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.RestaurantMenu,
+                                contentDescription = null,
+                                tint = Color(0xFF032125),
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "المنيو",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF032125)
+                            )
+                        }
+                    }
                 }
 
-                // Middle Logo
+                // Middle Logo & Table Indicator
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.clickable { showTablePicker = true }
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.cafe_logo),
-                        contentDescription = "Logo",
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    val customLogoUri by viewModel.cafeCustomLogoUri.collectAsState()
+                    if (!customLogoUri.isNullOrEmpty()) {
+                        AsyncImage(
+                            model = customLogoUri,
+                            contentDescription = "شعار الكافتيريا",
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .border(1.dp, CafeCyanPrimary, CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Image(
+                            painter = painterResource(id = R.drawable.cafe_logo),
+                            contentDescription = "Logo",
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "CAFE LUXURY",
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = CafeTextPrimary,
-                            letterSpacing = 1.sp
+                            text = "طاولة $selectedTableNumber",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CafeGold
                         )
                         Text(
-                            text = "طاولة $selectedTableNumber (تغيير)",
-                            fontSize = 11.sp,
-                            color = CafeGold,
-                            fontWeight = FontWeight.Medium
+                            text = "تغيير الطاولة",
+                            fontSize = 10.sp,
+                            color = CafeTextSecondary
                         )
                     }
                 }
 
-                // Search Toggle
-                IconButton(
-                    onClick = { showSearchBox = !showSearchBox },
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(CafeSurfaceVariant)
-                        .testTag("menu_search_toggle")
-                ) {
-                    Icon(
-                        imageVector = if (showSearchBox) Icons.Default.Close else Icons.Default.Search,
-                        contentDescription = "بحث",
-                        tint = CafeCyanPrimary,
-                        modifier = Modifier.size(22.dp)
-                    )
+                // LEFT SIDE: Search Toggle & Settings Gear
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = { showSearchBox = !showSearchBox },
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(CafeSurfaceVariant)
+                            .border(1.dp, CafeCardBorder, CircleShape)
+                            .testTag("menu_search_toggle")
+                    ) {
+                        Icon(
+                            imageVector = if (showSearchBox) Icons.Default.Close else Icons.Default.Search,
+                            contentDescription = "بحث",
+                            tint = CafeCyanPrimary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    IconButton(
+                        onClick = { viewModel.navigateTo(AppScreen.SETTINGS) },
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(CafeSurfaceVariant)
+                            .border(1.2.dp, CafeCardBorderGlow, CircleShape)
+                            .testTag("menu_gear_settings_btn")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "الإعدادات",
+                            tint = CafeCyanPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
 
@@ -224,7 +310,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
                 ) {
                     OutlinedTextField(
                         value = searchQuery,
@@ -247,179 +333,156 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                 }
             }
 
-            // HORIZONTAL CATEGORIES CAROUSEL (Matching Screenshot 2)
-            LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 10.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(categories) { category ->
-                    val isSelected = category.id == activeCatId
-                    CategoryPill(
-                        category = category,
-                        isSelected = isSelected,
-                        onClick = { viewModel.selectCategory(category.id) }
-                    )
-                }
-            }
-
-            // SECTION HEADER (Category Title + Item Count)
+            // 3-PAGE NAVIGATION SWITCHER (صفحة الطلب العادية، صفحة العروض والتخفيضات والمواد الجديدة، صفحة الألعاب والترفيه)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(CafeSurfaceVariant)
+                    .border(1.dp, CafeCardBorder, RoundedCornerShape(16.dp))
+                    .padding(3.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(
-                    text = "${filteredItems.size} صنف",
-                    fontSize = 13.sp,
-                    color = CafeCyanPrimary,
-                    fontWeight = FontWeight.Medium
+                // Tab 0: صفحة الطلب العادية
+                MenuPageTabItem(
+                    title = "قائمة الطلب",
+                    icon = Icons.Default.RestaurantMenu,
+                    isSelected = activeMenuTab == 0,
+                    badge = null,
+                    modifier = Modifier.weight(1f),
+                    onClick = { viewModel.setCustomerMenuTab(0) }
                 )
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = activeCat?.nameAr ?: "الأصناف",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = CafeTextPrimary
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Icon(
-                        imageVector = getCategoryIcon(activeCat?.iconType ?: "burger"),
-                        contentDescription = null,
-                        tint = CafeCyanPrimary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+                // Tab 1: صفحة العروض والتخفيضات والمواد الجديدة
+                MenuPageTabItem(
+                    title = "العروض والجديد",
+                    icon = Icons.Default.LocalFireDepartment,
+                    isSelected = activeMenuTab == 1,
+                    badge = if (offerItems.isNotEmpty()) "${offerItems.size}" else null,
+                    activeColor = CafeGold,
+                    modifier = Modifier.weight(1.2f),
+                    onClick = { viewModel.setCustomerMenuTab(1) }
+                )
+
+                // Tab 2: صفحة الألعاب والترفيه
+                MenuPageTabItem(
+                    title = "الألعاب والترفيه",
+                    icon = Icons.Default.SportsEsports,
+                    isSelected = activeMenuTab == 2,
+                    badge = "تسلية",
+                    activeColor = Color(0xFF7C4DFF),
+                    modifier = Modifier.weight(1.1f),
+                    onClick = { viewModel.setCustomerMenuTab(2) }
+                )
             }
 
-            // MENU FOOD ITEMS LIST
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(top = 8.dp, bottom = if (cartCount > 0) 100.dp else 24.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                items(filteredItems) { item ->
-                    MenuItemCard(
-                        item = item,
-                        onAddToCart = { viewModel.addToCart(item) }
+            // MAIN CONTENT BASED ON SELECTED PAGE
+            when (activeMenuTab) {
+                0 -> {
+                    // PAGE 1: صفحة الطلب العادية
+                    StandardOrderingPage(
+                        categories = categories,
+                        activeCat = activeCat,
+                        activeCatId = activeCatId,
+                        filteredItems = filteredItems,
+                        cartCount = cartCount,
+                        onSelectCategory = { viewModel.selectCategory(it) },
+                        onAddToCart = { viewModel.addToCart(it) }
+                    )
+                }
+                1 -> {
+                    // PAGE 2: صفحة العروض والتخفيضات والمواد الجديدة
+                    OffersAndNewItemsPage(
+                        offerItems = offerItems,
+                        cartCount = cartCount,
+                        onAddToCart = { viewModel.addToCart(it) },
+                        onGoToMenu = { viewModel.setCustomerMenuTab(0) }
+                    )
+                }
+                2 -> {
+                    // PAGE 3: صفحة الألعاب والترفيه (للتسلية أثناء انتظار الطلب)
+                    GamesAndEntertainmentPage(
+                        tableNumber = selectedTableNumber,
+                        onOrderMore = { viewModel.setCustomerMenuTab(0) }
                     )
                 }
             }
         }
 
-        // FLOATING BOTTOM CART BAR (Matching Screenshot 2 bottom: Cart badge, Total $, "عرض الطلب ->")
+        // FLOATING BOTTOM CART BAR
         AnimatedVisibility(
             visible = cartCount > 0,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(16.dp),
+                .padding(bottom = 16.dp, start = 16.dp, end = 16.dp),
             enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
             exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
         ) {
-            Card(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(68.dp),
-                shape = RoundedCornerShape(34.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF032226)),
-                border = CardDefaults.outlinedCardBorder().copy(
-                    brush = Brush.horizontalGradient(listOf(CafeCyanPrimary, CafeCardBorderGlow)),
-                    width = 1.2.dp
-                )
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(CafeCyanPrimary, Color(0xFF00ADB5), Color(0xFF007E84))
+                        )
+                    )
+                    .clickable { showCartSheet = true }
+                    .padding(horizontal = 18.dp, vertical = 14.dp)
+                    .testTag("bottom_cart_bar")
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Cart icon with count badge
-                    Box(
-                        modifier = Modifier
-                            .size(46.dp)
-                            .clip(CircleShape)
-                            .background(CafeSurfaceVariant)
-                            .clickable { showCartSheet = true },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ShoppingCart,
-                            contentDescription = "السلة",
-                            tint = CafeCyanPrimary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        // Badge
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .size(18.dp)
+                                .size(34.dp)
                                 .clip(CircleShape)
-                                .background(CafeCyanPrimary),
+                                .background(Color(0xFF032125)),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = "$cartCount",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF032125)
-                            )
-                        }
-                    }
-
-                    // Total Sum
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.clickable { showCartSheet = true }
-                    ) {
-                        Text(
-                            text = "المجموع الكلي",
-                            fontSize = 11.sp,
-                            color = CafeTextSecondary
-                        )
-                        Text(
-                            text = String.format("%.2f $", cartTotal),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = CafeCyanPrimary
-                        )
-                    }
-
-                    // "عرض الطلب ->" Action Button
-                    Box(
-                        modifier = Modifier
-                            .height(44.dp)
-                            .clip(RoundedCornerShape(22.dp))
-                            .background(CafeCyanPrimary)
-                            .clickable { showCartSheet = true }
-                            .padding(horizontal = 20.dp)
-                            .testTag("view_order_button"),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "عرض الطلب",
+                                color = CafeCyanPrimary,
                                 fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "سلة طلب طاولة $selectedTableNumber",
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF032125)
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = null,
-                                tint = Color(0xFF032125),
-                                modifier = Modifier.size(16.dp)
+                            Text(
+                                text = String.format("%.2f $", cartTotal),
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFF032125)
                             )
                         }
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "عرض الطلب",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF032125)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = Color(0xFF032125),
+                            modifier = Modifier.size(16.dp)
+                        )
                     }
                 }
             }
@@ -538,7 +601,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                     OutlinedTextField(
                         value = customerNotes,
                         onValueChange = { customerNotes = it },
-                        placeholder = { Text("ملاحظات خاصة (مثال: بدون سكر، بدون بصل، زيادة صوص...)", fontSize = 12.sp, color = CafeTextSecondary) },
+                        placeholder = { Text("ملاحظات خاصة (مثال: بدون سكر، زيادة صوص...)", fontSize = 12.sp, color = CafeTextSecondary) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -578,11 +641,12 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
             }
         }
 
-        // TABLE PICKER DIALOG (Allow simulating scanning any table QR!)
+        // TABLE PICKER DIALOG
         if (showTablePicker) {
             AlertDialog(
                 onDismissRequest = { showTablePicker = false },
                 containerColor = CafeSurface,
+                shape = RoundedCornerShape(20.dp),
                 title = { Text("اختر رقم الطاولة", color = CafeTextPrimary, fontWeight = FontWeight.Bold) },
                 text = {
                     Column {
@@ -599,10 +663,10 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                                         .size(54.dp)
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(if (isCur) CafeCyanPrimary else CafeSurfaceVariant)
-                                        .clickable {
-                                            viewModel.setSelectedTableNumber(table.tableNumber)
-                                            showTablePicker = false
-                                        },
+                                    .clickable {
+                                        viewModel.setSelectedTableNumber(table.tableNumber)
+                                        showTablePicker = false
+                                    },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
@@ -629,6 +693,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
             AlertDialog(
                 onDismissRequest = { orderSubmittedSuccessId = null },
                 containerColor = CafeSurface,
+                shape = RoundedCornerShape(20.dp),
                 icon = {
                     Icon(
                         imageVector = Icons.Default.CheckCircle,
@@ -682,7 +747,791 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
     }
 }
 
-// Category Pill matching Screenshot 2
+/**
+ * Tab item component for the 3-page navigation
+ */
+@Composable
+fun MenuPageTabItem(
+    title: String,
+    icon: ImageVector,
+    isSelected: Boolean,
+    badge: String?,
+    modifier: Modifier = Modifier,
+    activeColor: Color = CafeCyanPrimary,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(13.dp))
+            .background(if (isSelected) activeColor else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(vertical = 7.dp, horizontal = 6.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (isSelected) Color(0xFF032125) else CafeTextSecondary,
+                modifier = Modifier.size(15.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = title,
+                fontSize = 11.sp,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = if (isSelected) Color(0xFF032125) else CafeTextPrimary,
+                maxLines = 1
+            )
+            if (badge != null) {
+                Spacer(modifier = Modifier.width(4.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(if (isSelected) Color(0xFF032125) else activeColor)
+                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                ) {
+                    Text(
+                        text = badge,
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isSelected) activeColor else Color(0xFF032125)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * PAGE 0: Standard Ordering Page
+ */
+@Composable
+fun StandardOrderingPage(
+    categories: List<MenuCategory>,
+    activeCat: MenuCategory?,
+    activeCatId: String,
+    filteredItems: List<MenuItem>,
+    cartCount: Int,
+    onSelectCategory: (String) -> Unit,
+    onAddToCart: (MenuItem) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        // HORIZONTAL CATEGORIES CAROUSEL
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            items(categories) { category ->
+                val isSelected = category.id == activeCatId
+                CategoryPill(
+                    category = category,
+                    isSelected = isSelected,
+                    onClick = { onSelectCategory(category.id) }
+                )
+            }
+        }
+
+        // SECTION HEADER
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "${filteredItems.size} صنف",
+                fontSize = 13.sp,
+                color = CafeCyanPrimary,
+                fontWeight = FontWeight.Medium
+            )
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = activeCat?.nameAr ?: "الأصناف",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = CafeTextPrimary
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Icon(
+                    imageVector = getCategoryIcon(activeCat?.iconType ?: "burger"),
+                    contentDescription = null,
+                    tint = CafeCyanPrimary,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
+        // MENU FOOD ITEMS LIST
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(top = 8.dp, bottom = if (cartCount > 0) 100.dp else 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(filteredItems) { item ->
+                MenuItemCard(
+                    item = item,
+                    onAddToCart = { onAddToCart(item) }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * PAGE 1: Offers, Discounts & New Items Page (صفحة العروض والتخفيضات والمواد الجديدة)
+ */
+@Composable
+fun OffersAndNewItemsPage(
+    offerItems: List<MenuItem>,
+    cartCount: Int,
+    onAddToCart: (MenuItem) -> Unit,
+    onGoToMenu: () -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        contentPadding = PaddingValues(top = 10.dp, bottom = if (cartCount > 0) 100.dp else 24.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        // Hero Offer Banner
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1705)),
+                border = CardDefaults.outlinedCardBorder().copy(
+                    brush = Brush.horizontalGradient(listOf(CafeGold, Color(0xFFFFB300))),
+                    width = 1.2.dp
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(imageVector = Icons.Default.LocalFireDepartment, contentDescription = null, tint = CafeGold, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "أقوى العروض والخصومات!",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CafeGold
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "اكتشف أحدث الإضافات والخصومات الحصرية المتاحة لك الآن",
+                            fontSize = 11.sp,
+                            color = CafeTextSecondary,
+                            lineHeight = 15.sp
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(CircleShape)
+                            .background(CafeGold.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.EmojiEvents,
+                            contentDescription = null,
+                            tint = CafeGold,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        if (offerItems.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 40.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.LocalFireDepartment,
+                            contentDescription = null,
+                            tint = CafeTextSecondary,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "لا توجد عروض نشطة حالياً",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CafeTextPrimary
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "يمكن لصاحب الكافتيريا تفعيل أي صنف كعرض من خلال أيقونة الترس ⚙️ في إدارة القوائم",
+                            fontSize = 12.sp,
+                            color = CafeTextSecondary,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 24.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = onGoToMenu,
+                            colors = ButtonDefaults.buttonColors(containerColor = CafeCyanPrimary, contentColor = Color(0xFF032125)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("تصفح قائمة الأصناف الرئيسية", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        } else {
+            items(offerItems) { item ->
+                OfferItemSpecialCard(
+                    item = item,
+                    onAddToCart = { onAddToCart(item) }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Offer Special Card with Background Image & Discount Pricing
+ */
+@Composable
+fun OfferItemSpecialCard(
+    item: MenuItem,
+    onAddToCart: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("offer_card_${item.id}"),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = CafeSurface),
+        border = CardDefaults.outlinedCardBorder().copy(
+            brush = Brush.horizontalGradient(listOf(CafeGold, CafeCyanPrimary)),
+            width = 1.2.dp
+        )
+    ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            // Background Image if provided
+            if (!item.bgImageUri.isNullOrEmpty()) {
+                AsyncImage(
+                    model = item.bgImageUri,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(130.dp),
+                    contentScale = ContentScale.Crop,
+                    alpha = 0.25f
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp)
+            ) {
+                // Top Tag & Discount Badge
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(CafeGold)
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = "🔥 ${item.offerTag}",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF032125)
+                        )
+                    }
+
+                    if (item.offerDiscountPercent > 0) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFFD32F2F))
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = "خصم ${item.offerDiscountPercent}%",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Image thumbnail
+                    Box(
+                        modifier = Modifier
+                            .size(70.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color(0xFF061A1D)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (!item.imageUri.isNullOrEmpty()) {
+                            AsyncImage(
+                                model = item.imageUri,
+                                contentDescription = item.nameAr,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            val imgRes = when (item.imageType) {
+                                "drink" -> R.drawable.food_drink
+                                else -> R.drawable.food_burger
+                            }
+                            Image(
+                                painter = painterResource(id = imgRes),
+                                contentDescription = item.nameAr,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = item.nameAr,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CafeTextPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = item.descriptionAr,
+                            fontSize = 11.sp,
+                            color = CafeTextSecondary,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // Price Row
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            val originalPrice = if (item.offerDiscountPercent > 0) {
+                                item.price / (1.0 - (item.offerDiscountPercent / 100.0))
+                            } else null
+
+                            Text(
+                                text = String.format("%.2f $", item.price),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = CafeGold
+                            )
+
+                            if (originalPrice != null) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = String.format("%.2f $", originalPrice),
+                                    fontSize = 12.sp,
+                                    color = CafeTextSecondary,
+                                    textDecoration = TextDecoration.LineThrough
+                                )
+                            }
+                        }
+                    }
+
+                    // Add to cart button
+                    Button(
+                        onClick = onAddToCart,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = CafeCyanPrimary,
+                            contentColor = Color(0xFF032125)
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("طلب", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * PAGE 2: Games & Entertainment Page (صفحة الألعاب والترفيه - تسلية الزبائن أثناء الانتظار)
+ */
+@Composable
+fun GamesAndEntertainmentPage(
+    tableNumber: Int,
+    onOrderMore: () -> Unit
+) {
+    var luckySpinResult by remember { mutableStateOf<String?>(null) }
+    var isSpinning by remember { mutableStateOf(false) }
+
+    // Tic Tac Toe State
+    var board by remember { mutableStateOf(List(9) { "" }) }
+    var currentPlayer by remember { mutableStateOf("X") }
+    var winner by remember { mutableStateOf<String?>(null) }
+
+    // Cafe Trivia State
+    val triviaList = remember {
+        listOf(
+            "هل تعلم؟ القهوة هي ثاني أكثر السلع تداولاً في العالم بعد النفط الخام!" to "معلومة قهوة ☕",
+            "هل تعلم؟ أول مقهى موثق في التاريخ تأسس في إسطنبول عام 1555م." to "تاريخ الكافيهات 🏛️",
+            "سر الرغوة الذهبية (الكريما) في الإسبريسو يأتي من ثاني أكسيد الكربون الناتج عن تحميص البن!" to "سر النكهة ✨",
+            "شرب كوب ماء قبل القهوة ينظف براعم التذوق لديك لتستمتع بكل إيحاءات البن الفاخر!" to "نصيحة باريستا 💧",
+            "طاولة $tableNumber هي أكثر الطاولات حظاً وإشراقاً في كافيه اليوم!" to "طاولة اليوم 🌟"
+        )
+    }
+    var triviaIndex by remember { mutableIntStateOf(0) }
+
+    fun checkWinner(b: List<String>): String? {
+        val winningLines = listOf(
+            listOf(0, 1, 2), listOf(3, 4, 5), listOf(6, 7, 8), // Rows
+            listOf(0, 3, 6), listOf(1, 4, 7), listOf(2, 5, 8), // Cols
+            listOf(0, 4, 8), listOf(2, 4, 6)             // Diagonals
+        )
+        for (line in winningLines) {
+            val (x, y, z) = line
+            if (b[x].isNotEmpty() && b[x] == b[y] && b[y] == b[z]) {
+                return b[x]
+            }
+        }
+        if (b.all { it.isNotEmpty() }) return "تعادل"
+        return null
+    }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        contentPadding = PaddingValues(top = 10.dp, bottom = 40.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Welcome Header
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF140F2D)),
+                border = CardDefaults.outlinedCardBorder().copy(
+                    brush = Brush.horizontalGradient(listOf(Color(0xFF7C4DFF), CafeCyanPrimary)),
+                    width = 1.2.dp
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(50.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF7C4DFF).copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SportsEsports,
+                            contentDescription = null,
+                            tint = Color(0xFFB388FF),
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column {
+                        Text(
+                            text = "ركن الألعاب والترفيه 🎲",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFE0D8FF)
+                        )
+                        Text(
+                            text = "استمتع بالألعاب والتسلية على طاولة $tableNumber أثناء تحضير طلبك!",
+                            fontSize = 12.sp,
+                            color = CafeTextSecondary
+                        )
+                    }
+                }
+            }
+        }
+
+        // GAME 1: عجلـة الحظ والمفاجآت
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = CafeSurface),
+                border = CardDefaults.outlinedCardBorder().copy(
+                    brush = Brush.horizontalGradient(listOf(CafeCardBorder, CafeCardBorderGlow)),
+                    width = 1.dp
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(imageVector = Icons.Default.Casino, contentDescription = null, tint = CafeGold, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "عجلة الحظ الترفيهية للكافيه 🎡",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CafeTextPrimary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(CafeInputBg)
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = luckySpinResult ?: "اضغط زر 'تدوير العجلة' لاكتشاف مفاجأتك اليومية!",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (luckySpinResult != null) CafeGold else CafeTextSecondary,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Button(
+                        onClick = {
+                            val options = listOf(
+                                "🎉 ابتسم! طلبك يُحضّر الآن بكل عناية وحب في المطبخ!",
+                                "☕ قهوة ثانية مجاناً مع ابتسامة عريضة اليوم!",
+                                "✨ طاولة $tableNumber هي أكثر الطاولات تميزاً وأناقة اليوم!",
+                                "🍪 قطعة كوكيز هدية مع وجبتك القادمة!",
+                                "🌟 يومك مشرق ومليء بالإنجازات الجميلة!",
+                                "❤️ شكراً لاختيارك كافتيريتنا، وجودك يسعدنا دائماً!"
+                            )
+                            luckySpinResult = options.random()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = CafeGold, contentColor = Color(0xFF032125)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("تدوير العجلة واكتشاف الحظ", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        // GAME 2: لعبة إكس أو (XO) لشخصين على الطاولة
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = CafeSurface),
+                border = CardDefaults.outlinedCardBorder().copy(
+                    brush = Brush.horizontalGradient(listOf(CafeCardBorder, CafeCardBorderGlow)),
+                    width = 1.dp
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "لعبة إكس أو (XO) للتسلية ❌⭕",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CafeTextPrimary
+                            )
+                        }
+
+                        IconButton(
+                            onClick = {
+                                board = List(9) { "" }
+                                currentPlayer = "X"
+                                winner = null
+                            }
+                        ) {
+                            Icon(imageVector = Icons.Default.Refresh, contentDescription = "إعادة اللعبة", tint = CafeCyanPrimary)
+                        }
+                    }
+
+                    Text(
+                        text = when {
+                            winner == "تعادل" -> "انتهت اللعبة بالتعادل! 🤝"
+                            winner != null -> "الفائز هو اللاعب: $winner 🏆 مبروك!"
+                            else -> "دور اللاعب: $currentPlayer"
+                        },
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (winner != null) CafeGold else CafeCyanPrimary
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // 3x3 Grid
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        for (row in 0..2) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                for (col in 0..2) {
+                                    val index = row * 3 + col
+                                    val cell = board[index]
+                                    Box(
+                                        modifier = Modifier
+                                            .size(68.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(CafeInputBg)
+                                            .border(1.dp, CafeInputBorder, RoundedCornerShape(12.dp))
+                                            .clickable {
+                                                if (cell.isEmpty() && winner == null) {
+                                                    val newBoard = board.toMutableList()
+                                                    newBoard[index] = currentPlayer
+                                                    board = newBoard
+                                                    val w = checkWinner(newBoard)
+                                                    if (w != null) {
+                                                        winner = w
+                                                    } else {
+                                                        currentPlayer = if (currentPlayer == "X") "O" else "X"
+                                                    }
+                                                }
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = cell,
+                                            fontSize = 28.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = if (cell == "X") CafeCyanPrimary else CafeGold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // GAME 3: هل تعلم وكويز القهوة
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = CafeSurface),
+                border = CardDefaults.outlinedCardBorder().copy(
+                    brush = Brush.horizontalGradient(listOf(CafeCardBorder, CafeCardBorderGlow)),
+                    width = 1.dp
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    val curTrivia = triviaList[triviaIndex % triviaList.size]
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(imageVector = Icons.Default.Lightbulb, contentDescription = null, tint = CafeCyanPrimary, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = curTrivia.second,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CafeCyanPrimary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = curTrivia.first,
+                        fontSize = 13.sp,
+                        color = CafeTextPrimary,
+                        lineHeight = 18.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(
+                            onClick = { triviaIndex++ }
+                        ) {
+                            Text("معلومة أخرى 💡", color = CafeCyanPrimary, fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = onOrderMore,
+                            colors = ButtonDefaults.buttonColors(containerColor = CafeSurfaceVariant, contentColor = CafeCyanPrimary),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("الرجوع لقائمة الطلب", fontSize = 11.sp)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Category Pill supporting custom uploaded image or icon
+ */
 @Composable
 fun CategoryPill(
     category: MenuCategory,
@@ -701,19 +1550,31 @@ fun CategoryPill(
                 shape = RoundedCornerShape(18.dp)
             )
             .clickable(onClick = onClick)
-            .padding(vertical = 10.dp, horizontal = 4.dp),
+            .padding(vertical = 8.dp, horizontal = 4.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(
-                imageVector = getCategoryIcon(category.iconType),
-                contentDescription = category.nameAr,
-                tint = if (isSelected) Color(0xFF032125) else CafeCyanPrimary,
-                modifier = Modifier.size(28.dp)
-            )
+            if (!category.customImageUri.isNullOrEmpty()) {
+                AsyncImage(
+                    model = category.customImageUri,
+                    contentDescription = category.nameAr,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .border(1.dp, if (isSelected) Color(0xFF032125) else CafeCyanPrimary, CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    imageVector = getCategoryIcon(category.iconType),
+                    contentDescription = category.nameAr,
+                    tint = if (isSelected) Color(0xFF032125) else CafeCyanPrimary,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = category.nameAr,
@@ -728,7 +1589,9 @@ fun CategoryPill(
     }
 }
 
-// Food Item Card matching Screenshot 2
+/**
+ * Food Item Card supporting custom image, background image, and availability
+ */
 @Composable
 fun MenuItemCard(
     item: MenuItem,
@@ -737,7 +1600,6 @@ fun MenuItemCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(115.dp)
             .testTag("item_card_${item.id}"),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = CafeSurface),
@@ -746,90 +1608,159 @@ fun MenuItemCard(
             width = 1.dp
         )
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Food Thumbnail on Left (Image)
-            Box(
-                modifier = Modifier
-                    .size(95.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF061A1D)),
-                contentAlignment = Alignment.Center
-            ) {
-                val imageRes = when (item.imageType) {
-                    "drink" -> R.drawable.food_drink
-                    else -> R.drawable.food_burger
-                }
-                Image(
-                    painter = painterResource(id = imageRes),
-                    contentDescription = item.nameAr,
+        Box(modifier = Modifier.fillMaxWidth()) {
+            // Background Image if provided
+            if (!item.bgImageUri.isNullOrEmpty()) {
+                AsyncImage(
+                    model = item.bgImageUri,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(115.dp),
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
+                    alpha = 0.2f
                 )
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Details on Right
-            Column(
+            Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                verticalArrangement = Arrangement.SpaceBetween
+                    .fillMaxWidth()
+                    .padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text(
-                        text = item.nameAr,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = CafeTextPrimary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = item.descriptionAr,
-                        fontSize = 11.sp,
-                        color = CafeTextSecondary,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        lineHeight = 15.sp
-                    )
+                // Food Thumbnail
+                Box(
+                    modifier = Modifier
+                        .size(90.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFF061A1D)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (!item.imageUri.isNullOrEmpty()) {
+                        AsyncImage(
+                            model = item.imageUri,
+                            contentDescription = item.nameAr,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        val imageRes = when (item.imageType) {
+                            "drink" -> R.drawable.food_drink
+                            else -> R.drawable.food_burger
+                        }
+                        Image(
+                            painter = painterResource(id = imageRes),
+                            contentDescription = item.nameAr,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
+                    // Not available overlay badge
+                    if (!item.isAvailable) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color(0xCC000000)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "غير متوفر",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFFF6B6B)
+                            )
+                        }
+                    }
                 }
 
-                // Bottom row: Price and Plus Button
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = String.format("%.2f $", item.price),
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = CafeCyanPrimary
-                    )
+                Spacer(modifier = Modifier.width(12.dp))
 
-                    // Glowing Cyan Plus Button
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(CafeCyanPrimary)
-                            .clickable(onClick = onAddToCart)
-                            .testTag("add_item_${item.id}"),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "إضافة للسلة",
-                            tint = Color(0xFF032125),
-                            modifier = Modifier.size(18.dp)
+                // Details
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = item.nameAr,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CafeTextPrimary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (item.isOffer) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(CafeGold.copy(alpha = 0.25f))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "🔥 ${item.offerTag}",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = CafeGold
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(3.dp))
+                        Text(
+                            text = item.descriptionAr,
+                            fontSize = 11.sp,
+                            color = CafeTextSecondary,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            lineHeight = 15.sp
                         )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Bottom row: Price and Plus Button
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = String.format("%.2f $", item.price),
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = CafeCyanPrimary
+                        )
+
+                        if (item.isAvailable) {
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(CafeCyanPrimary)
+                                    .clickable(onClick = onAddToCart)
+                                    .testTag("add_item_${item.id}"),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "إضافة للسلة",
+                                    tint = Color(0xFF032125),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = "غير متوفر للطلب",
+                                fontSize = 11.sp,
+                                color = Color(0xFFFF6B6B),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }

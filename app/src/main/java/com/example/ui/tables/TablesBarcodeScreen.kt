@@ -108,18 +108,37 @@ fun TablesBarcodeScreen(viewModel: MainViewModel) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text(
-                        text = "باركودات الطاولات",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = CafeTextPrimary
-                    )
-                    Text(
-                        text = "${tables.size} طاولة مسجلة في الكافيه",
-                        fontSize = 12.sp,
-                        color = CafeTextSecondary
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = { viewModel.navigateTo(AppScreen.SETTINGS) },
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(CafeSurfaceVariant)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.QrCode,
+                            contentDescription = "الرجوع",
+                            tint = CafeCyanPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    Column {
+                        Text(
+                            text = "باركودات الطاولات",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CafeTextPrimary
+                        )
+                        Text(
+                            text = "${tables.size} طاولة مسجلة في الكافيه",
+                            fontSize = 11.sp,
+                            color = CafeTextSecondary
+                        )
+                    }
                 }
 
                 Button(
@@ -281,47 +300,6 @@ fun TablesBarcodeScreen(viewModel: MainViewModel) {
             )
         }
 
-        // BOTTOM NAV
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .background(CafeSurface)
-                .border(1.dp, CafeCardBorder, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-                .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-                .padding(vertical = 8.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                BottomNavItem(
-                    title = "الكاشير",
-                    icon = Icons.Default.Payment,
-                    isSelected = false,
-                    onClick = { viewModel.navigateTo(AppScreen.CASHIER_ORDERS) }
-                )
-                BottomNavItem(
-                    title = "القوائم والأصناف",
-                    icon = Icons.Default.RestaurantMenu,
-                    isSelected = false,
-                    onClick = { viewModel.navigateTo(AppScreen.MENU_MANAGEMENT) }
-                )
-                BottomNavItem(
-                    title = "باركود الطاولات",
-                    icon = Icons.Default.QrCode,
-                    isSelected = true,
-                    onClick = { /* already here */ }
-                )
-                BottomNavItem(
-                    title = "منيو الزبائن",
-                    icon = Icons.Default.Fastfood,
-                    isSelected = false,
-                    onClick = { viewModel.navigateTo(AppScreen.CUSTOMER_MENU) }
-                )
-            }
-        }
     }
 }
 
