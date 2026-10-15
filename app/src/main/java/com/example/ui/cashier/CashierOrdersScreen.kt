@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Payment
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Settings
@@ -461,6 +462,28 @@ fun CashierOrderCard(
             }
 
             HorizontalDivider(color = CafeCardBorder, modifier = Modifier.padding(vertical = 10.dp))
+
+            // Customer Name
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    tint = CafeCyanPrimary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "الزبون: ${order.customerName}",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = CafeTextPrimary
+                )
+            }
 
             // Order items summary
             Text(

@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -28,14 +30,20 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.RestaurantMenu
+import androidx.compose.material.icons.filled.RoundedCorner
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -94,7 +102,25 @@ fun SettingsScreen(viewModel: MainViewModel) {
     val cafeEmail by viewModel.cafeEmail.collectAsState()
     val customLogoUri by viewModel.cafeCustomLogoUri.collectAsState()
 
+    val tables by viewModel.tables.collectAsState()
+    val categories by viewModel.categories.collectAsState()
+    val menuItems by viewModel.menuItems.collectAsState()
+
+    // Dynamic Theme Customization States
+    val themeAccentHex by viewModel.themeAccentColorHex.collectAsState()
+    val cardRadiusDp by viewModel.cardCornerRadiusDp.collectAsState()
+    val fontScale by viewModel.fontScale.collectAsState()
+
+    val accentColor = remember(themeAccentHex) {
+        try {
+            Color(android.graphics.Color.parseColor(themeAccentHex))
+        } catch (_: Exception) {
+            CafeCyanPrimary
+        }
+    }
+
     var showProfileDialog by remember { mutableStateOf(false) }
+    var showLogoutConfirmDialog by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -126,7 +152,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = "الرجوع للكاشير",
-                            tint = CafeCyanPrimary,
+                            tint = accentColor,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -135,7 +161,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
 
                     Column {
                         Text(
-                            text = "إعدادات الكافتيريا",
+                            text = "الإعدادات العامة",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = CafeTextPrimary
@@ -143,9 +169,25 @@ fun SettingsScreen(viewModel: MainViewModel) {
                         Text(
                             text = cafeName,
                             fontSize = 12.sp,
-                            color = CafeCyanPrimary
+                            color = accentColor
                         )
                     }
+                }
+
+                // Quick preview menu button
+                IconButton(
+                    onClick = { viewModel.navigateTo(AppScreen.CUSTOMER_MENU) },
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(CafeSurfaceVariant)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Visibility,
+                        contentDescription = "معاينة المنيو",
+                        tint = accentColor,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             }
 
@@ -153,21 +195,22 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(top = 8.dp, bottom = 40.dp),
+                contentPadding = PaddingValues(top = 6.dp, bottom = 40.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // SECTION 1: CAFE PROFILE & LOGO (مخفية وتظهر عند الضغط عليها)
+                // ==========================================
+                // 1. أولاً: بيانات الكافتيريا والشعار
+                // ==========================================
                 item {
-                    SettingsCard(title = "بيانات وشعار الكافتيريا", icon = Icons.Default.Business) {
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            SettingActionRow(
-                                title = "تعديل بيانات وشعار الكافتيريا",
-                                subtitle = "اسم الكافتيريا، الشعار المرفوع، اسم المالك، الهاتف والبريد",
-                                icon = Icons.Default.Business,
-                                onClick = { showProfileDialog = true }
-                            )
-
-                            // Quick summary pill showing active name & logo
+                    SettingsSectionCard(
+                        stepNumber = "1",
+                        title = "أولاً: بيانات الكافتيريا والشعار",
+                        subtitle = "اسم الكافتيريا، الشعار، اسم المالك، الهاتف والبريد",
+                        icon = Icons.Default.Business,
+                        accentColor = accentColor
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            // Current Active Summary Card
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -179,12 +222,12 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                                     Box(
                                         modifier = Modifier
-                                            .size(44.dp)
+                                            .size(52.dp)
                                             .clip(CircleShape)
-                                            .border(1.5.dp, CafeCyanPrimary, CircleShape)
+                                            .border(1.5.dp, accentColor, CircleShape)
                                             .background(Color(0xFF071F22)),
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -193,7 +236,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                                 model = customLogoUri,
                                                 contentDescription = "شعار الكافتيريا",
                                                 modifier = Modifier
-                                                    .size(44.dp)
+                                                    .size(52.dp)
                                                     .clip(CircleShape),
                                                 contentScale = ContentScale.Crop
                                             )
@@ -202,7 +245,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                                 painter = painterResource(id = R.drawable.cafe_logo),
                                                 contentDescription = "الشعار الافتراضي",
                                                 modifier = Modifier
-                                                    .size(36.dp)
+                                                    .size(42.dp)
                                                     .clip(CircleShape)
                                             )
                                         }
@@ -213,57 +256,410 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                     Column {
                                         Text(
                                             text = cafeName,
-                                            fontSize = 14.sp,
+                                            fontSize = 15.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = CafeTextPrimary
                                         )
+                                        Spacer(modifier = Modifier.height(2.dp))
                                         Text(
-                                            text = "المالك: $cafeOwnerName • $cafePhone",
+                                            text = "المالك: $cafeOwnerName",
+                                            fontSize = 12.sp,
+                                            color = CafeTextSecondary
+                                        )
+                                        Text(
+                                            text = "$cafePhone • $cafeEmail",
                                             fontSize = 11.sp,
                                             color = CafeTextSecondary
                                         )
                                     }
                                 }
 
-                                Text(
-                                    text = "تعديل",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = CafeCyanPrimary
-                                )
+                                Button(
+                                    onClick = { showProfileDialog = true },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = accentColor,
+                                        contentColor = Color(0xFF032125)
+                                    ),
+                                    shape = RoundedCornerShape(10.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                ) {
+                                    Text("تعديل", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
                     }
                 }
 
-                // SECTION 2: OPERATIONS & BARCODES (إدارة القوائم والباركودات)
+                // ==========================================
+                // 2. ثانياً: الطاولات والباركود
+                // ==========================================
                 item {
-                    SettingsCard(title = "إدارة العمليات والقوائم", icon = Icons.Default.RestaurantMenu) {
+                    SettingsSectionCard(
+                        stepNumber = "2",
+                        title = "ثانياً: الطاولات والباركود",
+                        subtitle = "توليد كودات QR لجميع الطاولات وتصدير ملف PDF جاهز للطباعة",
+                        icon = Icons.Default.QrCode,
+                        accentColor = accentColor
+                    ) {
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            // Menu and items
-                            SettingActionRow(
-                                title = "إدارة القوائم والأصناف",
-                                subtitle = "إضافة وتعديل وحذف الأقسام والوجبات والأسعار",
-                                icon = Icons.Default.RestaurantMenu,
-                                onClick = { viewModel.navigateTo(AppScreen.MENU_MANAGEMENT) }
-                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(CafeInputBg)
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.QrCode,
+                                        contentDescription = null,
+                                        tint = accentColor,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = "طاولات الكافتيريا المسجلة",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = CafeTextPrimary
+                                        )
+                                        Text(
+                                            text = "إجمالي ${tables.size} طاولة مع كود QR مخصص لكل طاولة",
+                                            fontSize = 11.sp,
+                                            color = CafeTextSecondary
+                                        )
+                                    }
+                                }
+                            }
 
-                            HorizontalDivider(color = CafeCardBorder)
-
-                            // Tables barcode
-                            SettingActionRow(
-                                title = "باركودات الطاولات وتصدير PDF",
-                                subtitle = "توليد كودات الطاولات وتحميل ملف PDF جاهز للطباعة",
-                                icon = Icons.Default.QrCode,
-                                onClick = { viewModel.navigateTo(AppScreen.TABLES_BARCODE) }
-                            )
+                            Button(
+                                onClick = { viewModel.navigateTo(AppScreen.TABLES_BARCODE) },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = CafeSurfaceVariant,
+                                    contentColor = accentColor
+                                ),
+                                border = ButtonDefaults.outlinedButtonBorder.copy(
+                                    brush = Brush.horizontalGradient(listOf(accentColor, CafeCardBorderGlow)),
+                                    width = 1.dp
+                                )
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(imageVector = Icons.Default.QrCode, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("إدارة باركودات الطاولات وتصدير PDF للطباعة", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(14.dp))
+                                }
+                            }
                         }
                     }
                 }
 
-                // SECTION 3: ACCOUNT & LOGOUT (قسم تسجيل الخروج)
+                // ==========================================
+                // 3. ثالثاً: القوائم والأصناف
+                // ==========================================
                 item {
-                    SettingsCard(title = "الحساب وتسجيل الخروج", icon = Icons.Default.Logout) {
+                    SettingsSectionCard(
+                        stepNumber = "3",
+                        title = "ثالثاً: القوائم والأصناف",
+                        subtitle = "إضافة وتعديل وحذف الأقسام، تعديل الأسعار، العروض والصور",
+                        icon = Icons.Default.RestaurantMenu,
+                        accentColor = accentColor
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(CafeInputBg)
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.RestaurantMenu,
+                                        contentDescription = null,
+                                        tint = accentColor,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = "مخزون القائمة والأقسام",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = CafeTextPrimary
+                                        )
+                                        Text(
+                                            text = "${categories.size} أقسام • ${menuItems.size} وجبة ومشروب",
+                                            fontSize = 11.sp,
+                                            color = CafeTextSecondary
+                                        )
+                                    }
+                                }
+                            }
+
+                            Button(
+                                onClick = { viewModel.navigateTo(AppScreen.MENU_MANAGEMENT) },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = CafeSurfaceVariant,
+                                    contentColor = accentColor
+                                ),
+                                border = ButtonDefaults.outlinedButtonBorder.copy(
+                                    brush = Brush.horizontalGradient(listOf(accentColor, CafeCardBorderGlow)),
+                                    width = 1.dp
+                                )
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(imageVector = Icons.Default.RestaurantMenu, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("فتح إدارة القوائم والأصناف والأسعار", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(14.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ==========================================
+                // 4. رابعاً: تعديل التصميم العام (التلاعب بالألوان وغيرها)
+                // ==========================================
+                item {
+                    SettingsSectionCard(
+                        stepNumber = "4",
+                        title = "رابعاً: تعديل التصميم العام",
+                        subtitle = "التلاعب بالألوان الرئيسية، استدارة البطاقات وحجم الخطوط",
+                        icon = Icons.Default.Palette,
+                        accentColor = accentColor
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                            // 1. Theme Color Palette
+                            Text(
+                                text = "اختيار لون السمة الرئيسي (Accent Color):",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CafeTextPrimary
+                            )
+
+                            val colorOptions = listOf(
+                                Triple("#00DFC0", "نيون سماوي", Color(0xFF00DFC0)),
+                                Triple("#F5B041", "ذهبي فاخر", Color(0xFFF5B041)),
+                                Triple("#10B981", "زمردي ملكي", Color(0xFF10B981)),
+                                Triple("#FF6F00", "برتقالي دافئ", Color(0xFFFF6F00)),
+                                Triple("#2979FF", "أزرق ملكي", Color(0xFF2979FF)),
+                                Triple("#A855F7", "بنفسجي نيون", Color(0xFFA855F7)),
+                                Triple("#EF4444", "أحمر ياقوتي", Color(0xFFEF4444))
+                            )
+
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                items(colorOptions) { (hex, name, color) ->
+                                    val isSelected = themeAccentHex.equals(hex, ignoreCase = true)
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        modifier = Modifier.clickable {
+                                            viewModel.updateThemeAccentColor(hex)
+                                            Toast.makeText(context, "تم تطبيق اللون: $name", Toast.LENGTH_SHORT).show()
+                                        }
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(46.dp)
+                                                .clip(CircleShape)
+                                                .background(color)
+                                                .border(
+                                                    width = if (isSelected) 3.dp else 1.dp,
+                                                    color = if (isSelected) Color.White else Color.Transparent,
+                                                    shape = CircleShape
+                                                ),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            if (isSelected) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Check,
+                                                    contentDescription = null,
+                                                    tint = Color(0xFF032125),
+                                                    modifier = Modifier.size(24.dp)
+                                                )
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = name,
+                                            fontSize = 10.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (isSelected) accentColor else CafeTextSecondary
+                                        )
+                                    }
+                                }
+                            }
+
+                            HorizontalDivider(color = CafeCardBorder, modifier = Modifier.padding(vertical = 4.dp))
+
+                            // 2. Card Corner Style
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(imageVector = Icons.Default.RoundedCorner, contentDescription = null, tint = accentColor, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(text = "نمط استدارة البطاقات والأزرار:", fontSize = 12.sp, color = CafeTextPrimary, fontWeight = FontWeight.Bold)
+                                }
+                            }
+
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                val cornerOptions = listOf(
+                                    Pair(22, "عصري مستدير"),
+                                    Pair(14, "متوازن أنيق"),
+                                    Pair(8, "كلاسيكي")
+                                )
+                                cornerOptions.forEach { (radius, label) ->
+                                    val isCur = cardRadiusDp == radius
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(radius.dp))
+                                            .background(if (isCur) accentColor else CafeInputBg)
+                                            .border(1.dp, if (isCur) accentColor else CafeInputBorder, RoundedCornerShape(radius.dp))
+                                            .clickable { viewModel.updateCardCornerRadius(radius) }
+                                            .padding(vertical = 8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = label,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isCur) Color(0xFF032125) else CafeTextPrimary
+                                        )
+                                    }
+                                }
+                            }
+
+                            HorizontalDivider(color = CafeCardBorder, modifier = Modifier.padding(vertical = 4.dp))
+
+                            // 3. Font Scale
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(imageVector = Icons.Default.FormatSize, contentDescription = null, tint = accentColor, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(text = "حجم خط القوائم والنصوص:", fontSize = 12.sp, color = CafeTextPrimary, fontWeight = FontWeight.Bold)
+                                }
+                            }
+
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                val fontOptions = listOf(
+                                    Pair(1.0f, "حجم عادي (100%)"),
+                                    Pair(1.15f, "مكبّر للقراءة (+15%)")
+                                )
+                                fontOptions.forEach { (scale, label) ->
+                                    val isCur = fontScale == scale
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(if (isCur) accentColor else CafeInputBg)
+                                            .border(1.dp, if (isCur) accentColor else CafeInputBorder, RoundedCornerShape(12.dp))
+                                            .clickable { viewModel.updateFontScale(scale) }
+                                            .padding(vertical = 8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = label,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isCur) Color(0xFF032125) else CafeTextPrimary
+                                        )
+                                    }
+                                }
+                            }
+
+                            // 4. Live Preview Box
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(cardRadiusDp.dp))
+                                    .background(CafeSurfaceVariant)
+                                    .border(1.2.dp, accentColor, RoundedCornerShape(cardRadiusDp.dp))
+                                    .padding(12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text(
+                                            text = "✨ معاينة حية للمظهر الجديد",
+                                            fontSize = (13 * fontScale).sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = CafeTextPrimary
+                                        )
+                                        Text(
+                                            text = "يتم تطبيق هذا النمط فوراً عبر كافة صفحات التطبيق",
+                                            fontSize = (11 * fontScale).sp,
+                                            color = CafeTextSecondary
+                                        )
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(cardRadiusDp.dp / 2))
+                                            .background(accentColor)
+                                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(
+                                            text = "زر نموذجي",
+                                            fontSize = (11 * fontScale).sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF032125)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ==========================================
+                // 5. خامساً: تسجيل الخروج
+                // ==========================================
+                item {
+                    SettingsSectionCard(
+                        stepNumber = "5",
+                        title = "خامساً: تسجيل الخروج",
+                        subtitle = "تسجيل الخروج من الحساب الحالي وقفل لوحة التحكم",
+                        icon = Icons.Default.Logout,
+                        accentColor = Color(0xFFFF5252)
+                    ) {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -286,25 +682,25 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(8.dp))
-                                        .background(CafeCyanPrimary.copy(alpha = 0.2f))
+                                        .background(accentColor.copy(alpha = 0.2f))
                                         .padding(horizontal = 8.dp, vertical = 4.dp)
                                 ) {
                                     Text(
                                         text = "صاحب الكافتيريا",
                                         fontSize = 11.sp,
-                                        color = CafeCyanPrimary,
+                                        color = accentColor,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
                             }
 
                             Button(
-                                onClick = { viewModel.logout() },
+                                onClick = { showLogoutConfirmDialog = true },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(48.dp)
                                     .testTag("settings_logout_btn"),
-                                shape = RoundedCornerShape(24.dp),
+                                shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Color(0xFF3B1519),
                                     contentColor = Color(0xFFFF6B6B)
@@ -335,7 +731,9 @@ fun SettingsScreen(viewModel: MainViewModel) {
         }
     }
 
-    // DIALOG: Cafe Profile & Logo (يظهر عند الضغط فقط)
+    // ==========================================
+    // DIALOG: Cafe Profile & Logo (أولاً: بيانات الكافتيريا والشعار)
+    // ==========================================
     if (showProfileDialog) {
         var tempName by remember { mutableStateOf(cafeName) }
         var tempOwnerName by remember { mutableStateOf(cafeOwnerName) }
@@ -395,7 +793,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                 modifier = Modifier
                                     .size(80.dp)
                                     .clip(CircleShape)
-                                    .border(2.dp, Brush.radialGradient(listOf(CafeCyanPrimary, CafeGold)), CircleShape)
+                                    .border(2.dp, Brush.radialGradient(listOf(accentColor, CafeGold)), CircleShape)
                                     .background(Color(0xFF071F22)),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -428,12 +826,10 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                     )
                                 },
                                 shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.outlinedButtonBorder.let {
-                                    ButtonDefaults.outlinedButtonColors(
-                                        containerColor = CafeSurfaceVariant,
-                                        contentColor = CafeCyanPrimary
-                                    )
-                                }
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = CafeSurfaceVariant,
+                                    contentColor = accentColor
+                                )
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
@@ -450,7 +846,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                 }
                             }
                             Text(
-                                text = "يظهر هذا الشعار في أعلى المينيو عند مسح باركود الطاولة",
+                                text = "يظهر هذا الشعار في أعلى المينيو عند فتح الزبون للباركود",
                                 fontSize = 10.sp,
                                 color = CafeTextSecondary,
                                 modifier = Modifier.padding(top = 2.dp)
@@ -468,7 +864,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                 Icon(
                                     imageVector = Icons.Default.Business,
                                     contentDescription = null,
-                                    tint = CafeCyanPrimary,
+                                    tint = accentColor,
                                     modifier = Modifier.size(18.dp)
                                 )
                             },
@@ -476,7 +872,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedContainerColor = CafeInputBg,
                                 unfocusedContainerColor = CafeInputBg,
-                                focusedBorderColor = CafeCyanPrimary,
+                                focusedBorderColor = accentColor,
                                 unfocusedBorderColor = CafeInputBorder,
                                 focusedTextColor = CafeTextPrimary,
                                 unfocusedTextColor = CafeTextPrimary
@@ -495,7 +891,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                 Icon(
                                     imageVector = Icons.Default.Person,
                                     contentDescription = null,
-                                    tint = CafeCyanPrimary,
+                                    tint = accentColor,
                                     modifier = Modifier.size(18.dp)
                                 )
                             },
@@ -503,7 +899,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedContainerColor = CafeInputBg,
                                 unfocusedContainerColor = CafeInputBg,
-                                focusedBorderColor = CafeCyanPrimary,
+                                focusedBorderColor = accentColor,
                                 unfocusedBorderColor = CafeInputBorder,
                                 focusedTextColor = CafeTextPrimary,
                                 unfocusedTextColor = CafeTextPrimary
@@ -522,7 +918,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                 Icon(
                                     imageVector = Icons.Default.Phone,
                                     contentDescription = null,
-                                    tint = CafeCyanPrimary,
+                                    tint = accentColor,
                                     modifier = Modifier.size(18.dp)
                                 )
                             },
@@ -530,7 +926,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedContainerColor = CafeInputBg,
                                 unfocusedContainerColor = CafeInputBg,
-                                focusedBorderColor = CafeCyanPrimary,
+                                focusedBorderColor = accentColor,
                                 unfocusedBorderColor = CafeInputBorder,
                                 focusedTextColor = CafeTextPrimary,
                                 unfocusedTextColor = CafeTextPrimary
@@ -549,7 +945,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                 Icon(
                                     imageVector = Icons.Default.Email,
                                     contentDescription = null,
-                                    tint = CafeCyanPrimary,
+                                    tint = accentColor,
                                     modifier = Modifier.size(18.dp)
                                 )
                             },
@@ -557,7 +953,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedContainerColor = CafeInputBg,
                                 unfocusedContainerColor = CafeInputBg,
-                                focusedBorderColor = CafeCyanPrimary,
+                                focusedBorderColor = accentColor,
                                 unfocusedBorderColor = CafeInputBorder,
                                 focusedTextColor = CafeTextPrimary,
                                 unfocusedTextColor = CafeTextPrimary
@@ -580,7 +976,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                         Toast.makeText(context, "تم حفظ بيانات وشعار الكافتيريا بنجاح!", Toast.LENGTH_SHORT).show()
                         showProfileDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = CafeCyanPrimary, contentColor = Color(0xFF032125)),
+                    colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = Color(0xFF032125)),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.testTag("dialog_save_profile_btn")
                 ) {
@@ -600,17 +996,73 @@ fun SettingsScreen(viewModel: MainViewModel) {
             }
         )
     }
+
+    // DIALOG: Logout Confirmation
+    if (showLogoutConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutConfirmDialog = false },
+            containerColor = CafeSurface,
+            shape = RoundedCornerShape(20.dp),
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = Color(0xFFFF5252),
+                    modifier = Modifier.size(36.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "تأكيد تسجيل الخروج",
+                    color = CafeTextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp
+                )
+            },
+            text = {
+                Text(
+                    text = "هل أنت متأكد من رغبتك في تسجيل الخروج؟ ستحتاج لتسجيل الدخول مرة أخرى للوصول إلى لوحة التحكم.",
+                    color = CafeTextSecondary,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLogoutConfirmDialog = false
+                        viewModel.logout()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFE53935),
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("نعم، تسجيل الخروج", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutConfirmDialog = false }) {
+                    Text("إلغاء", color = CafeTextSecondary)
+                }
+            }
+        )
+    }
 }
 
 @Composable
-fun SettingsCard(
+fun SettingsSectionCard(
+    stepNumber: String,
     title: String,
+    subtitle: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
+    accentColor: Color,
     content: @Composable () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = CafeSurface),
         border = CardDefaults.outlinedCardBorder().copy(
             brush = Brush.horizontalGradient(listOf(CafeCardBorder, CafeCardBorderGlow)),
@@ -623,79 +1075,45 @@ fun SettingsCard(
                 .padding(16.dp)
         ) {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = 12.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = CafeCyanPrimary,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = title,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = CafeTextPrimary
-                )
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(accentColor.copy(alpha = 0.15f))
+                        .border(1.dp, accentColor.copy(alpha = 0.5f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Column {
+                    Text(
+                        text = title,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = CafeTextPrimary
+                    )
+                    Text(
+                        text = subtitle,
+                        fontSize = 11.sp,
+                        color = CafeTextSecondary
+                    )
+                }
             }
+
             content()
         }
-    }
-}
-
-@Composable
-fun SettingActionRow(
-    title: String,
-    subtitle: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(CafeSurfaceVariant),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = CafeCyanPrimary,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-                Text(
-                    text = title,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = CafeTextPrimary
-                )
-                Text(
-                    text = subtitle,
-                    fontSize = 11.sp,
-                    color = CafeTextSecondary
-                )
-            }
-        }
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = null,
-            tint = CafeCyanPrimary,
-            modifier = Modifier.size(16.dp)
-        )
     }
 }

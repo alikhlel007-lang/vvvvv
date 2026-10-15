@@ -213,21 +213,44 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _cart.value = emptyList()
     }
 
-    // Submit order from table
-    fun submitOrder(customerNotes: String, onSuccess: (String) -> Unit) {
+    // Submit order from table with Customer Name
+    fun submitOrder(customerName: String, customerNotes: String, onSuccess: (String) -> Unit) {
         val cartItems = _cart.value
         if (cartItems.isEmpty()) return
 
         viewModelScope.launch {
+            val finalCustomerName = customerName.trim().ifBlank { "زبون طاولة ${_selectedTableNumber.value}" }
             val orderId = repository.createOrder(
                 tableNumber = _selectedTableNumber.value,
-                customerName = "طاولة ${_selectedTableNumber.value}",
+                customerName = finalCustomerName,
                 cartItems = cartItems,
                 notes = customerNotes
             )
             clearCart()
             onSuccess(orderId)
         }
+    }
+
+    // Design & Theme Customization State
+    private val _themeAccentColorHex = MutableStateFlow("#00DFC0")
+    val themeAccentColorHex: StateFlow<String> = _themeAccentColorHex.asStateFlow()
+
+    private val _cardCornerRadiusDp = MutableStateFlow(20)
+    val cardCornerRadiusDp: StateFlow<Int> = _cardCornerRadiusDp.asStateFlow()
+
+    private val _fontScale = MutableStateFlow(1.0f)
+    val fontScale: StateFlow<Float> = _fontScale.asStateFlow()
+
+    fun updateThemeAccentColor(hex: String) {
+        _themeAccentColorHex.value = hex
+    }
+
+    fun updateCardCornerRadius(dp: Int) {
+        _cardCornerRadiusDp.value = dp
+    }
+
+    fun updateFontScale(scale: Float) {
+        _fontScale.value = scale
     }
 
     // Order status update in cashier

@@ -34,7 +34,6 @@ import androidx.compose.material.icons.filled.Cake
 import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.LocalCafe
@@ -42,6 +41,7 @@ import androidx.compose.material.icons.filled.LocalDrink
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.LocalPizza
 import androidx.compose.material.icons.filled.Payment
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Restaurant
@@ -89,6 +89,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.R
+import com.example.data.model.CartItem
 import com.example.data.model.MenuCategory
 import com.example.data.model.MenuItem
 import com.example.ui.AppScreen
@@ -119,10 +120,25 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
     val searchQuery by viewModel.searchQuery.collectAsState()
     val activeMenuTab by viewModel.customerMenuTab.collectAsState()
 
+    // Dynamic Theme Customization
+    val themeAccentHex by viewModel.themeAccentColorHex.collectAsState()
+    val cardRadiusDp by viewModel.cardCornerRadiusDp.collectAsState()
+    val fontScale by viewModel.fontScale.collectAsState()
+
+    val accentColor = remember(themeAccentHex) {
+        try {
+            Color(android.graphics.Color.parseColor(themeAccentHex))
+        } catch (_: Exception) {
+            CafeCyanPrimary
+        }
+    }
+
     var showSearchBox by remember { mutableStateOf(false) }
     var showCartSheet by remember { mutableStateOf(false) }
     var showTablePicker by remember { mutableStateOf(false) }
     var orderSubmittedSuccessId by remember { mutableStateOf<String?>(null) }
+    var submittedCustomerName by remember { mutableStateOf("") }
+    var customerNameInput by remember { mutableStateOf("") }
     var customerNotes by remember { mutableStateOf("") }
 
     // Active category
@@ -157,7 +173,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // TOP HEADER BAR: Right (Switcher), Middle (Logo & Table), Left (Search & Gear)
+            // TOP HEADER BAR: Right (Switcher), Middle (Logo & Table), Left (Cart, Search & Gear)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -186,7 +202,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                             Icon(
                                 imageVector = Icons.Default.Payment,
                                 contentDescription = null,
-                                tint = CafeCyanPrimary,
+                                tint = accentColor,
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
@@ -203,7 +219,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(16.dp))
-                            .background(CafeCyanPrimary)
+                            .background(accentColor)
                             .padding(horizontal = 10.dp, vertical = 6.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -237,7 +253,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                             modifier = Modifier
                                 .size(34.dp)
                                 .clip(CircleShape)
-                                .border(1.dp, CafeCyanPrimary, CircleShape),
+                                .border(1.dp, accentColor, CircleShape),
                             contentScale = ContentScale.Crop
                         )
                     } else {
@@ -265,8 +281,31 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                     }
                 }
 
-                // LEFT SIDE: Search Toggle & Settings Gear
+                // LEFT SIDE: Cart Badge (if cart > 0), Search Toggle & Settings Gear
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Header Cart Icon Button
+                    if (cartCount > 0) {
+                        IconButton(
+                            onClick = { showCartSheet = true },
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(accentColor)
+                                .testTag("header_cart_btn")
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.ShoppingCart,
+                                    contentDescription = "السلة",
+                                    tint = Color(0xFF032125),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+
+                    // Search Toggle
                     IconButton(
                         onClick = { showSearchBox = !showSearchBox },
                         modifier = Modifier
@@ -279,13 +318,14 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                         Icon(
                             imageVector = if (showSearchBox) Icons.Default.Close else Icons.Default.Search,
                             contentDescription = "بحث",
-                            tint = CafeCyanPrimary,
+                            tint = accentColor,
                             modifier = Modifier.size(18.dp)
                         )
                     }
 
                     Spacer(modifier = Modifier.width(6.dp))
 
+                    // Settings Gear Button
                     IconButton(
                         onClick = { viewModel.navigateTo(AppScreen.SETTINGS) },
                         modifier = Modifier
@@ -298,7 +338,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "الإعدادات",
-                            tint = CafeCyanPrimary,
+                            tint = accentColor,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -318,22 +358,29 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                         placeholder = { Text("ابحث عن صنف أو مشروب...", color = CafeTextSecondary, fontSize = 13.sp) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .testTag("menu_search_input"),
-                        shape = RoundedCornerShape(20.dp),
+                            .height(50.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = CafeInputBg,
                             unfocusedContainerColor = CafeInputBg,
-                            focusedBorderColor = CafeCyanPrimary,
+                            focusedBorderColor = accentColor,
                             unfocusedBorderColor = CafeInputBorder,
                             focusedTextColor = CafeTextPrimary,
                             unfocusedTextColor = CafeTextPrimary
                         ),
-                        singleLine = true
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { viewModel.setSearchQuery("") }) {
+                                    Icon(imageVector = Icons.Default.Close, contentDescription = "مسح", tint = CafeTextSecondary, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        }
                     )
                 }
             }
 
-            // 3-PAGE NAVIGATION SWITCHER (صفحة الطلب العادية، صفحة العروض والتخفيضات والمواد الجديدة، صفحة الألعاب والترفيه)
+            // 3-PAGE SWITCHER BAR
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -341,67 +388,82 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                     .clip(RoundedCornerShape(16.dp))
                     .background(CafeSurfaceVariant)
                     .border(1.dp, CafeCardBorder, RoundedCornerShape(16.dp))
-                    .padding(3.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Tab 0: صفحة الطلب العادية
+                // Page 0: الطلب العادي
                 MenuPageTabItem(
                     title = "قائمة الطلب",
                     icon = Icons.Default.RestaurantMenu,
                     isSelected = activeMenuTab == 0,
                     badge = null,
+                    activeColor = accentColor,
                     modifier = Modifier.weight(1f),
                     onClick = { viewModel.setCustomerMenuTab(0) }
                 )
 
-                // Tab 1: صفحة العروض والتخفيضات والمواد الجديدة
+                Spacer(modifier = Modifier.width(4.dp))
+
+                // Page 1: العروض والتخفيضات والمواد الجديدة
                 MenuPageTabItem(
                     title = "العروض والجديد",
                     icon = Icons.Default.LocalFireDepartment,
                     isSelected = activeMenuTab == 1,
                     badge = if (offerItems.isNotEmpty()) "${offerItems.size}" else null,
                     activeColor = CafeGold,
-                    modifier = Modifier.weight(1.2f),
+                    modifier = Modifier.weight(1.1f),
                     onClick = { viewModel.setCustomerMenuTab(1) }
                 )
 
-                // Tab 2: صفحة الألعاب والترفيه
+                Spacer(modifier = Modifier.width(4.dp))
+
+                // Page 2: الألعاب والترفيه
                 MenuPageTabItem(
-                    title = "الألعاب والترفيه",
+                    title = "ألعاب وترفيه",
                     icon = Icons.Default.SportsEsports,
                     isSelected = activeMenuTab == 2,
-                    badge = "تسلية",
+                    badge = "جديد",
                     activeColor = Color(0xFF7C4DFF),
-                    modifier = Modifier.weight(1.1f),
+                    modifier = Modifier.weight(1f),
                     onClick = { viewModel.setCustomerMenuTab(2) }
                 )
             }
 
-            // MAIN CONTENT BASED ON SELECTED PAGE
+            // RENDER ACTIVE PAGE CONTENT
             when (activeMenuTab) {
                 0 -> {
-                    // PAGE 1: صفحة الطلب العادية
+                    // PAGE 1: Standard Ordering Page
                     StandardOrderingPage(
                         categories = categories,
                         activeCat = activeCat,
                         activeCatId = activeCatId,
                         filteredItems = filteredItems,
+                        cart = cart,
                         cartCount = cartCount,
+                        accentColor = accentColor,
+                        cardRadiusDp = cardRadiusDp,
+                        fontScale = fontScale,
                         onSelectCategory = { viewModel.selectCategory(it) },
-                        onAddToCart = { viewModel.addToCart(it) }
+                        onAddToCart = { viewModel.addToCart(it) },
+                        onRemoveFromCart = { viewModel.removeFromCart(it) }
                     )
                 }
                 1 -> {
-                    // PAGE 2: صفحة العروض والتخفيضات والمواد الجديدة
+                    // PAGE 2: العروض والتخفيضات والمواد الجديدة
                     OffersAndNewItemsPage(
                         offerItems = offerItems,
+                        cart = cart,
                         cartCount = cartCount,
+                        accentColor = accentColor,
+                        cardRadiusDp = cardRadiusDp,
+                        fontScale = fontScale,
                         onAddToCart = { viewModel.addToCart(it) },
+                        onRemoveFromCart = { viewModel.removeFromCart(it) },
                         onGoToMenu = { viewModel.setCustomerMenuTab(0) }
                     )
                 }
                 2 -> {
-                    // PAGE 3: صفحة الألعاب والترفيه (للتسلية أثناء انتظار الطلب)
+                    // PAGE 3: الألعاب والترفيه
                     GamesAndEntertainmentPage(
                         tableNumber = selectedTableNumber,
                         onOrderMore = { viewModel.setCustomerMenuTab(0) }
@@ -410,7 +472,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
             }
         }
 
-        // FLOATING BOTTOM CART BAR
+        // FLOATING BOTTOM CART BAR - Appears as soon as user starts selecting items
         AnimatedVisibility(
             visible = cartCount > 0,
             modifier = Modifier
@@ -425,7 +487,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                     .clip(RoundedCornerShape(22.dp))
                     .background(
                         Brush.horizontalGradient(
-                            listOf(CafeCyanPrimary, Color(0xFF00ADB5), Color(0xFF007E84))
+                            listOf(accentColor, Color(0xFF00ADB5), Color(0xFF007E84))
                         )
                     )
                     .clickable { showCartSheet = true }
@@ -447,7 +509,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                         ) {
                             Text(
                                 text = "$cartCount",
-                                color = CafeCyanPrimary,
+                                color = accentColor,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -471,7 +533,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "عرض الطلب",
+                            text = "إتمام وتأكيد الطلب",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF032125)
@@ -510,7 +572,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                             Icon(imageVector = Icons.Default.Close, contentDescription = "إغلاق", tint = CafeTextSecondary)
                         }
                         Text(
-                            text = "طلب طاولة $selectedTableNumber",
+                            text = "سلة طلب طاولة $selectedTableNumber",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = CafeTextPrimary
@@ -525,7 +587,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 280.dp),
+                            .heightIn(max = 240.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         items(cart) { cartItem ->
@@ -548,7 +610,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                                     Text(
                                         text = String.format("%.2f $", cartItem.menuItem.price * cartItem.quantity),
                                         fontSize = 13.sp,
-                                        color = CafeCyanPrimary
+                                        color = accentColor
                                     )
                                 }
 
@@ -563,7 +625,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                                         Icon(
                                             imageVector = Icons.Default.Remove,
                                             contentDescription = "تقليل",
-                                            tint = CafeCyanPrimary,
+                                            tint = accentColor,
                                             modifier = Modifier.size(16.dp)
                                         )
                                     }
@@ -581,7 +643,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                                         modifier = Modifier
                                             .size(30.dp)
                                             .clip(CircleShape)
-                                            .background(CafeCyanPrimary)
+                                            .background(accentColor)
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Add,
@@ -597,41 +659,77 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Special Notes
+                    // Customer Name Input Field (REQUIRED USER REQUEST)
                     OutlinedTextField(
-                        value = customerNotes,
-                        onValueChange = { customerNotes = it },
-                        placeholder = { Text("ملاحظات خاصة (مثال: بدون سكر، زيادة صوص...)", fontSize = 12.sp, color = CafeTextSecondary) },
+                        value = customerNameInput,
+                        onValueChange = { customerNameInput = it },
+                        label = { Text("اسم الزبون (لإرفاقه بالطلب)", fontSize = 12.sp, color = CafeTextSecondary) },
+                        placeholder = { Text("اكتب اسمك ليظهر على الفاتورة ولدى الكاشير", fontSize = 11.sp, color = CafeTextSecondary) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                tint = accentColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
+                        singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = CafeInputBg,
                             unfocusedContainerColor = CafeInputBg,
-                            focusedBorderColor = CafeCyanPrimary,
+                            focusedBorderColor = accentColor,
                             unfocusedBorderColor = CafeInputBorder,
                             focusedTextColor = CafeTextPrimary,
                             unfocusedTextColor = CafeTextPrimary
                         )
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Special Notes
+                    OutlinedTextField(
+                        value = customerNotes,
+                        onValueChange = { customerNotes = it },
+                        placeholder = { Text("ملاحظات خاصة (مثال: بدون سكر، زيادة صوص...)", fontSize = 11.sp, color = CafeTextSecondary) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = CafeInputBg,
+                            unfocusedContainerColor = CafeInputBg,
+                            focusedBorderColor = accentColor,
+                            unfocusedBorderColor = CafeInputBorder,
+                            focusedTextColor = CafeTextPrimary,
+                            unfocusedTextColor = CafeTextPrimary
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text("الإجمالي الكلي:", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = CafeTextPrimary)
-                        Text(String.format("%.2f $", cartTotal), fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = CafeCyanPrimary)
+                        Text(String.format("%.2f $", cartTotal), fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = accentColor)
                     }
 
-                    Spacer(modifier = Modifier.height(18.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
                     CafePrimaryButton(
                         text = "إرسال الطلب إلى الكاشير",
                         onClick = {
-                            viewModel.submitOrder(customerNotes) { orderId ->
+                            val nameToSubmit = customerNameInput.trim().ifBlank { "زبون طاولة $selectedTableNumber" }
+                            viewModel.submitOrder(
+                                customerName = nameToSubmit,
+                                customerNotes = customerNotes
+                            ) { orderId ->
                                 orderSubmittedSuccessId = orderId
+                                submittedCustomerName = nameToSubmit
                                 customerNotes = ""
+                                customerNameInput = ""
                                 showCartSheet = false
                             }
                         },
@@ -662,11 +760,11 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                                     modifier = Modifier
                                         .size(54.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(if (isCur) CafeCyanPrimary else CafeSurfaceVariant)
-                                    .clickable {
-                                        viewModel.setSelectedTableNumber(table.tableNumber)
-                                        showTablePicker = false
-                                    },
+                                        .background(if (isCur) accentColor else CafeSurfaceVariant)
+                                        .clickable {
+                                            viewModel.setSelectedTableNumber(table.tableNumber)
+                                            showTablePicker = false
+                                        },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
@@ -682,7 +780,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                 },
                 confirmButton = {
                     TextButton(onClick = { showTablePicker = false }) {
-                        Text("إغلاق", color = CafeCyanPrimary)
+                        Text("إغلاق", color = accentColor)
                     }
                 }
             )
@@ -698,7 +796,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                     Icon(
                         imageVector = Icons.Default.CheckCircle,
                         contentDescription = null,
-                        tint = CafeCyanPrimary,
+                        tint = accentColor,
                         modifier = Modifier.size(54.dp)
                     )
                 },
@@ -713,7 +811,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                 text = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "طلبك لطاولة $selectedTableNumber وصل إلى لوحة الكاشير ويتم تحضيره الآن.",
+                            text = "أهلاً بك يا $submittedCustomerName! طلبك لطاولة $selectedTableNumber وصل إلى لوحة الكاشير ويتم تحضيره الآن.",
                             color = CafeTextSecondary,
                             fontSize = 14.sp,
                             textAlign = TextAlign.Center
@@ -815,9 +913,14 @@ fun StandardOrderingPage(
     activeCat: MenuCategory?,
     activeCatId: String,
     filteredItems: List<MenuItem>,
+    cart: List<CartItem>,
     cartCount: Int,
+    accentColor: Color,
+    cardRadiusDp: Int,
+    fontScale: Float,
     onSelectCategory: (String) -> Unit,
-    onAddToCart: (MenuItem) -> Unit
+    onAddToCart: (MenuItem) -> Unit,
+    onRemoveFromCart: (MenuItem) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // HORIZONTAL CATEGORIES CAROUSEL
@@ -833,6 +936,7 @@ fun StandardOrderingPage(
                 CategoryPill(
                     category = category,
                     isSelected = isSelected,
+                    accentColor = accentColor,
                     onClick = { onSelectCategory(category.id) }
                 )
             }
@@ -848,15 +952,15 @@ fun StandardOrderingPage(
         ) {
             Text(
                 text = "${filteredItems.size} صنف",
-                fontSize = 13.sp,
-                color = CafeCyanPrimary,
+                fontSize = (13 * fontScale).sp,
+                color = accentColor,
                 fontWeight = FontWeight.Medium
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = activeCat?.nameAr ?: "الأصناف",
-                    fontSize = 17.sp,
+                    fontSize = (17 * fontScale).sp,
                     fontWeight = FontWeight.Bold,
                     color = CafeTextPrimary
                 )
@@ -864,7 +968,7 @@ fun StandardOrderingPage(
                 Icon(
                     imageVector = getCategoryIcon(activeCat?.iconType ?: "burger"),
                     contentDescription = null,
-                    tint = CafeCyanPrimary,
+                    tint = accentColor,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -880,9 +984,15 @@ fun StandardOrderingPage(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(filteredItems) { item ->
+                val quantityInCart = cart.find { it.menuItem.id == item.id }?.quantity ?: 0
                 MenuItemCard(
                     item = item,
-                    onAddToCart = { onAddToCart(item) }
+                    quantityInCart = quantityInCart,
+                    accentColor = accentColor,
+                    cardRadiusDp = cardRadiusDp,
+                    fontScale = fontScale,
+                    onAddToCart = { onAddToCart(item) },
+                    onRemoveFromCart = { onRemoveFromCart(item) }
                 )
             }
         }
@@ -895,8 +1005,13 @@ fun StandardOrderingPage(
 @Composable
 fun OffersAndNewItemsPage(
     offerItems: List<MenuItem>,
+    cart: List<CartItem>,
     cartCount: Int,
+    accentColor: Color,
+    cardRadiusDp: Int,
+    fontScale: Float,
     onAddToCart: (MenuItem) -> Unit,
+    onRemoveFromCart: (MenuItem) -> Unit,
     onGoToMenu: () -> Unit
 ) {
     LazyColumn(
@@ -910,7 +1025,7 @@ fun OffersAndNewItemsPage(
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(cardRadiusDp.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1705)),
                 border = CardDefaults.outlinedCardBorder().copy(
                     brush = Brush.horizontalGradient(listOf(CafeGold, Color(0xFFFFB300))),
@@ -930,7 +1045,7 @@ fun OffersAndNewItemsPage(
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = "أقوى العروض والخصومات!",
-                                fontSize = 16.sp,
+                                fontSize = (16 * fontScale).sp,
                                 fontWeight = FontWeight.Bold,
                                 color = CafeGold
                             )
@@ -938,7 +1053,7 @@ fun OffersAndNewItemsPage(
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "اكتشف أحدث الإضافات والخصومات الحصرية المتاحة لك الآن",
-                            fontSize = 11.sp,
+                            fontSize = (11 * fontScale).sp,
                             color = CafeTextSecondary,
                             lineHeight = 15.sp
                         )
@@ -951,63 +1066,64 @@ fun OffersAndNewItemsPage(
                             .background(CafeGold.copy(alpha = 0.2f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.EmojiEvents,
-                            contentDescription = null,
-                            tint = CafeGold,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        Text(text = "🔥", fontSize = 22.sp)
                     }
                 }
             }
         }
 
+        // OFFERS ITEMS LIST
         if (offerItems.isEmpty()) {
             item {
-                Box(
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 40.dp),
-                    contentAlignment = Alignment.Center
+                        .padding(vertical = 30.dp),
+                    shape = RoundedCornerShape(cardRadiusDp.dp),
+                    colors = CardDefaults.cardColors(containerColor = CafeSurface)
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.LocalFireDepartment,
-                            contentDescription = null,
-                            tint = CafeTextSecondary,
-                            modifier = Modifier.size(48.dp)
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(imageVector = Icons.Default.LocalFireDepartment, contentDescription = null, tint = CafeTextSecondary, modifier = Modifier.size(44.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
                         Text(
-                            text = "لا توجد عروض نشطة حالياً",
+                            text = "لا توجد عروض مضافة حالياً",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             color = CafeTextPrimary
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "يمكن لصاحب الكافتيريا تفعيل أي صنف كعرض من خلال أيقونة الترس ⚙️ في إدارة القوائم",
+                            text = "يمكن لصاحب الكافتيريا تفعيل أي صنف كعرض من خلال ترس الإعدادات أمام الصنف",
                             fontSize = 12.sp,
                             color = CafeTextSecondary,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 24.dp)
+                            textAlign = TextAlign.Center
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
                         Button(
                             onClick = onGoToMenu,
-                            colors = ButtonDefaults.buttonColors(containerColor = CafeCyanPrimary, contentColor = Color(0xFF032125)),
+                            colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = Color(0xFF032125)),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("تصفح قائمة الأصناف الرئيسية", fontWeight = FontWeight.Bold)
+                            Text("تصفح قائمة الطعام الكاملة", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
             }
         } else {
             items(offerItems) { item ->
-                OfferItemSpecialCard(
+                val quantityInCart = cart.find { it.menuItem.id == item.id }?.quantity ?: 0
+                OfferItemCard(
                     item = item,
-                    onAddToCart = { onAddToCart(item) }
+                    quantityInCart = quantityInCart,
+                    accentColor = accentColor,
+                    cardRadiusDp = cardRadiusDp,
+                    fontScale = fontScale,
+                    onAddToCart = { onAddToCart(item) },
+                    onRemoveFromCart = { onRemoveFromCart(item) }
                 )
             }
         }
@@ -1015,36 +1131,53 @@ fun OffersAndNewItemsPage(
 }
 
 /**
- * Offer Special Card with Background Image & Discount Pricing
+ * Offer Item Card with clear proportions and Stepper
  */
 @Composable
-fun OfferItemSpecialCard(
+fun OfferItemCard(
     item: MenuItem,
-    onAddToCart: () -> Unit
+    quantityInCart: Int,
+    accentColor: Color,
+    cardRadiusDp: Int,
+    fontScale: Float,
+    onAddToCart: () -> Unit,
+    onRemoveFromCart: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .testTag("offer_card_${item.id}"),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(cardRadiusDp.dp),
         colors = CardDefaults.cardColors(containerColor = CafeSurface),
         border = CardDefaults.outlinedCardBorder().copy(
-            brush = Brush.horizontalGradient(listOf(CafeGold, CafeCyanPrimary)),
-            width = 1.2.dp
+            brush = Brush.horizontalGradient(listOf(CafeGold.copy(alpha = 0.6f), CafeCardBorder)),
+            width = 1.dp
         )
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            // Background Image if provided
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Optional Top Banner if bgImageUri is provided
             if (!item.bgImageUri.isNullOrEmpty()) {
-                AsyncImage(
-                    model = item.bgImageUri,
-                    contentDescription = null,
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(130.dp),
-                    contentScale = ContentScale.Crop,
-                    alpha = 0.25f
-                )
+                        .height(110.dp)
+                ) {
+                    AsyncImage(
+                        model = item.bgImageUri,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(Color.Transparent, CafeSurface)
+                                )
+                            )
+                    )
+                }
             }
 
             Column(
@@ -1095,12 +1228,13 @@ fun OfferItemSpecialCard(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Image thumbnail
+                    // Food Thumbnail - Beautiful 90dp container
                     Box(
                         modifier = Modifier
-                            .size(70.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Color(0xFF061A1D)),
+                            .size(90.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFF061A1D))
+                            .border(1.dp, CafeCardBorder, RoundedCornerShape(16.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         if (!item.imageUri.isNullOrEmpty()) {
@@ -1129,7 +1263,7 @@ fun OfferItemSpecialCard(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = item.nameAr,
-                            fontSize = 15.sp,
+                            fontSize = (15 * fontScale).sp,
                             fontWeight = FontWeight.Bold,
                             color = CafeTextPrimary,
                             maxLines = 1,
@@ -1137,7 +1271,7 @@ fun OfferItemSpecialCard(
                         )
                         Text(
                             text = item.descriptionAr,
-                            fontSize = 11.sp,
+                            fontSize = (11 * fontScale).sp,
                             color = CafeTextSecondary,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
@@ -1153,7 +1287,7 @@ fun OfferItemSpecialCard(
 
                             Text(
                                 text = String.format("%.2f $", item.price),
-                                fontSize = 16.sp,
+                                fontSize = (16 * fontScale).sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = CafeGold
                             )
@@ -1170,19 +1304,69 @@ fun OfferItemSpecialCard(
                         }
                     }
 
-                    // Add to cart button
-                    Button(
-                        onClick = onAddToCart,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = CafeCyanPrimary,
-                            contentColor = Color(0xFF032125)
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("طلب", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    // STEPPER (OR ORDER BUTTON IF 0)
+                    if (quantityInCart == 0) {
+                        Button(
+                            onClick = onAddToCart,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = CafeGold,
+                                contentColor = Color(0xFF032125)
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("طلب", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        // Interactive Stepper
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(CafeSurfaceVariant)
+                                .border(1.2.dp, CafeGold, RoundedCornerShape(12.dp))
+                                .padding(horizontal = 2.dp, vertical = 2.dp)
+                        ) {
+                            IconButton(
+                                onClick = onRemoveFromCart,
+                                modifier = Modifier
+                                    .size(30.dp)
+                                    .clip(CircleShape)
+                                    .background(CafeInputBg)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Remove,
+                                    contentDescription = "تقليل",
+                                    tint = CafeGold,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+
+                            Text(
+                                text = "$quantityInCart",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = CafeTextPrimary,
+                                modifier = Modifier.padding(horizontal = 8.dp)
+                            )
+
+                            IconButton(
+                                onClick = onAddToCart,
+                                modifier = Modifier
+                                    .size(30.dp)
+                                    .clip(CircleShape)
+                                    .background(CafeGold)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "زيادة",
+                                    tint = Color(0xFF032125),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -1191,7 +1375,7 @@ fun OfferItemSpecialCard(
 }
 
 /**
- * PAGE 2: Games & Entertainment Page (صفحة الألعاب والترفيه - تسلية الزبائن أثناء الانتظار)
+ * PAGE 2: Games & Entertainment Page
  */
 @Composable
 fun GamesAndEntertainmentPage(
@@ -1199,7 +1383,6 @@ fun GamesAndEntertainmentPage(
     onOrderMore: () -> Unit
 ) {
     var luckySpinResult by remember { mutableStateOf<String?>(null) }
-    var isSpinning by remember { mutableStateOf(false) }
 
     // Tic Tac Toe State
     var board by remember { mutableStateOf(List(9) { "" }) }
@@ -1220,9 +1403,9 @@ fun GamesAndEntertainmentPage(
 
     fun checkWinner(b: List<String>): String? {
         val winningLines = listOf(
-            listOf(0, 1, 2), listOf(3, 4, 5), listOf(6, 7, 8), // Rows
-            listOf(0, 3, 6), listOf(1, 4, 7), listOf(2, 5, 8), // Cols
-            listOf(0, 4, 8), listOf(2, 4, 6)             // Diagonals
+            listOf(0, 1, 2), listOf(3, 4, 5), listOf(6, 7, 8),
+            listOf(0, 3, 6), listOf(1, 4, 7), listOf(2, 5, 8),
+            listOf(0, 4, 8), listOf(2, 4, 6)
         )
         for (line in winningLines) {
             val (x, y, z) = line
@@ -1348,7 +1531,7 @@ fun GamesAndEntertainmentPage(
                         onClick = {
                             val options = listOf(
                                 "🎉 ابتسم! طلبك يُحضّر الآن بكل عناية وحب في المطبخ!",
-                                "☕ قهوة ثانية مجاناً مع ابتسامة عريضة اليوم!",
+                                "☕ قهوة ثانية مع ابتسامة عريضة اليوم!",
                                 "✨ طاولة $tableNumber هي أكثر الطاولات تميزاً وأناقة اليوم!",
                                 "🍪 قطعة كوكيز هدية مع وجبتك القادمة!",
                                 "🌟 يومك مشرق ومليء بالإنجازات الجميلة!",
@@ -1389,14 +1572,12 @@ fun GamesAndEntertainmentPage(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "لعبة إكس أو (XO) للتسلية ❌⭕",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = CafeTextPrimary
-                            )
-                        }
+                        Text(
+                            text = "لعبة إكس أو (XO) للتسلية ❌⭕",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CafeTextPrimary
+                        )
 
                         IconButton(
                             onClick = {
@@ -1536,17 +1717,18 @@ fun GamesAndEntertainmentPage(
 fun CategoryPill(
     category: MenuCategory,
     isSelected: Boolean,
+    accentColor: Color,
     onClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
-            .width(74.dp)
-            .height(84.dp)
+            .width(80.dp)
+            .height(88.dp)
             .clip(RoundedCornerShape(18.dp))
-            .background(if (isSelected) CafeCyanPrimary else CafeSurface)
+            .background(if (isSelected) accentColor else CafeSurface)
             .border(
                 width = 1.dp,
-                color = if (isSelected) CafeCyanPrimary else CafeCardBorder,
+                color = if (isSelected) accentColor else CafeCardBorder,
                 shape = RoundedCornerShape(18.dp)
             )
             .clickable(onClick = onClick)
@@ -1562,16 +1744,16 @@ fun CategoryPill(
                     model = category.customImageUri,
                     contentDescription = category.nameAr,
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(36.dp)
                         .clip(CircleShape)
-                        .border(1.dp, if (isSelected) Color(0xFF032125) else CafeCyanPrimary, CircleShape),
+                        .border(1.dp, if (isSelected) Color(0xFF032125) else accentColor, CircleShape),
                     contentScale = ContentScale.Crop
                 )
             } else {
                 Icon(
                     imageVector = getCategoryIcon(category.iconType),
                     contentDescription = category.nameAr,
-                    tint = if (isSelected) Color(0xFF032125) else CafeCyanPrimary,
+                    tint = if (isSelected) Color(0xFF032125) else accentColor,
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -1590,50 +1772,68 @@ fun CategoryPill(
 }
 
 /**
- * Food Item Card supporting custom image, background image, and availability
+ * Food Item Card supporting custom image, background image, availability, and STEPPER (+ / -)
  */
 @Composable
 fun MenuItemCard(
     item: MenuItem,
-    onAddToCart: () -> Unit
+    quantityInCart: Int,
+    accentColor: Color,
+    cardRadiusDp: Int,
+    fontScale: Float,
+    onAddToCart: () -> Unit,
+    onRemoveFromCart: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .testTag("item_card_${item.id}"),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(cardRadiusDp.dp),
         colors = CardDefaults.cardColors(containerColor = CafeSurface),
         border = CardDefaults.outlinedCardBorder().copy(
             brush = Brush.horizontalGradient(listOf(CafeCardBorder, CafeCardBorderGlow)),
             width = 1.dp
         )
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            // Background Image if provided
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Background Image if provided - Rendered as a sleek food banner header
             if (!item.bgImageUri.isNullOrEmpty()) {
-                AsyncImage(
-                    model = item.bgImageUri,
-                    contentDescription = null,
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(115.dp),
-                    contentScale = ContentScale.Crop,
-                    alpha = 0.2f
-                )
+                        .height(110.dp)
+                ) {
+                    AsyncImage(
+                        model = item.bgImageUri,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(Color.Transparent, CafeSurface)
+                                )
+                            )
+                    )
+                }
             }
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(10.dp),
+                    .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Food Thumbnail
+                // Food Thumbnail - Beautiful square aspect ratio
                 Box(
                     modifier = Modifier
-                        .size(90.dp)
+                        .size(94.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFF061A1D)),
+                        .background(Color(0xFF061A1D))
+                        .border(1.dp, CafeCardBorder, RoundedCornerShape(16.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     if (!item.imageUri.isNullOrEmpty()) {
@@ -1676,7 +1876,7 @@ fun MenuItemCard(
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                // Details
+                // Details & Controls
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -1687,7 +1887,7 @@ fun MenuItemCard(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = item.nameAr,
-                                fontSize = 15.sp,
+                                fontSize = (15 * fontScale).sp,
                                 fontWeight = FontWeight.Bold,
                                 color = CafeTextPrimary,
                                 maxLines = 1,
@@ -1713,7 +1913,7 @@ fun MenuItemCard(
                         Spacer(modifier = Modifier.height(3.dp))
                         Text(
                             text = item.descriptionAr,
-                            fontSize = 11.sp,
+                            fontSize = (11 * fontScale).sp,
                             color = CafeTextSecondary,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
@@ -1723,7 +1923,7 @@ fun MenuItemCard(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Bottom row: Price and Plus Button
+                    // Bottom row: Price and Stepper (+ / -)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1731,27 +1931,80 @@ fun MenuItemCard(
                     ) {
                         Text(
                             text = String.format("%.2f $", item.price),
-                            fontSize = 15.sp,
+                            fontSize = (15 * fontScale).sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = CafeCyanPrimary
+                            color = accentColor
                         )
 
                         if (item.isAvailable) {
-                            Box(
-                                modifier = Modifier
-                                    .size(34.dp)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(CafeCyanPrimary)
-                                    .clickable(onClick = onAddToCart)
-                                    .testTag("add_item_${item.id}"),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = "إضافة للسلة",
-                                    tint = Color(0xFF032125),
-                                    modifier = Modifier.size(18.dp)
-                                )
+                            if (quantityInCart == 0) {
+                                // Default Order Button
+                                Button(
+                                    onClick = onAddToCart,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = accentColor,
+                                        contentColor = Color(0xFF032125)
+                                    ),
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                                    modifier = Modifier.testTag("add_item_${item.id}")
+                                ) {
+                                    Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("طلب", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            } else {
+                                // Interactive Stepper directly on Card
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(CafeSurfaceVariant)
+                                        .border(1.2.dp, accentColor, RoundedCornerShape(12.dp))
+                                        .padding(horizontal = 3.dp, vertical = 2.dp)
+                                ) {
+                                    // Minus button (-)
+                                    IconButton(
+                                        onClick = onRemoveFromCart,
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .clip(CircleShape)
+                                            .background(CafeInputBg)
+                                            .testTag("decrease_item_${item.id}")
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Remove,
+                                            contentDescription = "تقليل الكمية",
+                                            tint = accentColor,
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                    }
+
+                                    Text(
+                                        text = "$quantityInCart",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = CafeTextPrimary,
+                                        modifier = Modifier.padding(horizontal = 8.dp)
+                                    )
+
+                                    // Plus button (+)
+                                    IconButton(
+                                        onClick = onAddToCart,
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .clip(CircleShape)
+                                            .background(accentColor)
+                                            .testTag("increase_item_${item.id}")
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = "زيادة الكمية",
+                                            tint = Color(0xFF032125),
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                    }
+                                }
                             }
                         } else {
                             Text(

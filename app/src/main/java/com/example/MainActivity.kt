@@ -12,7 +12,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -26,6 +28,7 @@ import com.example.ui.customer.CustomerMenuScreen
 import com.example.ui.menu_management.MenuManagementScreen
 import com.example.ui.settings.SettingsScreen
 import com.example.ui.tables.TablesBarcodeScreen
+import com.example.ui.theme.CafeCyanPrimary
 import com.example.ui.theme.CafeDarkBg
 import com.example.ui.theme.CafeTheme
 
@@ -34,7 +37,17 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            CafeTheme {
+            val viewModel: MainViewModel = viewModel()
+            val accentHex by viewModel.themeAccentColorHex.collectAsState()
+            val accentColor = remember(accentHex) {
+                try {
+                    Color(android.graphics.Color.parseColor(accentHex))
+                } catch (_: Exception) {
+                    CafeCyanPrimary
+                }
+            }
+
+            CafeTheme(accentColor = accentColor) {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                     Surface(
                         modifier = Modifier
@@ -42,7 +55,7 @@ class MainActivity : ComponentActivity() {
                             .statusBarsPadding(),
                         color = CafeDarkBg
                     ) {
-                        CafeAppNavHost()
+                        CafeAppNavHost(viewModel = viewModel)
                     }
                 }
             }
