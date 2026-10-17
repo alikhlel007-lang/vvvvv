@@ -356,7 +356,7 @@ fun MenuManagementScreen(viewModel: MainViewModel) {
             AddItemDialog(
                 categoryId = activeCatId,
                 onDismiss = { showAddItemDialog = false },
-                onAdd = { nameAr, nameEn, descAr, price, imageType, imageUri, bgImageUri, isOffer, discount, offerTag ->
+                onAdd = { nameAr, nameEn, descAr, price, currency, imageType, imageUri, bgImageUri, isOffer, discount, offerTag ->
                     viewModel.addMenuItem(
                         categoryId = activeCatId,
                         nameAr = nameAr,
@@ -364,6 +364,7 @@ fun MenuManagementScreen(viewModel: MainViewModel) {
                         descriptionAr = descAr,
                         descriptionEn = descAr,
                         price = price,
+                        currency = currency,
                         imageType = imageType,
                         imageUri = imageUri,
                         bgImageUri = bgImageUri,
@@ -546,7 +547,7 @@ fun ManageItemCard(
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = String.format("%.2f $", item.price),
+                        text = com.example.util.OrderFeeCalculator.formatPrice(item.price, item.currency),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = CafeCyanPrimary
@@ -619,6 +620,7 @@ fun ItemGearSettingsDialog(
     onDelete: () -> Unit
 ) {
     var priceStr by remember { mutableStateOf(item.price.toString()) }
+    var currency by remember { mutableStateOf(item.currency) }
     var isAvailable by remember { mutableStateOf(item.isAvailable) }
     var itemImageUri by remember { mutableStateOf(item.imageUri) }
     var itemBgImageUri by remember { mutableStateOf(item.bgImageUri) }
@@ -689,19 +691,47 @@ fun ItemGearSettingsDialog(
 
                 HorizontalDivider(color = CafeCardBorder)
 
-                // 1. خيار تعديل السعر
-                Column {
+                // 1. خيار تعديل السعر والعملة
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = "1. تعديل السعر ($):",
+                        text = "1. تعديل السعر والعملة:",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         color = CafeCyanPrimary
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // اختيار العملة (دينار عراقي أو دولار)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val currOptions = listOf("د.ع" to "دينار عراقي (د.ع)", "$" to "دولار أمريكي ($)")
+                        currOptions.forEach { (code, label) ->
+                            val isSel = currency == code
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (isSel) CafeCyanPrimary else CafeInputBg)
+                                    .border(1.dp, if (isSel) CafeCyanPrimary else CafeInputBorder, RoundedCornerShape(10.dp))
+                                    .clickable { currency = code }
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSel) Color(0xFF032125) else CafeTextPrimary
+                                )
+                            }
+                        }
+                    }
+
                     OutlinedTextField(
                         value = priceStr,
                         onValueChange = { priceStr = it },
-                        label = { Text("السعر ($)", color = CafeTextSecondary) },
+                        label = { Text("السعر ($currency)", color = CafeTextSecondary) },
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = CafeInputBg,
@@ -1008,6 +1038,7 @@ fun ItemGearSettingsDialog(
                     val disc = discountPercentStr.toIntOrNull() ?: 0
                     val updated = item.copy(
                         price = p,
+                        currency = currency,
                         isAvailable = isAvailable,
                         imageUri = itemImageUri,
                         bgImageUri = itemBgImageUri,
@@ -1074,6 +1105,7 @@ fun AddItemDialog(
         nameEn: String,
         descAr: String,
         price: Double,
+        currency: String,
         imageType: String,
         imageUri: String?,
         bgImageUri: String?,
@@ -1086,6 +1118,7 @@ fun AddItemDialog(
     var nameEn by remember { mutableStateOf("") }
     var descAr by remember { mutableStateOf("") }
     var priceStr by remember { mutableStateOf("") }
+    var currency by remember { mutableStateOf("د.ع") } // الافتراضي: دينار
     var imageType by remember { mutableStateOf("burger") }
     var imageUri by remember { mutableStateOf<String?>(null) }
     var bgImageUri by remember { mutableStateOf<String?>(null) }
@@ -1160,10 +1193,46 @@ fun AddItemDialog(
                     )
                 )
 
+                // خيار العملة: دولار / دينار (الافتراضي دينار)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "عملة الصنف:",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = CafeTextSecondary
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val currOptions = listOf("د.ع" to "دينار (د.ع)", "$" to "دولار ($)")
+                        currOptions.forEach { (code, label) ->
+                            val isSel = currency == code
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (isSel) CafeCyanPrimary else CafeInputBg)
+                                    .border(1.dp, if (isSel) CafeCyanPrimary else CafeInputBorder, RoundedCornerShape(10.dp))
+                                    .clickable { currency = code }
+                                    .padding(vertical = 7.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSel) Color(0xFF032125) else CafeTextPrimary
+                                )
+                            }
+                        }
+                    }
+                }
+
                 OutlinedTextField(
                     value = priceStr,
                     onValueChange = { priceStr = it },
-                    label = { Text("السعر ($)", color = CafeTextSecondary) },
+                    label = { Text("السعر ($currency)", color = CafeTextSecondary) },
                     modifier = Modifier.fillMaxWidth().testTag("add_item_price_input"),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = CafeInputBg,
@@ -1234,6 +1303,7 @@ fun AddItemDialog(
                             nameEn.ifBlank { nameAr },
                             descAr,
                             price,
+                            currency,
                             imageType,
                             imageUri,
                             bgImageUri,

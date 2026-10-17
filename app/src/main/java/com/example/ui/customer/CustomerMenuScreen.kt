@@ -1,5 +1,6 @@
 package com.example.ui.customer
 
+import com.example.util.OrderFeeCalculator
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -523,7 +524,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                                 color = Color(0xFF032125)
                             )
                             Text(
-                                text = String.format("%.2f $", cartTotal),
+                                text = OrderFeeCalculator.formatPrice(cartTotal, cart.firstOrNull()?.menuItem?.currency ?: "د.ع"),
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = Color(0xFF032125)
@@ -608,7 +609,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                                         color = CafeTextPrimary
                                     )
                                     Text(
-                                        text = String.format("%.2f $", cartItem.menuItem.price * cartItem.quantity),
+                                        text = OrderFeeCalculator.formatPrice(cartItem.menuItem.price * cartItem.quantity, cartItem.menuItem.currency),
                                         fontSize = 13.sp,
                                         color = accentColor
                                     )
@@ -708,12 +709,40 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                    val cartCurrency = cart.firstOrNull()?.menuItem?.currency ?: "د.ع"
+                    val cartFee = OrderFeeCalculator.calculateServiceFee(cartTotal, cartCurrency)
+                    val cartFinalTotal = cartTotal + cartFee
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(CafeInputBg)
+                            .padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text("الإجمالي الكلي:", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = CafeTextPrimary)
-                        Text(String.format("%.2f $", cartTotal), fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = accentColor)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("مجموع الطلب:", fontSize = 12.sp, color = CafeTextSecondary)
+                            Text(OrderFeeCalculator.formatPrice(cartTotal, cartCurrency), fontSize = 13.sp, color = CafeTextPrimary, fontWeight = FontWeight.Bold)
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("نسبة الخدمة 1% (أقرب 250 د.ع):", fontSize = 11.sp, color = CafeGold)
+                            Text(OrderFeeCalculator.formatPrice(cartFee, cartCurrency), fontSize = 12.sp, color = CafeGold, fontWeight = FontWeight.Bold)
+                        }
+                        HorizontalDivider(color = CafeCardBorder, modifier = Modifier.padding(vertical = 2.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("الإجمالي الكلي المطلوب:", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = CafeTextPrimary)
+                            Text(OrderFeeCalculator.formatPrice(cartFinalTotal, cartCurrency), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = accentColor)
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(14.dp))
@@ -1286,7 +1315,7 @@ fun OfferItemCard(
                             } else null
 
                             Text(
-                                text = String.format("%.2f $", item.price),
+                                text = OrderFeeCalculator.formatPrice(item.price, item.currency),
                                 fontSize = (16 * fontScale).sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = CafeGold
@@ -1295,7 +1324,7 @@ fun OfferItemCard(
                             if (originalPrice != null) {
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = String.format("%.2f $", originalPrice),
+                                    text = OrderFeeCalculator.formatPrice(originalPrice, item.currency),
                                     fontSize = 12.sp,
                                     color = CafeTextSecondary,
                                     textDecoration = TextDecoration.LineThrough
@@ -1930,7 +1959,7 @@ fun MenuItemCard(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = String.format("%.2f $", item.price),
+                            text = OrderFeeCalculator.formatPrice(item.price, item.currency),
                             fontSize = (15 * fontScale).sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = accentColor

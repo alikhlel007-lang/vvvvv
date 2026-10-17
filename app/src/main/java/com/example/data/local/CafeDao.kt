@@ -55,6 +55,9 @@ interface CafeDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTables(tables: List<TableEntity>)
 
+    @Update
+    suspend fun updateTable(table: TableEntity)
+
     @Delete
     suspend fun deleteTable(table: TableEntity)
 

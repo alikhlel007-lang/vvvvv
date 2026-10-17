@@ -303,6 +303,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         descriptionAr: String,
         descriptionEn: String,
         price: Double,
+        currency: String = "د.ع",
         imageType: String = "burger",
         imageUri: String? = null,
         bgImageUri: String? = null,
@@ -318,6 +319,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 descriptionAr = descriptionAr,
                 descriptionEn = descriptionEn,
                 price = price,
+                currency = currency,
                 imageType = imageType,
                 imageUri = imageUri,
                 bgImageUri = bgImageUri,
@@ -346,7 +348,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // Tables CRUD
+    // Tables CRUD & Anti-fraud Barcode Regeneration
     fun addTable(number: Int, label: String, capacity: Int) {
         val cafeName = _currentUser.value?.cafeName ?: "CAFE"
         viewModelScope.launch {
@@ -354,9 +356,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun regenerateTableQr(table: CafeTable) {
+        viewModelScope.launch {
+            repository.regenerateTableQr(table)
+        }
+    }
+
+    fun regenerateAllTablesQr() {
+        viewModelScope.launch {
+            repository.regenerateAllTablesQr(tables.value)
+        }
+    }
+
     fun deleteTable(table: CafeTable) {
         viewModelScope.launch {
             repository.deleteTable(table)
+        }
+    }
+
+    // Cashier reject and group settlement
+    fun rejectOrder(order: OrderRecord) {
+        viewModelScope.launch {
+            repository.updateOrderStatus(order.id, order, OrderStatus.REJECTED)
+        }
+    }
+
+    fun payAllOrdersForTable(tableOrders: List<OrderRecord>) {
+        viewModelScope.launch {
+            repository.payOrders(tableOrders)
         }
     }
 

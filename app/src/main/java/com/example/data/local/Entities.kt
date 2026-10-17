@@ -32,6 +32,7 @@ data class MenuItemEntity(
     val descriptionAr: String,
     val descriptionEn: String,
     val price: Double,
+    val currency: String = "د.ع",
     val imageType: String,
     val isAvailable: Boolean,
     val imageUri: String? = null,
@@ -47,7 +48,8 @@ data class TableEntity(
     val tableNumber: Int,
     val label: String,
     val capacity: Int,
-    val qrPayload: String
+    val qrPayload: String,
+    val securityToken: String = ""
 )
 
 @Entity(tableName = "orders")
@@ -58,6 +60,9 @@ data class OrderEntity(
     val itemsSummary: String,
     val itemsCount: Int,
     val totalPrice: Double,
+    val subtotal: Double = 0.0,
+    val serviceFee: Double = 0.0,
+    val currency: String = "د.ع",
     val status: String,
     val timestamp: Long,
     val notes: String

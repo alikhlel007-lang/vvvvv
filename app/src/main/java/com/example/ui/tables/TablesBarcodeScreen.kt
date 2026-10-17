@@ -30,10 +30,13 @@ import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RestaurantMenu
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -63,7 +66,6 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.CafeTable
 import com.example.ui.AppScreen
 import com.example.ui.MainViewModel
-import com.example.ui.cashier.BottomNavItem
 import com.example.ui.theme.CafeCardBorder
 import com.example.ui.theme.CafeCardBorderGlow
 import com.example.ui.theme.CafeCyanPrimary
@@ -228,38 +230,59 @@ fun TablesBarcodeScreen(viewModel: MainViewModel) {
                 }
             }
 
-            // WEB LINK INFO
+            // ANTI-FRAUD SECURITY BANNER
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(CafeSurface)
-                    .border(1.dp, CafeCardBorder, RoundedCornerShape(12.dp))
+                    .border(1.dp, CafeCyanPrimary.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     Icon(
-                        imageVector = Icons.Default.QrCodeScanner,
+                        imageVector = Icons.Default.Security,
                         contentDescription = null,
                         tint = CafeCyanPrimary,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "منيو الزبائن على GitHub Pages: متصل مع Firebase",
-                        fontSize = 11.sp,
-                        color = CafeTextSecondary
-                    )
+                    Column {
+                        Text(
+                            text = "نظام الأمان ومنع الاحتيال",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CafeTextPrimary
+                        )
+                        Text(
+                            text = "الباركودات مشفرة برمز أمان فريد يتجدد لمنع الطلب من خارج الكافيه",
+                            fontSize = 9.sp,
+                            color = CafeTextSecondary
+                        )
+                    }
                 }
-                Text(
-                    text = "متصل أونلاين 🟢",
-                    fontSize = 11.sp,
-                    color = Color(0xFF4CAF50),
-                    fontWeight = FontWeight.Bold
-                )
+
+                Button(
+                    onClick = {
+                        viewModel.regenerateAllTablesQr()
+                        Toast.makeText(context, "تم تجديد رموز أمان كافة الطاولات بنجاح!", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = CafeSurfaceVariant,
+                        contentColor = CafeCyanPrimary
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(imageVector = Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(13.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("تجديد الكل", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(6.dp))
@@ -281,6 +304,10 @@ fun TablesBarcodeScreen(viewModel: MainViewModel) {
                         onOpenMenu = {
                             viewModel.setSelectedTableNumber(table.tableNumber)
                             viewModel.navigateTo(AppScreen.CUSTOMER_MENU)
+                        },
+                        onRegenerate = {
+                            viewModel.regenerateTableQr(table)
+                            Toast.makeText(context, "تم تجديد باركود ${table.label} برمز أمان جديد!", Toast.LENGTH_SHORT).show()
                         },
                         onDelete = { viewModel.deleteTable(table) }
                     )
@@ -307,6 +334,7 @@ fun TablesBarcodeScreen(viewModel: MainViewModel) {
 fun TableQrCard(
     table: CafeTable,
     onOpenMenu: () -> Unit,
+    onRegenerate: () -> Unit,
     onDelete: () -> Unit
 ) {
     val qrBitmap = remember(table.qrPayload) {
@@ -360,12 +388,12 @@ fun TableQrCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             // QR Code Box
             Box(
                 modifier = Modifier
-                    .size(120.dp)
+                    .size(115.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color(0xFF061A1D))
                     .border(1.dp, CafeCardBorder, RoundedCornerShape(12.dp))
@@ -388,28 +416,66 @@ fun TableQrCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Security Token Badge (Anti-fraud)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color(0xFF0A2226))
+                    .border(0.8.dp, CafeCyanPrimary.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = CafeGold, modifier = Modifier.size(10.dp))
+                Spacer(modifier = Modifier.width(3.dp))
+                Text(
+                    text = if (table.securityToken.isNotBlank()) "أمان: #${table.securityToken}" else "أمان نشط",
+                    fontSize = 9.sp,
+                    color = CafeGold,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
 
             Text(
                 text = "${table.capacity} مقاعد",
-                fontSize = 11.sp,
+                fontSize = 10.sp,
                 color = CafeTextSecondary
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             // Button to simulate customer scanning this QR code
             Button(
                 onClick = onOpenMenu,
                 colors = ButtonDefaults.buttonColors(containerColor = CafeSurfaceVariant, contentColor = CafeCyanPrimary),
                 shape = RoundedCornerShape(10.dp),
-                modifier = Modifier.fillMaxWidth().height(36.dp),
+                modifier = Modifier.fillMaxWidth().height(32.dp),
                 contentPadding = PaddingValues(horizontal = 4.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Icon(imageVector = Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(13.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("فتح منيو الطاولة", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    Text("فتح منيو الطاولة", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Button to regenerate table barcode with a new anti-fraud token
+            OutlinedButton(
+                onClick = onRegenerate,
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth().height(30.dp),
+                contentPadding = PaddingValues(horizontal = 4.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = CafeCyanPrimary)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(12.dp))
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text("تجديد الباركود", fontSize = 9.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }

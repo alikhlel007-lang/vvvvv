@@ -25,6 +25,7 @@ data class MenuItem(
     val descriptionAr: String,
     val descriptionEn: String,
     val price: Double,
+    val currency: String = "د.ع", // "د.ع" (دينار عراقي - افتراضي) أو "$" (دولار)
     val imageType: String = "burger", // burger, drink, fries, sweets, default
     val isAvailable: Boolean = true,
     val imageUri: String? = null,
@@ -39,7 +40,8 @@ data class CafeTable(
     val tableNumber: Int,
     val label: String,
     val capacity: Int = 4,
-    val qrPayload: String
+    val qrPayload: String,
+    val securityToken: String = "" // رمز أمان فريد يتجدد لمنع الطلب الاحتيالي
 )
 
 data class CartItem(
@@ -53,6 +55,7 @@ enum class OrderStatus(val titleAr: String, val titleEn: String) {
     PREPARING("قيد التحضير", "Preparing"),
     READY("جاهز للتقديم", "Ready"),
     PAID("تم الدفع", "Paid"),
+    REJECTED("مرفوض", "Rejected"),
     CANCELLED("ملغي", "Cancelled")
 }
 
@@ -63,6 +66,9 @@ data class OrderRecord(
     val itemsSummary: String,
     val itemsCount: Int,
     val totalPrice: Double,
+    val subtotal: Double = 0.0,
+    val serviceFee: Double = 0.0,
+    val currency: String = "د.ع",
     val status: OrderStatus,
     val timestamp: Long,
     val notes: String = ""

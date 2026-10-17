@@ -135,6 +135,7 @@ class CafeRepository(private val dao: CafeDao) {
         descriptionAr: String,
         descriptionEn: String,
         price: Double,
+        currency: String = "د.ع",
         imageType: String = "burger",
         imageUri: String? = null,
         bgImageUri: String? = null,
@@ -151,6 +152,7 @@ class CafeRepository(private val dao: CafeDao) {
             descriptionAr = descriptionAr,
             descriptionEn = descriptionEn,
             price = price,
+            currency = currency,
             imageType = imageType,
             isAvailable = true,
             imageUri = imageUri,
@@ -169,6 +171,7 @@ class CafeRepository(private val dao: CafeDao) {
                 "descriptionAr" to descriptionAr,
                 "descriptionEn" to descriptionEn,
                 "price" to price,
+                "currency" to currency,
                 "imageType" to imageType,
                 "isAvailable" to true,
                 "imageUri" to (imageUri ?: ""),
@@ -192,6 +195,7 @@ class CafeRepository(private val dao: CafeDao) {
                 "descriptionAr" to item.descriptionAr,
                 "descriptionEn" to item.descriptionEn,
                 "price" to item.price,
+                "currency" to item.currency,
                 "imageType" to item.imageType,
                 "isAvailable" to item.isAvailable,
                 "imageUri" to (item.imageUri ?: ""),
@@ -218,15 +222,37 @@ class CafeRepository(private val dao: CafeDao) {
 
     suspend fun addTable(number: Int, label: String, capacity: Int, cafeName: String, customBaseUrl: String? = null) {
         val baseUrl = customBaseUrl ?: baseWebMenuUrl
-        val payload = "$baseUrl$number"
+        val secToken = "SEC" + UUID.randomUUID().toString().take(6).uppercase()
+        val sep = if (baseUrl.contains("?")) "&" else "?"
+        val payload = "$baseUrl${number}${sep}sec=$secToken"
         val entity = TableEntity(
             id = "table_$number",
             tableNumber = number,
             label = label.ifEmpty { "طاولة $number" },
             capacity = capacity,
-            qrPayload = payload
+            qrPayload = payload,
+            securityToken = secToken
         )
         dao.insertTable(entity)
+    }
+
+    suspend fun regenerateTableQr(table: CafeTable, customBaseUrl: String? = null) {
+        val baseUrl = customBaseUrl ?: baseWebMenuUrl
+        val newSec = "SEC" + UUID.randomUUID().toString().take(6).uppercase()
+        val sep = if (baseUrl.contains("?")) "&" else "?"
+        val newPayload = "$baseUrl${table.tableNumber}${sep}sec=$newSec"
+        val updated = table.copy(qrPayload = newPayload, securityToken = newSec)
+        dao.updateTable(updated.toEntity())
+    }
+
+    suspend fun regenerateAllTablesQr(tables: List<CafeTable>, customBaseUrl: String? = null) {
+        val baseUrl = customBaseUrl ?: baseWebMenuUrl
+        tables.forEach { table ->
+            val newSec = "SEC" + UUID.randomUUID().toString().take(6).uppercase()
+            val sep = if (baseUrl.contains("?")) "&" else "?"
+            val newPayload = "$baseUrl${table.tableNumber}${sep}sec=$newSec"
+            dao.updateTable(table.copy(qrPayload = newPayload, securityToken = newSec).toEntity())
+        }
     }
 
     suspend fun updateAllTablesQrUrl(newBaseUrl: String) {
@@ -250,7 +276,10 @@ class CafeRepository(private val dao: CafeDao) {
     ): String {
         val summary = cartItems.joinToString("، ") { "${it.quantity}x ${it.menuItem.nameAr}" }
         val count = cartItems.sumOf { it.quantity }
-        val total = cartItems.sumOf { it.menuItem.price * it.quantity }
+        val subtotal = cartItems.sumOf { it.menuItem.price * it.quantity }
+        val currency = cartItems.firstOrNull()?.menuItem?.currency ?: "د.ع"
+        val serviceFee = com.example.util.OrderFeeCalculator.calculateServiceFee(subtotal, currency)
+        val total = subtotal + serviceFee
         val orderId = "ord_" + System.currentTimeMillis().toString().takeLast(6)
 
         val entity = OrderEntity(
@@ -260,6 +289,9 @@ class CafeRepository(private val dao: CafeDao) {
             itemsSummary = summary,
             itemsCount = count,
             totalPrice = total,
+            subtotal = subtotal,
+            serviceFee = serviceFee,
+            currency = currency,
             status = OrderStatus.NEW.name,
             timestamp = System.currentTimeMillis(),
             notes = notes
@@ -275,6 +307,9 @@ class CafeRepository(private val dao: CafeDao) {
                 "itemsSummary" to summary,
                 "itemsCount" to count,
                 "totalPrice" to total,
+                "subtotal" to subtotal,
+                "serviceFee" to serviceFee,
+                "currency" to currency,
                 "status" to OrderStatus.NEW.name,
                 "timestamp" to System.currentTimeMillis(),
                 "notes" to notes
@@ -285,6 +320,16 @@ class CafeRepository(private val dao: CafeDao) {
         }
 
         return orderId
+    }
+
+    suspend fun payOrders(ordersList: List<OrderRecord>) {
+        ordersList.forEach { order ->
+            val updated = order.copy(status = OrderStatus.PAID).toEntity()
+            dao.updateOrder(updated)
+            try {
+                firestore?.collection("orders")?.document(order.id)?.update("status", OrderStatus.PAID.name)
+            } catch (_: Exception) {}
+        }
     }
 
     suspend fun updateOrderStatus(orderId: String, currentOrder: OrderRecord, newStatus: OrderStatus) {
@@ -360,6 +405,7 @@ class CafeRepository(private val dao: CafeDao) {
         descriptionAr = descriptionAr,
         descriptionEn = descriptionEn,
         price = price,
+        currency = currency,
         imageType = imageType,
         isAvailable = isAvailable,
         imageUri = imageUri,
@@ -377,6 +423,7 @@ class CafeRepository(private val dao: CafeDao) {
         descriptionAr = descriptionAr,
         descriptionEn = descriptionEn,
         price = price,
+        currency = currency,
         imageType = imageType,
         isAvailable = isAvailable,
         imageUri = imageUri,
@@ -391,7 +438,8 @@ class CafeRepository(private val dao: CafeDao) {
         tableNumber = tableNumber,
         label = label,
         capacity = capacity,
-        qrPayload = qrPayload
+        qrPayload = qrPayload,
+        securityToken = securityToken
     )
 
     private fun CafeTable.toEntity() = TableEntity(
@@ -399,7 +447,8 @@ class CafeRepository(private val dao: CafeDao) {
         tableNumber = tableNumber,
         label = label,
         capacity = capacity,
-        qrPayload = qrPayload
+        qrPayload = qrPayload,
+        securityToken = securityToken
     )
 
     private fun OrderEntity.toDomain() = OrderRecord(
@@ -409,6 +458,9 @@ class CafeRepository(private val dao: CafeDao) {
         itemsSummary = itemsSummary,
         itemsCount = itemsCount,
         totalPrice = totalPrice,
+        subtotal = if (subtotal > 0.0) subtotal else totalPrice,
+        serviceFee = serviceFee,
+        currency = currency,
         status = try {
             OrderStatus.valueOf(status)
         } catch (_: Exception) {
@@ -425,6 +477,9 @@ class CafeRepository(private val dao: CafeDao) {
         itemsSummary = itemsSummary,
         itemsCount = itemsCount,
         totalPrice = totalPrice,
+        subtotal = subtotal,
+        serviceFee = serviceFee,
+        currency = currency,
         status = status.name,
         timestamp = timestamp,
         notes = notes
