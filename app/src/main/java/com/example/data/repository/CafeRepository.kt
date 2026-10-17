@@ -461,10 +461,13 @@ class CafeRepository(private val dao: CafeDao) {
         subtotal = if (subtotal > 0.0) subtotal else totalPrice,
         serviceFee = serviceFee,
         currency = currency,
-        status = try {
-            OrderStatus.valueOf(status)
-        } catch (_: Exception) {
-            OrderStatus.NEW
+        status = when (status.uppercase()) {
+            "READY" -> OrderStatus.DELIVERED
+            else -> try {
+                OrderStatus.valueOf(status)
+            } catch (_: Exception) {
+                OrderStatus.NEW
+            }
         },
         timestamp = timestamp,
         notes = notes

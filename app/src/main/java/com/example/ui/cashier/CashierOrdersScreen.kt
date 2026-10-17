@@ -78,6 +78,7 @@ import com.example.ui.theme.OrderStatusNew
 import com.example.ui.theme.OrderStatusPaid
 import com.example.ui.theme.OrderStatusPreparing
 import com.example.ui.theme.OrderStatusReady
+import com.example.ui.theme.OrderStatusDelivered
 import com.example.ui.theme.OrderStatusRejected
 import com.example.util.OrderFeeCalculator
 import java.text.SimpleDateFormat
@@ -93,6 +94,10 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
 
     val filteredOrders = if (activeFilter == null) {
         orders
+    } else if (activeFilter == OrderStatus.DELIVERED) {
+        orders.filter { it.status == OrderStatus.DELIVERED || it.status == OrderStatus.READY }
+    } else if (activeFilter == OrderStatus.REJECTED) {
+        orders.filter { it.status == OrderStatus.REJECTED || it.status == OrderStatus.CANCELLED }
     } else {
         orders.filter { it.status == activeFilter }
     }
@@ -107,7 +112,7 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
     val cafeName by viewModel.cafeName.collectAsState()
 
     // Total sales calculation
-    val paidOrders = orders.filter { it.status == OrderStatus.PAID || it.status == OrderStatus.READY }
+    val paidOrders = orders.filter { it.status == OrderStatus.PAID }
     val totalRevenueIqd = paidOrders.filter { it.currency != "$" && it.currency != "USD" }.sumOf { it.totalPrice }
     val totalRevenueUsd = paidOrders.filter { it.currency == "$" || it.currency == "USD" }.sumOf { it.totalPrice }
 
@@ -346,11 +351,22 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                             onClick = { viewModel.setOrderStatusFilter(null) }
                         )
                     }
-                    items(OrderStatus.values()) { status ->
-                        val count = orders.count { it.status == status }
+                    val cashierStatuses = listOf(
+                        OrderStatus.NEW,
+                        OrderStatus.PREPARING,
+                        OrderStatus.DELIVERED,
+                        OrderStatus.PAID,
+                        OrderStatus.REJECTED
+                    )
+                    items(cashierStatuses) { status ->
+                        val count = when (status) {
+                            OrderStatus.DELIVERED -> orders.count { it.status == OrderStatus.DELIVERED || it.status == OrderStatus.READY }
+                            OrderStatus.REJECTED -> orders.count { it.status == OrderStatus.REJECTED || it.status == OrderStatus.CANCELLED }
+                            else -> orders.count { it.status == status }
+                        }
                         StatusFilterChip(
                             label = "${status.titleAr} ($count)",
-                            selected = activeFilter == status,
+                            selected = activeFilter == status || (status == OrderStatus.DELIVERED && activeFilter == OrderStatus.READY),
                             color = getStatusColor(status),
                             onClick = { viewModel.setOrderStatusFilter(status) }
                         )
@@ -716,7 +732,7 @@ fun CashierOrderCard(
             ) {
                 when (order.status) {
                     OrderStatus.NEW -> {
-                        // Requirement 3: Reject order upon arrival and prevent advancing to preparation
+                        // طلب جديد: يحتوي على "رفض" و "تحضير"
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
                                 onClick = onReject,
@@ -726,7 +742,7 @@ fun CashierOrderCard(
                                 ),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
-                                Text("رفض الطلب ❌", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text("رفض ❌", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
 
                             Button(
@@ -737,33 +753,40 @@ fun CashierOrderCard(
                                 ),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
-                                Text("بدء التحضير 🍳", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text("تحضير 🍳", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
                     OrderStatus.PREPARING -> {
+                        // تحضير: يحتوي على "تم التسليم"
                         Button(
-                            onClick = { onAdvanceStatus(OrderStatus.READY) },
-                            colors = ButtonDefaults.buttonColors(containerColor = OrderStatusReady, contentColor = Color.White),
+                            onClick = { onAdvanceStatus(OrderStatus.DELIVERED) },
+                            colors = ButtonDefaults.buttonColors(containerColor = OrderStatusDelivered, contentColor = Color.White),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("جاهز للتقديم 🍽️", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text("تم التسليم 🍽️", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
-                    OrderStatus.READY -> {
+                    OrderStatus.DELIVERED, OrderStatus.READY -> {
+                        // تم التسليم: يحتوي على "تسديد الفاتورة"
                         Button(
                             onClick = { onAdvanceStatus(OrderStatus.PAID) },
                             colors = ButtonDefaults.buttonColors(containerColor = OrderStatusPaid, contentColor = Color(0xFF032125)),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("تم الدفع والحساب 💵", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text("تسديد الفاتورة 💵", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
-                    OrderStatus.PAID, OrderStatus.CANCELLED, OrderStatus.REJECTED -> {
+                    OrderStatus.PAID -> {
+                        // تم تسديد الفاتورة
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (order.status == OrderStatus.REJECTED) {
-                                Text("تم رفض هذا الطلب", fontSize = 11.sp, color = OrderStatusRejected, modifier = Modifier.padding(end = 8.dp))
-                            }
+                            Text(
+                                text = "تم تسديد الفاتورة ✅",
+                                fontSize = 11.sp,
+                                color = OrderStatusPaid,
+                                modifier = Modifier.padding(end = 8.dp),
+                                fontWeight = FontWeight.Bold
+                            )
                             IconButton(
                                 onClick = onDelete,
                                 modifier = Modifier
@@ -774,6 +797,44 @@ fun CashierOrderCard(
                                 Icon(
                                     imageVector = Icons.Default.Delete,
                                     contentDescription = "حذف",
+                                    tint = Color(0xFFFF6B6B),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                    OrderStatus.REJECTED, OrderStatus.CANCELLED -> {
+                        // الطلبات المرفوضة
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "طلب مرفوض ❌",
+                                fontSize = 11.sp,
+                                color = OrderStatusRejected,
+                                modifier = Modifier.padding(end = 8.dp),
+                                fontWeight = FontWeight.Bold
+                            )
+                            Button(
+                                onClick = { onAdvanceStatus(OrderStatus.NEW) },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = CafeSurfaceVariant,
+                                    contentColor = CafeCyanPrimary
+                                ),
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                modifier = Modifier.padding(end = 6.dp)
+                            ) {
+                                Text("إعادة للجديد 🔄", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                            IconButton(
+                                onClick = onDelete,
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(CafeSurfaceVariant)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "حذف نهائي",
                                     tint = Color(0xFFFF6B6B),
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -1070,7 +1131,7 @@ fun getStatusColor(status: OrderStatus): Color {
     return when (status) {
         OrderStatus.NEW -> OrderStatusNew
         OrderStatus.PREPARING -> OrderStatusPreparing
-        OrderStatus.READY -> OrderStatusReady
+        OrderStatus.DELIVERED, OrderStatus.READY -> OrderStatusDelivered
         OrderStatus.PAID -> OrderStatusPaid
         OrderStatus.CANCELLED -> OrderStatusCancelled
         OrderStatus.REJECTED -> OrderStatusRejected
