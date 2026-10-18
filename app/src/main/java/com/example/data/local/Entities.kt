@@ -37,6 +37,7 @@ data class MenuItemEntity(
     val isAvailable: Boolean,
     val imageUri: String? = null,
     val bgImageUri: String? = null,
+    val galleryImagesStr: String = "",
     val isOffer: Boolean = false,
     val offerDiscountPercent: Int = 0,
     val offerTag: String = "عرض خاص"

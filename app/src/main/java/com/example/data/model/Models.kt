@@ -30,6 +30,7 @@ data class MenuItem(
     val isAvailable: Boolean = true,
     val imageUri: String? = null,
     val bgImageUri: String? = null,
+    val galleryImages: List<String> = emptyList(), // صور متعددة إضافية للصنف
     val isOffer: Boolean = false,
     val offerDiscountPercent: Int = 0,
     val offerTag: String = "عرض خاص"
@@ -55,7 +56,7 @@ enum class OrderStatus(val titleAr: String, val titleEn: String) {
     PREPARING("تحضير", "Preparing"),
     DELIVERED("تم التسليم", "Delivered"),
     READY("تم التسليم", "Ready"),
-    PAID("تم تسديد الفاتورة", "Paid"),
+    PAID("تسديد الفاتورة", "Paid"),
     REJECTED("الطلبات المرفوضة", "Rejected"),
     CANCELLED("ملغي", "Cancelled")
 }

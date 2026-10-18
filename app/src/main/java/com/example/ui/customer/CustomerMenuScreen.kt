@@ -26,12 +26,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Cake
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
@@ -134,12 +140,15 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
         }
     }
 
+    val context = LocalContext.current
     var showSearchBox by remember { mutableStateOf(false) }
     var showCartSheet by remember { mutableStateOf(false) }
     var showTablePicker by remember { mutableStateOf(false) }
     var orderSubmittedSuccessId by remember { mutableStateOf<String?>(null) }
     var submittedCustomerName by remember { mutableStateOf("") }
     var customerNameInput by remember { mutableStateOf("") }
+    var showNameError by remember { mutableStateOf(false) }
+    var itemForDetails by remember { mutableStateOf<MenuItem?>(null) }
     var customerNotes by remember { mutableStateOf("") }
 
     // Active category
@@ -446,7 +455,8 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                         fontScale = fontScale,
                         onSelectCategory = { viewModel.selectCategory(it) },
                         onAddToCart = { viewModel.addToCart(it) },
-                        onRemoveFromCart = { viewModel.removeFromCart(it) }
+                        onRemoveFromCart = { viewModel.removeFromCart(it) },
+                        onShowDetails = { itemForDetails = it }
                     )
                 }
                 1 -> {
@@ -460,7 +470,8 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                         fontScale = fontScale,
                         onAddToCart = { viewModel.addToCart(it) },
                         onRemoveFromCart = { viewModel.removeFromCart(it) },
-                        onGoToMenu = { viewModel.setCustomerMenuTab(0) }
+                        onGoToMenu = { viewModel.setCustomerMenuTab(0) },
+                        onShowDetails = { itemForDetails = it }
                     )
                 }
                 2 -> {
@@ -660,17 +671,40 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Customer Name Input Field (REQUIRED USER REQUEST)
+                    // Customer Name Input Field (MANDATORY USER REQUEST: اجباري ان يكتب الزبون اسمة في الطلب)
                     OutlinedTextField(
                         value = customerNameInput,
-                        onValueChange = { customerNameInput = it },
-                        label = { Text("اسم الزبون (لإرفاقه بالطلب)", fontSize = 12.sp, color = CafeTextSecondary) },
-                        placeholder = { Text("اكتب اسمك ليظهر على الفاتورة ولدى الكاشير", fontSize = 11.sp, color = CafeTextSecondary) },
+                        onValueChange = {
+                            customerNameInput = it
+                            if (showNameError && it.trim().isNotBlank()) {
+                                showNameError = false
+                            }
+                        },
+                        label = {
+                            Text(
+                                text = "اسم الزبون (إجباري لإتمام الطلب) *",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (showNameError) Color(0xFFFF5252) else accentColor
+                            )
+                        },
+                        placeholder = { Text("يرجى كتابة اسمك هنا لإرسال طلبك إلى الكاشير", fontSize = 11.sp, color = CafeTextSecondary) },
+                        isError = showNameError,
+                        supportingText = {
+                            if (showNameError) {
+                                Text(
+                                    text = "⚠️ كتابة اسم الزبون إجبارية لإتمام وإرسال الطلب!",
+                                    color = Color(0xFFFF5252),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Person,
                                 contentDescription = null,
-                                tint = accentColor,
+                                tint = if (showNameError) Color(0xFFFF5252) else accentColor,
                                 modifier = Modifier.size(20.dp)
                             )
                         },
@@ -680,8 +714,8 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = CafeInputBg,
                             unfocusedContainerColor = CafeInputBg,
-                            focusedBorderColor = accentColor,
-                            unfocusedBorderColor = CafeInputBorder,
+                            focusedBorderColor = if (showNameError) Color(0xFFFF5252) else accentColor,
+                            unfocusedBorderColor = if (showNameError) Color(0xFFFF5252) else CafeInputBorder,
                             focusedTextColor = CafeTextPrimary,
                             unfocusedTextColor = CafeTextPrimary
                         )
@@ -750,15 +784,21 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                     CafePrimaryButton(
                         text = "إرسال الطلب إلى الكاشير",
                         onClick = {
-                            val nameToSubmit = customerNameInput.trim().ifBlank { "زبون طاولة $selectedTableNumber" }
+                            val trimmedName = customerNameInput.trim()
+                            if (trimmedName.isBlank()) {
+                                showNameError = true
+                                Toast.makeText(context, "يرجى كتابة اسمك أولاً لإتمام الطلب (إجباري)", Toast.LENGTH_LONG).show()
+                                return@CafePrimaryButton
+                            }
                             viewModel.submitOrder(
-                                customerName = nameToSubmit,
+                                customerName = trimmedName,
                                 customerNotes = customerNotes
                             ) { orderId ->
                                 orderSubmittedSuccessId = orderId
-                                submittedCustomerName = nameToSubmit
+                                submittedCustomerName = trimmedName
                                 customerNotes = ""
                                 customerNameInput = ""
+                                showNameError = false
                                 showCartSheet = false
                             }
                         },
@@ -871,6 +911,19 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                 }
             )
         }
+
+        // ITEM DETAILS & GALLERY PHOTOS DIALOG (خيار مزيد من التفاصيل وصور)
+        if (itemForDetails != null) {
+            ItemDetailsAndGalleryDialog(
+                item = itemForDetails!!,
+                onDismiss = { itemForDetails = null },
+                inCartCount = cart.find { it.menuItem.id == itemForDetails!!.id }?.quantity ?: 0,
+                onAddToCart = { viewModel.addToCart(itemForDetails!!) },
+                onRemoveFromCart = { viewModel.removeFromCart(itemForDetails!!) },
+                accentColor = accentColor,
+                fontScale = fontScale
+            )
+        }
     }
 }
 
@@ -949,7 +1002,8 @@ fun StandardOrderingPage(
     fontScale: Float,
     onSelectCategory: (String) -> Unit,
     onAddToCart: (MenuItem) -> Unit,
-    onRemoveFromCart: (MenuItem) -> Unit
+    onRemoveFromCart: (MenuItem) -> Unit,
+    onShowDetails: (MenuItem) -> Unit = {}
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // HORIZONTAL CATEGORIES CAROUSEL
@@ -1021,7 +1075,8 @@ fun StandardOrderingPage(
                     cardRadiusDp = cardRadiusDp,
                     fontScale = fontScale,
                     onAddToCart = { onAddToCart(item) },
-                    onRemoveFromCart = { onRemoveFromCart(item) }
+                    onRemoveFromCart = { onRemoveFromCart(item) },
+                    onShowDetails = { onShowDetails(item) }
                 )
             }
         }
@@ -1041,7 +1096,8 @@ fun OffersAndNewItemsPage(
     fontScale: Float,
     onAddToCart: (MenuItem) -> Unit,
     onRemoveFromCart: (MenuItem) -> Unit,
-    onGoToMenu: () -> Unit
+    onGoToMenu: () -> Unit,
+    onShowDetails: (MenuItem) -> Unit = {}
 ) {
     LazyColumn(
         modifier = Modifier
@@ -1152,7 +1208,8 @@ fun OffersAndNewItemsPage(
                     cardRadiusDp = cardRadiusDp,
                     fontScale = fontScale,
                     onAddToCart = { onAddToCart(item) },
-                    onRemoveFromCart = { onRemoveFromCart(item) }
+                    onRemoveFromCart = { onRemoveFromCart(item) },
+                    onShowDetails = { onShowDetails(item) }
                 )
             }
         }
@@ -1170,7 +1227,8 @@ fun OfferItemCard(
     cardRadiusDp: Int,
     fontScale: Float,
     onAddToCart: () -> Unit,
-    onRemoveFromCart: () -> Unit
+    onRemoveFromCart: () -> Unit,
+    onShowDetails: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
@@ -1263,7 +1321,8 @@ fun OfferItemCard(
                             .size(90.dp)
                             .clip(RoundedCornerShape(16.dp))
                             .background(Color(0xFF061A1D))
-                            .border(1.dp, CafeCardBorder, RoundedCornerShape(16.dp)),
+                            .border(1.dp, CafeCardBorder, RoundedCornerShape(16.dp))
+                            .clickable { onShowDetails() },
                         contentAlignment = Alignment.Center
                     ) {
                         if (!item.imageUri.isNullOrEmpty()) {
@@ -1305,6 +1364,31 @@ fun OfferItemCard(
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // خيار مزيد من التفاصيل وصور
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { onShowDetails() }
+                                .padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PhotoLibrary,
+                                contentDescription = null,
+                                tint = CafeGold,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (item.galleryImages.isNotEmpty()) "مزيد من التفاصيل وصور (${item.galleryImages.size + if (item.imageUri != null) 1 else 0}) 📸" else "مزيد من التفاصيل وصور 📸",
+                                fontSize = (11 * fontScale).sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CafeGold
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(6.dp))
 
@@ -1811,7 +1895,8 @@ fun MenuItemCard(
     cardRadiusDp: Int,
     fontScale: Float,
     onAddToCart: () -> Unit,
-    onRemoveFromCart: () -> Unit
+    onRemoveFromCart: () -> Unit,
+    onShowDetails: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
@@ -1862,7 +1947,8 @@ fun MenuItemCard(
                         .size(94.dp)
                         .clip(RoundedCornerShape(16.dp))
                         .background(Color(0xFF061A1D))
-                        .border(1.dp, CafeCardBorder, RoundedCornerShape(16.dp)),
+                        .border(1.dp, CafeCardBorder, RoundedCornerShape(16.dp))
+                        .clickable { onShowDetails() },
                     contentAlignment = Alignment.Center
                 ) {
                     if (!item.imageUri.isNullOrEmpty()) {
@@ -1948,6 +2034,31 @@ fun MenuItemCard(
                             overflow = TextOverflow.Ellipsis,
                             lineHeight = 15.sp
                         )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // خيار مزيد من التفاصيل وصور
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { onShowDetails() }
+                                .padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PhotoLibrary,
+                                contentDescription = null,
+                                tint = accentColor,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (item.galleryImages.isNotEmpty()) "مزيد من التفاصيل وصور (${item.galleryImages.size + if (item.imageUri != null) 1 else 0}) 📸" else "مزيد من التفاصيل وصور 📸",
+                                fontSize = (11 * fontScale).sp,
+                                fontWeight = FontWeight.Bold,
+                                color = accentColor
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -2060,4 +2171,357 @@ fun getCategoryIcon(type: String): ImageVector {
         "pizza" -> Icons.Default.LocalPizza
         else -> Icons.Default.LocalCafe
     }
+}
+
+/**
+ * خيار "مزيد من التفاصيل وصور":
+ * يعرض ألبوم صور متعددة للصنف مع شرح تفصيلي ومكونات وسعر والتحكم بالكمية
+ */
+@Composable
+fun ItemDetailsAndGalleryDialog(
+    item: MenuItem,
+    onDismiss: () -> Unit,
+    inCartCount: Int,
+    onAddToCart: () -> Unit,
+    onRemoveFromCart: () -> Unit,
+    accentColor: Color,
+    fontScale: Float = 1.0f
+) {
+    val allPhotos = remember(item) {
+        buildList {
+            item.imageUri?.takeIf { it.isNotBlank() }?.let { add(it) }
+            addAll(item.galleryImages.filter { it.isNotBlank() })
+            item.bgImageUri?.takeIf { it.isNotBlank() }?.let { add(it) }
+        }.distinct()
+    }
+
+    var activePhotoIndex by remember { mutableIntStateOf(0) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = CafeSurface,
+        shape = RoundedCornerShape(24.dp),
+        title = null,
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Top header: Close button + Offer/Availability badge
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(CafeSurfaceVariant)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "إغلاق",
+                            tint = CafeTextPrimary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (item.isOffer) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(CafeGold.copy(alpha = 0.25f))
+                                    .border(1.dp, CafeGold, RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = "🔥 ${item.offerTag}",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CafeGold
+                                )
+                            }
+                        }
+
+                        if (!item.isAvailable) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0x33D32F2F))
+                                    .border(1.dp, Color(0xFFD32F2F), RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = "غير متوفر حالياً",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFFF6B6B)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Photos Section
+                if (allPhotos.isNotEmpty()) {
+                    val safeIdx = activePhotoIndex.coerceIn(0, allPhotos.size - 1)
+                    val currentUri = allPhotos[safeIdx]
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(Color(0xFF041215))
+                            .border(1.2.dp, CafeCardBorderGlow, RoundedCornerShape(18.dp))
+                    ) {
+                        AsyncImage(
+                            model = currentUri,
+                            contentDescription = item.nameAr,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+
+                        // Photo Counter Badge
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(8.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color(0xCC000000))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "صورة ${safeIdx + 1} من ${allPhotos.size}",
+                                fontSize = 11.sp,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    // Thumbnails list if multiple photos
+                    if (allPhotos.size > 1) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            itemsIndexed(allPhotos) { idx, uri ->
+                                val isSelected = idx == safeIdx
+                                Box(
+                                    modifier = Modifier
+                                        .size(54.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .border(
+                                            width = if (isSelected) 2.dp else 0.8.dp,
+                                            color = if (isSelected) accentColor else CafeCardBorder,
+                                            shape = RoundedCornerShape(10.dp)
+                                        )
+                                        .clickable { activePhotoIndex = idx }
+                                ) {
+                                    AsyncImage(
+                                        model = uri,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Themed Fallback Illustration
+                    val imgRes = when (item.imageType) {
+                        "drink" -> R.drawable.food_drink
+                        else -> R.drawable.food_burger
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(150.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(Color(0xFF041215))
+                            .border(1.dp, CafeCardBorder, RoundedCornerShape(18.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(id = imgRes),
+                            contentDescription = item.nameAr,
+                            modifier = Modifier.size(90.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Item Name (Arabic & English)
+                Text(
+                    text = item.nameAr,
+                    fontSize = (18 * fontScale).sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = CafeTextPrimary,
+                    textAlign = TextAlign.Center
+                )
+
+                if (item.nameEn.isNotBlank()) {
+                    Text(
+                        text = item.nameEn,
+                        fontSize = (12 * fontScale).sp,
+                        color = CafeTextSecondary,
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Price Row
+                Text(
+                    text = OrderFeeCalculator.formatPrice(item.price, item.currency),
+                    fontSize = (19 * fontScale).sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = accentColor
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Explanation & Description Details Box
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(CafeInputBg)
+                        .border(1.dp, CafeCardBorder, RoundedCornerShape(14.dp))
+                        .padding(12.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.RestaurantMenu,
+                            contentDescription = null,
+                            tint = CafeGold,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "شرح وتفاصيل الطلب:",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CafeGold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = item.descriptionAr.ifBlank { "طلب شهي ومميز يتم تحضيره طازجاً من أجود المكونات حسب اختيارك." },
+                        fontSize = (13 * fontScale).sp,
+                        color = CafeTextPrimary,
+                        lineHeight = 20.sp
+                    )
+
+                    if (item.descriptionEn.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = item.descriptionEn,
+                            fontSize = (11 * fontScale).sp,
+                            color = CafeTextSecondary,
+                            lineHeight = 16.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Stepper Controls
+                if (item.isAvailable) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(CafeSurfaceVariant)
+                            .padding(8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "الكمية في السلة:",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CafeTextPrimary,
+                            modifier = Modifier.padding(start = 6.dp)
+                        )
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(
+                                onClick = onRemoveFromCart,
+                                enabled = inCartCount > 0,
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(if (inCartCount > 0) CafeInputBg else Color(0x33FFFFFF))
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Remove,
+                                    contentDescription = "تقليل",
+                                    tint = if (inCartCount > 0) accentColor else Color.Gray,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+
+                            Text(
+                                text = "$inCartCount",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = CafeTextPrimary,
+                                modifier = Modifier.padding(horizontal = 12.dp)
+                            )
+
+                            IconButton(
+                                onClick = onAddToCart,
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(accentColor)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "زيادة",
+                                    tint = Color(0xFF032125),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Text(
+                        text = "هذا الصنف غير متوفر حالياً للطلب",
+                        fontSize = 12.sp,
+                        color = Color(0xFFFF6B6B),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = accentColor,
+                    contentColor = Color(0xFF032125)
+                ),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("إغلاق التفاصيل", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            }
+        }
+    )
 }

@@ -92,14 +92,10 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
     val activeFilter by viewModel.orderStatusFilter.collectAsState()
     var cashierViewMode by remember { mutableIntStateOf(0) } // 0 = Individual Orders, 1 = Table Sessions Billing
 
-    val filteredOrders = if (activeFilter == null) {
-        orders
-    } else if (activeFilter == OrderStatus.DELIVERED) {
-        orders.filter { it.status == OrderStatus.DELIVERED || it.status == OrderStatus.READY }
-    } else if (activeFilter == OrderStatus.REJECTED) {
-        orders.filter { it.status == OrderStatus.REJECTED || it.status == OrderStatus.CANCELLED }
-    } else {
-        orders.filter { it.status == activeFilter }
+    val filteredOrders = when (activeFilter) {
+        OrderStatus.DELIVERED, OrderStatus.READY -> orders.filter { it.status == OrderStatus.DELIVERED || it.status == OrderStatus.READY }
+        OrderStatus.REJECTED, OrderStatus.CANCELLED -> orders.filter { it.status == OrderStatus.REJECTED || it.status == OrderStatus.CANCELLED }
+        else -> orders.filter { it.status == activeFilter }
     }
 
     val newOrdersCount = orders.count { it.status == OrderStatus.NEW }
@@ -343,14 +339,6 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    item {
-                        StatusFilterChip(
-                            label = "الكل (${orders.size})",
-                            selected = activeFilter == null,
-                            color = CafeCyanPrimary,
-                            onClick = { viewModel.setOrderStatusFilter(null) }
-                        )
-                    }
                     val cashierStatuses = listOf(
                         OrderStatus.NEW,
                         OrderStatus.PREPARING,

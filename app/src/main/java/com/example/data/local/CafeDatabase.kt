@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
         TableEntity::class,
         OrderEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class CafeDatabase : RoomDatabase() {

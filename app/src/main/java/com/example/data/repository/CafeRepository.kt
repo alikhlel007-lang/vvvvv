@@ -139,6 +139,7 @@ class CafeRepository(private val dao: CafeDao) {
         imageType: String = "burger",
         imageUri: String? = null,
         bgImageUri: String? = null,
+        galleryImages: List<String> = emptyList(),
         isOffer: Boolean = false,
         offerDiscountPercent: Int = 0,
         offerTag: String = "عرض خاص"
@@ -157,6 +158,7 @@ class CafeRepository(private val dao: CafeDao) {
             isAvailable = true,
             imageUri = imageUri,
             bgImageUri = bgImageUri,
+            galleryImagesStr = galleryImages.joinToString("|||"),
             isOffer = isOffer,
             offerDiscountPercent = offerDiscountPercent,
             offerTag = offerTag
@@ -176,6 +178,7 @@ class CafeRepository(private val dao: CafeDao) {
                 "isAvailable" to true,
                 "imageUri" to (imageUri ?: ""),
                 "bgImageUri" to (bgImageUri ?: ""),
+                "galleryImages" to galleryImages,
                 "isOffer" to isOffer,
                 "offerDiscountPercent" to offerDiscountPercent,
                 "offerTag" to offerTag
@@ -200,6 +203,7 @@ class CafeRepository(private val dao: CafeDao) {
                 "isAvailable" to item.isAvailable,
                 "imageUri" to (item.imageUri ?: ""),
                 "bgImageUri" to (item.bgImageUri ?: ""),
+                "galleryImages" to item.galleryImages,
                 "isOffer" to item.isOffer,
                 "offerDiscountPercent" to item.offerDiscountPercent,
                 "offerTag" to item.offerTag
@@ -410,6 +414,7 @@ class CafeRepository(private val dao: CafeDao) {
         isAvailable = isAvailable,
         imageUri = imageUri,
         bgImageUri = bgImageUri,
+        galleryImages = if (galleryImagesStr.isBlank()) emptyList() else galleryImagesStr.split("|||").filter { it.isNotBlank() },
         isOffer = isOffer,
         offerDiscountPercent = offerDiscountPercent,
         offerTag = offerTag
@@ -428,6 +433,7 @@ class CafeRepository(private val dao: CafeDao) {
         isAvailable = isAvailable,
         imageUri = imageUri,
         bgImageUri = bgImageUri,
+        galleryImagesStr = galleryImages.joinToString("|||"),
         isOffer = isOffer,
         offerDiscountPercent = offerDiscountPercent,
         offerTag = offerTag

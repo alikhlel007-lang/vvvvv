@@ -356,7 +356,7 @@ fun MenuManagementScreen(viewModel: MainViewModel) {
             AddItemDialog(
                 categoryId = activeCatId,
                 onDismiss = { showAddItemDialog = false },
-                onAdd = { nameAr, nameEn, descAr, price, currency, imageType, imageUri, bgImageUri, isOffer, discount, offerTag ->
+                onAdd = { nameAr, nameEn, descAr, price, currency, imageType, imageUri, bgImageUri, galleryImages, isOffer, discount, offerTag ->
                     viewModel.addMenuItem(
                         categoryId = activeCatId,
                         nameAr = nameAr,
@@ -368,6 +368,7 @@ fun MenuManagementScreen(viewModel: MainViewModel) {
                         imageType = imageType,
                         imageUri = imageUri,
                         bgImageUri = bgImageUri,
+                        galleryImages = galleryImages,
                         isOffer = isOffer,
                         offerDiscountPercent = discount,
                         offerTag = offerTag
@@ -624,6 +625,7 @@ fun ItemGearSettingsDialog(
     var isAvailable by remember { mutableStateOf(item.isAvailable) }
     var itemImageUri by remember { mutableStateOf(item.imageUri) }
     var itemBgImageUri by remember { mutableStateOf(item.bgImageUri) }
+    var galleryImages by remember { mutableStateOf(item.galleryImages) }
     var isOffer by remember { mutableStateOf(item.isOffer) }
     var discountPercentStr by remember { mutableStateOf(item.offerDiscountPercent.toString()) }
     var offerTag by remember { mutableStateOf(item.offerTag) }
@@ -642,6 +644,14 @@ fun ItemGearSettingsDialog(
     ) { uri ->
         if (uri != null) {
             itemBgImageUri = uri.toString()
+        }
+    }
+
+    val galleryPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 10)
+    ) { uris ->
+        if (uris.isNotEmpty()) {
+            galleryImages = (galleryImages + uris.map { it.toString() }).distinct()
         }
     }
 
@@ -1018,6 +1028,78 @@ fun ItemGearSettingsDialog(
                     }
                 }
 
+                // 6. ألبوم صور إضافية متعددة للصنف
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(CafeInputBg)
+                        .padding(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "6. ألبوم صور إضافية للصنف:",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CafeCyanPrimary
+                            )
+                            Text(
+                                text = "تظهر للزبون عند الضغط على 'مزيد من التفاصيل والصور'",
+                                fontSize = 10.sp,
+                                color = CafeTextSecondary
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                galleryPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("+ صور (${galleryImages.size})", fontSize = 10.sp, color = CafeCyanPrimary)
+                        }
+                    }
+
+                    if (galleryImages.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            items(galleryImages) { uri ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .border(1.dp, CafeInputBorder, RoundedCornerShape(8.dp))
+                                ) {
+                                    AsyncImage(
+                                        model = uri,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .size(18.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xCC000000))
+                                            .clickable { galleryImages = galleryImages.filter { it != uri } },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("×", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Delete Item Option
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1042,6 +1124,7 @@ fun ItemGearSettingsDialog(
                         isAvailable = isAvailable,
                         imageUri = itemImageUri,
                         bgImageUri = itemBgImageUri,
+                        galleryImages = galleryImages,
                         isOffer = isOffer,
                         offerDiscountPercent = disc,
                         offerTag = offerTag.ifBlank { "عرض خاص" }
@@ -1109,6 +1192,7 @@ fun AddItemDialog(
         imageType: String,
         imageUri: String?,
         bgImageUri: String?,
+        galleryImages: List<String>,
         isOffer: Boolean,
         discountPercent: Int,
         offerTag: String
@@ -1122,6 +1206,7 @@ fun AddItemDialog(
     var imageType by remember { mutableStateOf("burger") }
     var imageUri by remember { mutableStateOf<String?>(null) }
     var bgImageUri by remember { mutableStateOf<String?>(null) }
+    var galleryImages by remember { mutableStateOf<List<String>>(emptyList()) }
     var isOffer by remember { mutableStateOf(false) }
 
     val photoPicker = rememberLauncherForActivityResult(
@@ -1134,6 +1219,14 @@ fun AddItemDialog(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         if (uri != null) bgImageUri = uri.toString()
+    }
+
+    val galleryPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 10)
+    ) { uris ->
+        if (uris.isNotEmpty()) {
+            galleryImages = (galleryImages + uris.map { it.toString() }).distinct()
+        }
     }
 
     AlertDialog(
@@ -1274,6 +1367,69 @@ fun AddItemDialog(
                     }
                 }
 
+                // إضافة العديد من الصور للصنف (ألبوم وتفاصيل الصنف للزبون)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(CafeInputBg)
+                        .padding(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("وضع العديد من الصور للصنف:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = CafeCyanPrimary)
+                            Text("تظهر للزبون عند الضغط على 'مزيد من التفاصيل وصور'", fontSize = 9.sp, color = CafeTextSecondary)
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                galleryPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(13.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text("+ صور (${galleryImages.size})", fontSize = 10.sp, color = CafeCyanPrimary)
+                        }
+                    }
+
+                    if (galleryImages.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            items(galleryImages) { uri ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(52.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .border(1.dp, CafeInputBorder, RoundedCornerShape(8.dp))
+                                ) {
+                                    AsyncImage(
+                                        model = uri,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .size(16.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xCC000000))
+                                            .clickable { galleryImages = galleryImages.filter { it != uri } },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("×", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Show as Offer Toggle
                 Row(
                     modifier = Modifier
@@ -1307,6 +1463,7 @@ fun AddItemDialog(
                             imageType,
                             imageUri,
                             bgImageUri,
+                            galleryImages,
                             isOffer,
                             if (isOffer) 15 else 0,
                             if (isOffer) "عرض خاص" else ""

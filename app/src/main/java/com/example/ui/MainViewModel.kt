@@ -93,9 +93,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _authSuccessMessage = MutableStateFlow<String?>(null)
     val authSuccessMessage: StateFlow<String?> = _authSuccessMessage.asStateFlow()
 
-    // Cashier filter
-    private val _orderStatusFilter = MutableStateFlow<OrderStatus?>(null)
-    val orderStatusFilter: StateFlow<OrderStatus?> = _orderStatusFilter.asStateFlow()
+    // Cashier filter (default to NEW stage, "الكل" option removed)
+    private val _orderStatusFilter = MutableStateFlow<OrderStatus>(OrderStatus.NEW)
+    val orderStatusFilter: StateFlow<OrderStatus> = _orderStatusFilter.asStateFlow()
 
     // Cafe Profile & Branding Settings
     private val _cafeName = MutableStateFlow("CAFE LUXURY")
@@ -178,7 +178,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _selectedTableNumber.value = number
     }
 
-    fun setOrderStatusFilter(status: OrderStatus?) {
+    fun setOrderStatusFilter(status: OrderStatus) {
         _orderStatusFilter.value = status
     }
 
@@ -307,6 +307,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         imageType: String = "burger",
         imageUri: String? = null,
         bgImageUri: String? = null,
+        galleryImages: List<String> = emptyList(),
         isOffer: Boolean = false,
         offerDiscountPercent: Int = 0,
         offerTag: String = "عرض خاص"
@@ -323,6 +324,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 imageType = imageType,
                 imageUri = imageUri,
                 bgImageUri = bgImageUri,
+                galleryImages = galleryImages,
                 isOffer = isOffer,
                 offerDiscountPercent = offerDiscountPercent,
                 offerTag = offerTag
