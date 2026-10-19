@@ -1,7 +1,7 @@
 package com.example.ui.cashier
 
 import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,7 +23,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material.icons.filled.Group
@@ -31,7 +30,6 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ReceiptLong
-import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Button
@@ -45,9 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.OrderRecord
@@ -85,29 +82,105 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/**
+ * نموذج جلسة وفاتورة الطاولة الموحدة (فاتورة واحدة لكل جلسة)
+ */
+data class TableSession(
+    val tableNumber: Int,
+    val orders: List<OrderRecord>,
+    val stage: OrderStatus,
+    val lastTimestamp: Long
+)
+
 @Composable
 fun CashierOrdersScreen(viewModel: MainViewModel) {
     val context = LocalContext.current
     val orders by viewModel.orders.collectAsState()
     val activeFilter by viewModel.orderStatusFilter.collectAsState()
-    var cashierViewMode by remember { mutableIntStateOf(0) } // 0 = Individual Orders, 1 = Table Sessions Billing
 
-    val filteredOrders = when (activeFilter) {
-        OrderStatus.DELIVERED, OrderStatus.READY -> orders.filter { it.status == OrderStatus.DELIVERED || it.status == OrderStatus.READY }
-        OrderStatus.REJECTED, OrderStatus.CANCELLED -> orders.filter { it.status == OrderStatus.REJECTED || it.status == OrderStatus.CANCELLED }
-        else -> orders.filter { it.status == activeFilter }
+    // تجميع كافة الطلبات في جلسات وفواتير موحدة حسب كل طاولة
+    // (التخلص من الطلبات الفردية المنعزلة، وفاتورة واحدة متكاملة لكل جلسة)
+    val tableSessions = remember(orders) {
+        val byTable = orders.groupBy { it.tableNumber }
+        val sessionsList = mutableListOf<TableSession>()
+
+        byTable.forEach { (tableNumber, tableOrders) ->
+            val activeOrders = tableOrders.filter {
+                it.status != OrderStatus.PAID &&
+                it.status != OrderStatus.CANCELLED &&
+                it.status != OrderStatus.REJECTED
+            }
+
+            if (activeOrders.isNotEmpty()) {
+                // تحديد مرحلة الجلسة الحالية
+                val stage = when {
+                    activeOrders.any { it.status == OrderStatus.DELIVERED || it.status == OrderStatus.READY } -> OrderStatus.DELIVERED
+                    activeOrders.any { it.status == OrderStatus.PREPARING } -> OrderStatus.PREPARING
+                    else -> OrderStatus.NEW
+                }
+
+                // تضمين الطلبات النشطة والطلبات المسددة فردياً ضمن نفس الجلسة لتبقى موحدة في فاتورة واحدة
+                val earliestActiveTime = activeOrders.minOf { it.timestamp }
+                val sessionOrders = tableOrders.filter {
+                    it in activeOrders || (it.status == OrderStatus.PAID && it.timestamp >= earliestActiveTime - 14400000L)
+                }.sortedBy { it.timestamp }
+
+                sessionsList.add(
+                    TableSession(
+                        tableNumber = tableNumber,
+                        orders = sessionOrders,
+                        stage = stage,
+                        lastTimestamp = sessionOrders.maxOf { it.timestamp }
+                    )
+                )
+            } else {
+                // في حال كانت جميع طلبات الطاولة مسددة أو ملغية/مرفوضة
+                val paidOrders = tableOrders.filter { it.status == OrderStatus.PAID }
+                if (paidOrders.isNotEmpty()) {
+                    sessionsList.add(
+                        TableSession(
+                            tableNumber = tableNumber,
+                            orders = paidOrders.sortedBy { it.timestamp },
+                            stage = OrderStatus.PAID,
+                            lastTimestamp = paidOrders.maxOf { it.timestamp }
+                        )
+                    )
+                }
+
+                val rejectedOrders = tableOrders.filter { it.status == OrderStatus.REJECTED || it.status == OrderStatus.CANCELLED }
+                if (rejectedOrders.isNotEmpty()) {
+                    sessionsList.add(
+                        TableSession(
+                            tableNumber = tableNumber,
+                            orders = rejectedOrders.sortedBy { it.timestamp },
+                            stage = OrderStatus.REJECTED,
+                            lastTimestamp = rejectedOrders.maxOf { it.timestamp }
+                        )
+                    )
+                }
+            }
+        }
+
+        sessionsList.sortedByDescending { it.lastTimestamp }
     }
 
-    val newOrdersCount = orders.count { it.status == OrderStatus.NEW }
-    val activeTablesCount = orders
-        .filter { it.status != OrderStatus.PAID && it.status != OrderStatus.CANCELLED && it.status != OrderStatus.REJECTED }
-        .map { it.tableNumber }
-        .distinct()
-        .size
+    // تصفية الجلسات حسب المرحلة المحددة
+    val filteredSessions = tableSessions.filter { it.stage == activeFilter }
+
+    // العدادات والإحصائيات
+    val newSessionsCount = tableSessions.count { it.stage == OrderStatus.NEW }
+    val preparingSessionsCount = tableSessions.count { it.stage == OrderStatus.PREPARING }
+    val deliveredSessionsCount = tableSessions.count { it.stage == OrderStatus.DELIVERED }
+    val paidSessionsCount = tableSessions.count { it.stage == OrderStatus.PAID }
+    val rejectedSessionsCount = tableSessions.count { it.stage == OrderStatus.REJECTED }
+
+    val activeTablesCount = tableSessions.count {
+        it.stage != OrderStatus.PAID && it.stage != OrderStatus.REJECTED
+    }
 
     val cafeName by viewModel.cafeName.collectAsState()
 
-    // Total sales calculation
+    // حساب إجمالي الإيرادات المسددة
     val paidOrders = orders.filter { it.status == OrderStatus.PAID }
     val totalRevenueIqd = paidOrders.filter { it.currency != "$" && it.currency != "USD" }.sumOf { it.totalPrice }
     val totalRevenueUsd = paidOrders.filter { it.currency == "$" || it.currency == "USD" }.sumOf { it.totalPrice }
@@ -135,7 +208,7 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // TOP BAR: Right (Switcher: Cashier/Menu), Center (Cafe Name), Left (Settings Gear)
+            // TOP BAR: اليمين (التبديل بين الكاشير والمنيو)، الوسط (اسم الكافيه)، اليسار (الترس)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -143,7 +216,7 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // RIGHT SIDE: Fast Switcher between Cashier & Menu Inspection
+                // RIGHT SIDE: التبديل السريع
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
@@ -176,7 +249,7 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                         }
                     }
 
-                    // Inactive Menu Tab (Click to inspect menu)
+                    // Inactive Menu Tab
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(16.dp))
@@ -202,7 +275,7 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                     }
                 }
 
-                // CENTER: Cafe Name & Subtitle
+                // CENTER: اسم الكافيه
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = cafeName,
@@ -211,9 +284,9 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                         color = CafeTextPrimary
                     )
                     Text(
-                        text = if (newOrdersCount > 0) "$newOrdersCount طلبات جديدة" else "لوحة الكاشير والحسابات",
+                        text = if (newSessionsCount > 0) "$newSessionsCount طلبات بانتظار التحضير" else "لوحة إدارة الطلبات والفواتير",
                         fontSize = 11.sp,
-                        color = if (newOrdersCount > 0) CafeCyanPrimary else CafeGold,
+                        color = if (newSessionsCount > 0) CafeCyanPrimary else CafeGold,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -246,8 +319,8 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
             ) {
                 MetricCard(
                     title = "طلبات جديدة",
-                    value = "$newOrdersCount",
-                    valueColor = if (newOrdersCount > 0) CafeCyanPrimary else CafeTextPrimary,
+                    value = "$newSessionsCount",
+                    valueColor = if (newSessionsCount > 0) CafeCyanPrimary else CafeTextPrimary,
                     modifier = Modifier.weight(1f)
                 )
                 MetricCard(
@@ -264,223 +337,154 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // VIEW MODE TOGGLE (Requirement 5: Individual Orders vs Table Sessions Group Billing)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+            // مراحل الطلب الخمس (بدون خيار "الكل" - وموحدة كلياً على فواتير الجلسات)
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Tab 0: Individual Orders
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(if (cashierViewMode == 0) CafeCyanPrimary else CafeSurfaceVariant)
-                        .border(1.dp, if (cashierViewMode == 0) CafeCyanPrimary else CafeCardBorder, RoundedCornerShape(14.dp))
-                        .clickable { cashierViewMode = 0 }
-                        .padding(vertical = 9.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.ReceiptLong,
-                            contentDescription = null,
-                            tint = if (cashierViewMode == 0) Color(0xFF032125) else CafeCyanPrimary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "الطلبات الفردية (${orders.size})",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (cashierViewMode == 0) Color(0xFF032125) else CafeTextPrimary
-                        )
+                val cashierStatuses = listOf(
+                    OrderStatus.NEW,
+                    OrderStatus.PREPARING,
+                    OrderStatus.DELIVERED,
+                    OrderStatus.PAID,
+                    OrderStatus.REJECTED
+                )
+                items(cashierStatuses) { status ->
+                    val count = when (status) {
+                        OrderStatus.NEW -> newSessionsCount
+                        OrderStatus.PREPARING -> preparingSessionsCount
+                        OrderStatus.DELIVERED -> deliveredSessionsCount
+                        OrderStatus.PAID -> paidSessionsCount
+                        OrderStatus.REJECTED -> rejectedSessionsCount
+                        else -> 0
                     }
-                }
-
-                // Tab 1: Table Sessions Billing
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(if (cashierViewMode == 1) CafeCyanPrimary else CafeSurfaceVariant)
-                        .border(1.dp, if (cashierViewMode == 1) CafeCyanPrimary else CafeCardBorder, RoundedCornerShape(14.dp))
-                        .clickable { cashierViewMode = 1 }
-                        .padding(vertical = 9.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Group,
-                            contentDescription = null,
-                            tint = if (cashierViewMode == 1) Color(0xFF032125) else CafeCyanPrimary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "جلسات وحساب الطاولات ($activeTablesCount)",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (cashierViewMode == 1) Color(0xFF032125) else CafeTextPrimary
-                        )
-                    }
+                    StatusFilterChip(
+                        label = "${status.titleAr} ($count)",
+                        selected = activeFilter == status,
+                        color = getStatusColor(status),
+                        onClick = { viewModel.setOrderStatusFilter(status) }
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            if (cashierViewMode == 0) {
-                // STATUS FILTER ROW FOR INDIVIDUAL ORDERS
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // LIST OF TABLE BILLS & SESSIONS
+            if (filteredSessions.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    val cashierStatuses = listOf(
-                        OrderStatus.NEW,
-                        OrderStatus.PREPARING,
-                        OrderStatus.DELIVERED,
-                        OrderStatus.PAID,
-                        OrderStatus.REJECTED
-                    )
-                    items(cashierStatuses) { status ->
-                        val count = when (status) {
-                            OrderStatus.DELIVERED -> orders.count { it.status == OrderStatus.DELIVERED || it.status == OrderStatus.READY }
-                            OrderStatus.REJECTED -> orders.count { it.status == OrderStatus.REJECTED || it.status == OrderStatus.CANCELLED }
-                            else -> orders.count { it.status == status }
-                        }
-                        StatusFilterChip(
-                            label = "${status.titleAr} ($count)",
-                            selected = activeFilter == status || (status == OrderStatus.DELIVERED && activeFilter == OrderStatus.READY),
-                            color = getStatusColor(status),
-                            onClick = { viewModel.setOrderStatusFilter(status) }
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(horizontal = 32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ReceiptLong,
+                            contentDescription = null,
+                            tint = Color(0xFF16474E),
+                            modifier = Modifier.size(56.dp)
                         )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // ORDERS LIST
-                if (filteredOrders.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                imageVector = Icons.Default.Fastfood,
-                                contentDescription = null,
-                                tint = Color(0xFF16474E),
-                                modifier = Modifier.size(56.dp)
-                            )
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Text(
-                                text = "لا توجد طلبات في هذه الحالة حالياً",
-                                color = CafeTextSecondary,
-                                fontSize = 14.sp
-                            )
-                            Spacer(modifier = Modifier.height(14.dp))
-                            Button(
-                                onClick = { viewModel.navigateTo(AppScreen.CUSTOMER_MENU) },
-                                colors = ButtonDefaults.buttonColors(containerColor = CafeCyanPrimary, contentColor = Color(0xFF032125)),
-                                shape = RoundedCornerShape(20.dp)
-                            ) {
-                                Text("فتح منيو الطاولة وإرسال طلب تجريبي", fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        contentPadding = PaddingValues(top = 4.dp, bottom = 24.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(filteredOrders, key = { it.id }) { order ->
-                            CashierOrderCard(
-                                order = order,
-                                onAdvanceStatus = { nextStatus ->
-                                    viewModel.updateOrderStatus(order, nextStatus)
-                                },
-                                onReject = {
-                                    viewModel.rejectOrder(order)
-                                    Toast.makeText(context, "تم رفض طلب الزبون ${order.customerName} بنجاح", Toast.LENGTH_SHORT).show()
-                                },
-                                onDelete = {
-                                    viewModel.deleteOrder(order)
-                                }
-                            )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = when (activeFilter) {
+                                OrderStatus.NEW -> "لا توجد طلبات أو جلسات جديدة حالياً"
+                                OrderStatus.PREPARING -> "لا توجد جلسات قيد التحضير حالياً"
+                                OrderStatus.DELIVERED -> "لا توجد جلسات مسلّمة بانتظار تسديد الفاتورة"
+                                OrderStatus.PAID -> "لا توجد فواتير مسددة حالياً"
+                                OrderStatus.REJECTED -> "قائمة الطلبات المرفوضة فارغة"
+                                else -> "لا توجد بيانات"
+                            },
+                            color = CafeTextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = when (activeFilter) {
+                                OrderStatus.NEW -> "عندما يطلب الزبون من طاولته، ستظهر الفاتورة هنا مع خياري (رفض) أو (تحضير)، وأي طلب إضافي لنفس الطاولة سينضم لنفس الفاتورة تلقائياً."
+                                OrderStatus.PREPARING -> "عند الضغط على تحضير، تنتقل الجلسة إلى هنا حتى يكتمل تجهيزها ويتم الضغط على (تم التسليم)."
+                                OrderStatus.DELIVERED -> "هنا يتم تسديد الفاتورة سواء تسديد فردي لكل شخص على حدى أو تسديد كلي لكامل الطاولة."
+                                OrderStatus.PAID -> "تظهر هنا جميع الفواتير التي تم تسديدها بالكامل."
+                                else -> "تظهر هنا الطلبات التي تم رفضها قبل التحضير."
+                            },
+                            color = CafeTextSecondary,
+                            fontSize = 12.sp,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 18.sp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { viewModel.navigateTo(AppScreen.CUSTOMER_MENU) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = CafeCyanPrimary,
+                                contentColor = Color(0xFF032125)
+                            ),
+                            shape = RoundedCornerShape(20.dp)
+                        ) {
+                            Text("فتح منيو الطاولة وإرسال طلب تجريبي", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
             } else {
-                // TABLE SESSIONS BILLING VIEW (Requirement 5)
-                val activeSessionOrders = orders.filter {
-                    it.status != OrderStatus.CANCELLED && it.status != OrderStatus.REJECTED
-                }
-                val tableSessions = activeSessionOrders.groupBy { it.tableNumber }
-
-                if (tableSessions.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                imageVector = Icons.Default.Group,
-                                contentDescription = null,
-                                tint = Color(0xFF16474E),
-                                modifier = Modifier.size(56.dp)
-                            )
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Text(
-                                text = "لا توجد جلسات طاولات نشطة حالياً",
-                                color = CafeTextSecondary,
-                                fontSize = 14.sp
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = "عندما يطلب الزبائن من نفس الطاولة، ستجتمع طلباتهم هنا لتسديدها فردياً أو جماعياً",
-                                color = CafeTextSecondary.copy(alpha = 0.7f),
-                                fontSize = 11.sp,
-                                modifier = Modifier.padding(horizontal = 32.dp),
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                        }
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        contentPadding = PaddingValues(top = 4.dp, bottom = 24.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        items(tableSessions.keys.toList().sorted()) { tableNum ->
-                            val sessionOrders = tableSessions[tableNum] ?: emptyList()
-                            TableSessionBillingCard(
-                                tableNumber = tableNum,
-                                sessionOrders = sessionOrders,
-                                onPaySingleOrder = { order ->
-                                    viewModel.updateOrderStatus(order, OrderStatus.PAID)
-                                    Toast.makeText(context, "تم تسديد طلب الزبون ${order.customerName} بنجاح!", Toast.LENGTH_SHORT).show()
-                                },
-                                onPayAllSession = { unpaidOrders ->
-                                    viewModel.payAllOrdersForTable(unpaidOrders)
-                                    Toast.makeText(context, "تم تسديد حساب الطاولة $tableNum بالكامل بنجاح!", Toast.LENGTH_SHORT).show()
-                                }
-                            )
-                        }
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    contentPadding = PaddingValues(top = 4.dp, bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    items(filteredSessions, key = { "${it.tableNumber}_${it.stage}_${it.lastTimestamp}" }) { session ->
+                        UnifiedTableSessionCard(
+                            session = session,
+                            onAdvanceSession = { nextStatus ->
+                                viewModel.advanceTableSession(session.orders, nextStatus)
+                                Toast.makeText(
+                                    context,
+                                    "تم تحويل طاولة ${session.tableNumber} إلى ${nextStatus.titleAr} بنجاح",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            onRejectSession = {
+                                viewModel.rejectTableSession(session.orders)
+                                Toast.makeText(
+                                    context,
+                                    "تم رفض طلبات طاولة ${session.tableNumber} بنجاح ❌",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            onPaySingleOrder = { order ->
+                                viewModel.payOrders(listOf(order))
+                                Toast.makeText(
+                                    context,
+                                    "تم تسديد حساب الزبون (${order.customerName}) بنجاح! ✅",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            onPayAllSession = { unpaidOrders ->
+                                viewModel.payAllOrdersForTable(unpaidOrders)
+                                Toast.makeText(
+                                    context,
+                                    "تم تسديد فاتورة طاولة ${session.tableNumber} بالكامل بنجاح! 💵",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            onDeleteSession = {
+                                viewModel.deleteTableSession(session.orders)
+                                Toast.makeText(
+                                    context,
+                                    "تم مسح سجل طاولة ${session.tableNumber}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        )
                     }
                 }
             }
@@ -499,7 +503,10 @@ fun MetricCard(
         modifier = modifier.height(68.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CafeSurface),
-        border = CardDefaults.outlinedCardBorder().copy(brush = Brush.horizontalGradient(listOf(CafeCardBorder, CafeCardBorderGlow)), width = 1.dp)
+        border = CardDefaults.outlinedCardBorder().copy(
+            brush = Brush.horizontalGradient(listOf(CafeCardBorder, CafeCardBorderGlow)),
+            width = 1.dp
+        )
     ) {
         Column(
             modifier = Modifier
@@ -541,32 +548,50 @@ fun StatusFilterChip(
 }
 
 /**
- * Individual Order Card with reject option and 1% fee breakdown
+ * بطاقة فاتورة وجلسة الطاولة الموحدة:
+ * تجمع جميع طلبات الطاولة في فاتورة واحدة، تفرز طلبات كل زبون باسمه ومبلغه،
+ * وتتيح التسديد الفردي لكل شخص أو التسديد الكلي كمجموعة، وتنتقل بدقة عبر المراحل.
  */
 @Composable
-fun CashierOrderCard(
-    order: OrderRecord,
-    onAdvanceStatus: (OrderStatus) -> Unit,
-    onReject: () -> Unit,
-    onDelete: () -> Unit
+fun UnifiedTableSessionCard(
+    session: TableSession,
+    onAdvanceSession: (OrderStatus) -> Unit,
+    onRejectSession: () -> Unit,
+    onPaySingleOrder: (OrderRecord) -> Unit,
+    onPayAllSession: (List<OrderRecord>) -> Unit,
+    onDeleteSession: () -> Unit
 ) {
-    val statusColor = getStatusColor(order.status)
-    val timeFormatted = formatTimestamp(order.timestamp)
+    val unpaidOrders = session.orders.filter { it.status != OrderStatus.PAID }
+    val paidOrders = session.orders.filter { it.status == OrderStatus.PAID }
+    val isFullyPaid = unpaidOrders.isEmpty()
+
+    val timeFormatted = remember(session.lastTimestamp) {
+        val sdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
+        sdf.format(Date(session.lastTimestamp))
+    }
+
+    // حساب المجاميع الجماعية للطلبات غير المسددة
+    val groupCurrency = unpaidOrders.firstOrNull()?.currency ?: session.orders.firstOrNull()?.currency ?: "د.ع"
+    val groupSubtotal = unpaidOrders.sumOf { it.subtotal }
+    val groupFee = OrderFeeCalculator.calculateServiceFee(groupSubtotal, groupCurrency)
+    val groupTotal = groupSubtotal + groupFee
+
+    // تجميع الطلبات حسب اسم كل زبون
+    val customerGroups = remember(session.orders) {
+        session.orders.groupBy { it.customerName }
+    }
+
+    val stageColor = getStatusColor(session.stage)
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .testTag("order_card_${order.id}"),
-        shape = RoundedCornerShape(18.dp),
+            .testTag("table_session_card_${session.tableNumber}"),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = CafeSurface),
         border = CardDefaults.outlinedCardBorder().copy(
-            brush = Brush.horizontalGradient(
-                listOf(
-                    statusColor.copy(alpha = 0.5f),
-                    CafeCardBorder
-                )
-            ),
-            width = 1.2.dp
+            brush = Brush.horizontalGradient(listOf(stageColor.copy(alpha = 0.8f), CafeCardBorder)),
+            width = 1.3.dp
         )
     ) {
         Column(
@@ -574,7 +599,7 @@ fun CashierOrderCard(
                 .fillMaxWidth()
                 .padding(14.dp)
         ) {
-            // Header Row: Table badge, Order ID, Time, Status badge
+            // Header Row: رقم الطاولة + توقيت الجلسة + شارة المرحلة
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -583,200 +608,492 @@ fun CashierOrderCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(10.dp))
                             .background(CafeCyanPrimary)
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                            .padding(horizontal = 12.dp, vertical = 5.dp)
                     ) {
                         Text(
-                            text = "طاولة ${order.tableNumber}",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
+                            text = "طاولة ${session.tableNumber}",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.ExtraBold,
                             color = Color(0xFF032125)
                         )
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "#${order.id}",
-                        fontSize = 12.sp,
+                        text = "آخر طلب: $timeFormatted",
+                        fontSize = 11.sp,
                         color = CafeTextSecondary
                     )
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(stageColor.copy(alpha = 0.2f))
+                        .border(1.dp, stageColor, RoundedCornerShape(8.dp))
+                        .padding(horizontal = 9.dp, vertical = 4.dp)
+                ) {
                     Text(
-                        text = timeFormatted,
+                        text = session.stage.titleAr,
                         fontSize = 11.sp,
-                        color = CafeTextSecondary
+                        fontWeight = FontWeight.Bold,
+                        color = stageColor
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(statusColor.copy(alpha = 0.2f))
-                            .border(1.dp, statusColor, RoundedCornerShape(8.dp))
-                            .padding(horizontal = 8.dp, vertical = 3.dp)
-                    ) {
-                        Text(
-                            text = order.status.titleAr,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = statusColor
-                        )
-                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Customer Name
+            // أسماء الزبائن في هذه الجلسة
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = Icons.Default.Person,
+                    imageVector = Icons.Default.Group,
                     contentDescription = null,
                     tint = CafeCyanPrimary,
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "الزبون: ${order.customerName}",
-                    fontSize = 13.sp,
+                    text = "زبائن الطاولة (${customerGroups.keys.size}): ${customerGroups.keys.joinToString("، ")}",
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = CafeTextPrimary
                 )
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(10.dp))
+            HorizontalDivider(color = CafeCardBorder.copy(alpha = 0.7f))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // Order items summary
+            // استعراض وفرز طلبات كل شخص على حدى مع مبلغه داخل الفاتورة الموحدة
             Text(
-                text = order.itemsSummary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = CafeTextPrimary,
-                lineHeight = 20.sp
+                text = "تفاصيل طلبات كل شخص في الفاتورة:",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = CafeGold
             )
 
-            // Special notes if any
-            if (order.notes.isNotBlank()) {
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "ملاحظة: ",
-                        fontSize = 12.sp,
-                        color = CafeGold,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = order.notes,
-                        fontSize = 12.sp,
-                        color = CafeTextSecondary
-                    )
-                }
-            }
+            Spacer(modifier = Modifier.height(8.dp))
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                customerGroups.forEach { (customerName, customerOrders) ->
+                    val isCustFullyPaid = customerOrders.all { it.status == OrderStatus.PAID }
+                    val custSubtotal = customerOrders.sumOf { it.subtotal }
+                    val custFee = customerOrders.sumOf { it.serviceFee }
+                    val custTotal = customerOrders.sumOf { it.totalPrice }
+                    val custCurrency = customerOrders.firstOrNull()?.currency ?: "د.ع"
+                    val itemsCombined = customerOrders.joinToString(" + ") { it.itemsSummary }
+                    val notesCombined = customerOrders.map { it.notes }.filter { it.isNotBlank() }.joinToString(" | ")
 
-            // Price Breakdown Box (Subtotal + 1% fee + Total)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xFF04181B))
-                    .border(0.8.dp, CafeCardBorder, RoundedCornerShape(10.dp))
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "سعر الطلب: ${OrderFeeCalculator.formatPrice(order.subtotal, order.currency)}",
-                        fontSize = 11.sp,
-                        color = CafeTextSecondary
-                    )
-                    Text(
-                        text = "نسبة 1% (أقرب 250 د.ع): ${OrderFeeCalculator.formatPrice(order.serviceFee, order.currency)}",
-                        fontSize = 10.sp,
-                        color = CafeGold
-                    )
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(text = "المبلغ المطلوب", fontSize = 9.sp, color = CafeTextSecondary)
-                    Text(
-                        text = OrderFeeCalculator.formatPrice(order.totalPrice, order.currency),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = CafeCyanPrimary
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Bottom action row: Status advance or Reject
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                when (order.status) {
-                    OrderStatus.NEW -> {
-                        // طلب جديد: يحتوي على "رفض" و "تحضير"
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(
-                                onClick = onReject,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFFC62828),
-                                    contentColor = Color.White
-                                ),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text("رفض ❌", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isCustFullyPaid) Color(0xFF041F23) else CafeSurfaceVariant)
+                            .border(
+                                1.dp,
+                                if (isCustFullyPaid) CafeCyanPrimary.copy(alpha = 0.35f) else CafeCardBorder,
+                                RoundedCornerShape(12.dp)
+                            )
+                            .padding(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = if (isCustFullyPaid) CafeCyanPrimary else CafeGold,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Spacer(modifier = Modifier.width(5.dp))
+                                Text(
+                                    text = "الزبون: $customerName",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CafeTextPrimary
+                                )
                             }
 
-                            Button(
-                                onClick = { onAdvanceStatus(OrderStatus.PREPARING) },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = OrderStatusPreparing,
-                                    contentColor = Color(0xFF1E1400)
-                                ),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text("تحضير 🍳", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            if (isCustFullyPaid) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(OrderStatusPaid)
+                                        .padding(horizontal = 7.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "مسدد ✅",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF032125)
+                                    )
+                                }
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(Color(0xFF2E2205))
+                                        .border(0.8.dp, CafeGold, RoundedCornerShape(6.dp))
+                                        .padding(horizontal = 7.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "غير مسدد ⏳",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = CafeGold
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // الأصناف
+                        Text(
+                            text = itemsCombined,
+                            fontSize = 12.sp,
+                            color = CafeTextPrimary,
+                            fontWeight = FontWeight.Medium
+                        )
+
+                        if (notesCombined.isNotBlank()) {
+                            Text(
+                                text = "ملاحظات: $notesCombined",
+                                fontSize = 10.sp,
+                                color = CafeGold
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // سطر المبلغ والتسديد الفردي
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "المبلغ: ${OrderFeeCalculator.formatPrice(custTotal, custCurrency)}",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = if (isCustFullyPaid) CafeCyanPrimary else CafeGold
+                            )
+
+                            // زر التسديد الفردي لهذا الشخص (متاح في مرحلة تم التسليم أو التحضير)
+                            if ((session.stage == OrderStatus.DELIVERED || session.stage == OrderStatus.PREPARING) && !isCustFullyPaid) {
+                                Button(
+                                    onClick = {
+                                        val unpaidCustOrders = customerOrders.filter { it.status != OrderStatus.PAID }
+                                        onPayAllSession(unpaidCustOrders)
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = CafeCyanPrimary,
+                                        contentColor = Color(0xFF032125)
+                                    ),
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "تسديد حساب $customerName 💵",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
                     }
-                    OrderStatus.PREPARING -> {
-                        // تحضير: يحتوي على "تم التسليم"
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // قسم الحساب الكلي والإجراءات حسب مرحلة الجلسة
+            when (session.stage) {
+                OrderStatus.NEW -> {
+                    // طلب جديد: يحتوي على "رفض" و "تحضير"
+                    val allNewOrdersTotal = session.orders.sumOf { it.totalPrice }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF04181B))
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "إجمالي طلبات الجلسة:",
+                            fontSize = 11.sp,
+                            color = CafeTextSecondary
+                        )
+                        Text(
+                            text = OrderFeeCalculator.formatPrice(allNewOrdersTotal, groupCurrency),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = CafeCyanPrimary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Button(
-                            onClick = { onAdvanceStatus(OrderStatus.DELIVERED) },
-                            colors = ButtonDefaults.buttonColors(containerColor = OrderStatusDelivered, contentColor = Color.White),
+                            onClick = onRejectSession,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFC62828),
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("رفض ❌", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        Button(
+                            onClick = { onAdvanceSession(OrderStatus.PREPARING) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = OrderStatusPreparing,
+                                contentColor = Color(0xFF1E1400)
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("تحضير 🍳", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                OrderStatus.PREPARING -> {
+                    // تحضير: يحتوي على "تم التسليم"
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF161002))
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "يتم الآن تحضير أصناف الطاولة في المطبخ/البار...",
+                            fontSize = 11.sp,
+                            color = OrderStatusPreparing
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Button(
+                            onClick = { onAdvanceSession(OrderStatus.DELIVERED) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = OrderStatusDelivered,
+                                contentColor = Color.White
+                            ),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text("تم التسليم 🍽️", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
-                    OrderStatus.DELIVERED, OrderStatus.READY -> {
-                        // تم التسليم: يحتوي على "تسديد الفاتورة"
-                        Button(
-                            onClick = { onAdvanceStatus(OrderStatus.PAID) },
-                            colors = ButtonDefaults.buttonColors(containerColor = OrderStatusPaid, contentColor = Color(0xFF032125)),
-                            shape = RoundedCornerShape(12.dp)
+                }
+
+                OrderStatus.DELIVERED, OrderStatus.READY -> {
+                    // تم التسليم: يحتوي على تسديد الفاتورة (تسديد كلي أو فردي)
+                    if (!isFullyPaid) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF041B1E)),
+                            border = BorderStroke(1.dp, CafeGold.copy(alpha = 0.6f))
                         ) {
-                            Text("تسديد الفاتورة 💵", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Info,
+                                        contentDescription = null,
+                                        tint = CafeGold,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "تسديد الفاتورة كمجموعة (عن الطاولة بالكامل):",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = CafeGold
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("مجموع الطلبات غير المسددة:", fontSize = 11.sp, color = CafeTextSecondary)
+                                    Text(OrderFeeCalculator.formatPrice(groupSubtotal, groupCurrency), fontSize = 11.sp, color = CafeTextPrimary)
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("نسبة الخدمة 1% (أقرب 250 د.ع):", fontSize = 11.sp, color = CafeGold)
+                                    Text(OrderFeeCalculator.formatPrice(groupFee, groupCurrency), fontSize = 11.sp, color = CafeGold)
+                                }
+
+                                HorizontalDivider(color = CafeCardBorder, modifier = Modifier.padding(vertical = 4.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("الإجمالي الكلي المطلوب:", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = CafeTextPrimary)
+                                    Text(
+                                        text = OrderFeeCalculator.formatPrice(groupTotal, groupCurrency),
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = CafeCyanPrimary
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                Button(
+                                    onClick = { onPayAllSession(unpaidOrders) },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = OrderStatusPaid,
+                                        contentColor = Color(0xFF032125)
+                                    ),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = "تسديد الفاتورة بالكامل (دفع كلي / جماعي) 💵",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        // جميع زبائن الطاولة سددوا حساباتهم فردياً
+                        Button(
+                            onClick = { onAdvanceSession(OrderStatus.PAID) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = OrderStatusPaid,
+                                contentColor = Color(0xFF032125)
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("اعتماد الفاتورة كمسددة بالكامل ✅", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
-                    OrderStatus.PAID -> {
-                        // تم تسديد الفاتورة
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "تم تسديد الفاتورة ✅",
-                                fontSize = 11.sp,
-                                color = OrderStatusPaid,
-                                modifier = Modifier.padding(end = 8.dp),
-                                fontWeight = FontWeight.Bold
+                }
+
+                OrderStatus.PAID -> {
+                    // تسديد الفاتورة (مكتملة ومسددة بالكامل)
+                    val paidTotal = session.orders.sumOf { it.totalPrice }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF021B1F))
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "المبلغ الإجمالي المسدد:",
+                            fontSize = 11.sp,
+                            color = CafeTextSecondary
+                        )
+                        Text(
+                            text = OrderFeeCalculator.formatPrice(paidTotal, groupCurrency),
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = OrderStatusPaid
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "تم تسديد الفاتورة بالكامل ✅",
+                            fontSize = 12.sp,
+                            color = OrderStatusPaid,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        IconButton(
+                            onClick = onDeleteSession,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(CafeSurfaceVariant)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "مسح السجل",
+                                tint = Color(0xFFFF6B6B),
+                                modifier = Modifier.size(18.dp)
                             )
+                        }
+                    }
+                }
+
+                OrderStatus.REJECTED, OrderStatus.CANCELLED -> {
+                    // الطلبات المرفوضة
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "جلسة مرفوضة ❌",
+                            fontSize = 12.sp,
+                            color = OrderStatusRejected,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Button(
+                                onClick = { onAdvanceSession(OrderStatus.NEW) },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = CafeSurfaceVariant,
+                                    contentColor = CafeCyanPrimary
+                                ),
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                modifier = Modifier.padding(end = 6.dp)
+                            ) {
+                                Text("إعادة للجديد 🔄", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+
                             IconButton(
-                                onClick = onDelete,
+                                onClick = onDeleteSession,
                                 modifier = Modifier
                                     .size(36.dp)
                                     .clip(CircleShape)
@@ -791,324 +1108,6 @@ fun CashierOrderCard(
                             }
                         }
                     }
-                    OrderStatus.REJECTED, OrderStatus.CANCELLED -> {
-                        // الطلبات المرفوضة
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "طلب مرفوض ❌",
-                                fontSize = 11.sp,
-                                color = OrderStatusRejected,
-                                modifier = Modifier.padding(end = 8.dp),
-                                fontWeight = FontWeight.Bold
-                            )
-                            Button(
-                                onClick = { onAdvanceStatus(OrderStatus.NEW) },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = CafeSurfaceVariant,
-                                    contentColor = CafeCyanPrimary
-                                ),
-                                shape = RoundedCornerShape(10.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                                modifier = Modifier.padding(end = 6.dp)
-                            ) {
-                                Text("إعادة للجديد 🔄", fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                            }
-                            IconButton(
-                                onClick = onDelete,
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(CafeSurfaceVariant)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "حذف نهائي",
-                                    tint = Color(0xFFFF6B6B),
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * Table Session Card (Requirement 5: Grouping separate orders of the same table in a single session)
- * Allows individual settlement per customer or complete collective settlement with 1% calculated on grand total.
- */
-@Composable
-fun TableSessionBillingCard(
-    tableNumber: Int,
-    sessionOrders: List<OrderRecord>,
-    onPaySingleOrder: (OrderRecord) -> Unit,
-    onPayAllSession: (List<OrderRecord>) -> Unit
-) {
-    val unpaidOrders = sessionOrders.filter { it.status != OrderStatus.PAID }
-    val paidOrders = sessionOrders.filter { it.status == OrderStatus.PAID }
-    val isFullyPaid = unpaidOrders.isEmpty()
-
-    // Collective calculation for unpaid orders
-    val groupCurrency = unpaidOrders.firstOrNull()?.currency ?: "د.ع"
-    val groupSubtotal = unpaidOrders.sumOf { it.subtotal }
-    val groupFee = OrderFeeCalculator.calculateServiceFee(groupSubtotal, groupCurrency)
-    val groupTotal = groupSubtotal + groupFee
-
-    // Individual payments sum for comparison (Requirement 5 mentions individual sum could be slightly higher due to 250 IQD min)
-    val individualTotalSum = unpaidOrders.sumOf { it.totalPrice }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag("table_session_card_$tableNumber"),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = CafeSurface),
-        border = CardDefaults.outlinedCardBorder().copy(
-            brush = Brush.horizontalGradient(listOf(CafeCyanPrimary, CafeGold)),
-            width = 1.3.dp
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp)
-        ) {
-            // Header Row: Table Number + Session Status
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(CafeCyanPrimary)
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = "طاولة $tableNumber (جلسة نشطة)",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF032125)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "${sessionOrders.size} طلبات إجمالية",
-                        fontSize = 12.sp,
-                        color = CafeTextSecondary
-                    )
-                }
-
-                if (isFullyPaid) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(OrderStatusPaid.copy(alpha = 0.2f))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text("تم تسديد الجلسة بالكامل ✅", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OrderStatusPaid)
-                    }
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(CafeGold.copy(alpha = 0.2f))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text("${unpaidOrders.size} طلبات بانتظار التسديد", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = CafeGold)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Customers in this session
-            val customerNames = sessionOrders.map { it.customerName }.distinct().joinToString("، ")
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(imageVector = Icons.Default.Group, contentDescription = null, tint = CafeCyanPrimary, modifier = Modifier.size(15.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "زبائن الجلسة: $customerNames",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = CafeTextPrimary
-                )
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-            HorizontalDivider(color = CafeCardBorder.copy(alpha = 0.6f))
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Sub-list: Individual Orders within this session
-            Text(
-                text = "الطلبات المنفردة لكل زبون في الجلسة:",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = CafeTextSecondary
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                sessionOrders.forEach { order ->
-                    val isPaid = order.status == OrderStatus.PAID
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if (isPaid) Color(0xFF041F23) else CafeSurfaceVariant)
-                            .border(1.dp, if (isPaid) CafeCyanPrimary.copy(alpha = 0.3f) else CafeCardBorder, RoundedCornerShape(12.dp))
-                            .padding(10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = "الزبون: ${order.customerName}",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = CafeTextPrimary
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "(${order.status.titleAr})",
-                                    fontSize = 10.sp,
-                                    color = getStatusColor(order.status)
-                                )
-                            }
-                            Text(
-                                text = order.itemsSummary,
-                                fontSize = 11.sp,
-                                color = CafeTextSecondary,
-                                maxLines = 1
-                            )
-                            Text(
-                                text = "الطلب: ${OrderFeeCalculator.formatPrice(order.subtotal, order.currency)} + نسبة: ${OrderFeeCalculator.formatPrice(order.serviceFee, order.currency)} = ${OrderFeeCalculator.formatPrice(order.totalPrice, order.currency)}",
-                                fontSize = 10.sp,
-                                color = CafeGold
-                            )
-                        }
-
-                        if (isPaid) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(OrderStatusPaid)
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text("مسدد ✅", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF032125))
-                            }
-                        } else {
-                            Button(
-                                onClick = { onPaySingleOrder(order) },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = CafeCyanPrimary,
-                                    contentColor = Color(0xFF032125)
-                                ),
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = "تسديد منفرد 💵",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // COLLECTIVE BILLING SECTION (Only if there are unpaid orders)
-            if (!isFullyPaid) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF041B1E)),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, CafeGold.copy(alpha = 0.5f))
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.Info, contentDescription = null, tint = CafeGold, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "التسديد الجماعي عن الطاولة بالكامل:",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = CafeGold
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text("مجموع طلبات الجلسة (${unpaidOrders.size} طلبات):", fontSize = 11.sp, color = CafeTextSecondary)
-                            Text(OrderFeeCalculator.formatPrice(groupSubtotal, groupCurrency), fontSize = 11.sp, color = CafeTextPrimary, fontWeight = FontWeight.Bold)
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text("نسبة 1% على إجمالي الجلسة (أقرب 250 د.ع):", fontSize = 11.sp, color = CafeGold)
-                            Text(OrderFeeCalculator.formatPrice(groupFee, groupCurrency), fontSize = 11.sp, color = CafeGold, fontWeight = FontWeight.Bold)
-                        }
-
-                        HorizontalDivider(color = CafeCardBorder, modifier = Modifier.padding(vertical = 4.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("المبلغ الإجمالي للتسديد الجماعي:", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = CafeTextPrimary)
-                            Text(
-                                text = OrderFeeCalculator.formatPrice(groupTotal, groupCurrency),
-                                fontSize = 17.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = CafeCyanPrimary
-                            )
-                        }
-
-                        if (individualTotalSum > groupTotal) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "💡 توفير التسديد الجماعي: ${OrderFeeCalculator.formatPrice(individualTotalSum - groupTotal, groupCurrency)} (حساب النسبة على المجموع الإجمالي أرخص من تسديد كل شخص منفرداً بالحد الأدنى).",
-                                fontSize = 10.sp,
-                                color = CafeGoldLight,
-                                lineHeight = 14.sp
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        Button(
-                            onClick = { onPayAllSession(unpaidOrders) },
-                            colors = ButtonDefaults.buttonColors(containerColor = CafeCyanPrimary, contentColor = Color(0xFF032125)),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                text = "تسديد حساب الطاولة بالكامل (${OrderFeeCalculator.formatPrice(groupTotal, groupCurrency)}) 💳",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.ExtraBold
-                            )
-                        }
-                    }
                 }
             }
         }
@@ -1119,22 +1118,10 @@ fun getStatusColor(status: OrderStatus): Color {
     return when (status) {
         OrderStatus.NEW -> OrderStatusNew
         OrderStatus.PREPARING -> OrderStatusPreparing
-        OrderStatus.DELIVERED, OrderStatus.READY -> OrderStatusDelivered
+        OrderStatus.DELIVERED -> OrderStatusDelivered
+        OrderStatus.READY -> OrderStatusReady
         OrderStatus.PAID -> OrderStatusPaid
-        OrderStatus.CANCELLED -> OrderStatusCancelled
         OrderStatus.REJECTED -> OrderStatusRejected
-    }
-}
-
-fun formatTimestamp(timestamp: Long): String {
-    val diff = System.currentTimeMillis() - timestamp
-    val minutes = diff / (60 * 1000)
-    return when {
-        minutes < 1 -> "الآن"
-        minutes < 60 -> "منذ $minutes دقيقة"
-        else -> {
-            val sdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
-            sdf.format(Date(timestamp))
-        }
+        OrderStatus.CANCELLED -> OrderStatusCancelled
     }
 }

@@ -389,6 +389,40 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun advanceTableSession(orders: List<OrderRecord>, newStatus: OrderStatus) {
+        viewModelScope.launch {
+            orders.forEach { order ->
+                if (order.status != OrderStatus.PAID) {
+                    repository.updateOrderStatus(order.id, order, newStatus)
+                }
+            }
+        }
+    }
+
+    fun rejectTableSession(orders: List<OrderRecord>) {
+        viewModelScope.launch {
+            orders.forEach { order ->
+                if (order.status != OrderStatus.PAID) {
+                    repository.updateOrderStatus(order.id, order, OrderStatus.REJECTED)
+                }
+            }
+        }
+    }
+
+    fun payOrders(orders: List<OrderRecord>) {
+        viewModelScope.launch {
+            repository.payOrders(orders)
+        }
+    }
+
+    fun deleteTableSession(orders: List<OrderRecord>) {
+        viewModelScope.launch {
+            orders.forEach { order ->
+                repository.deleteOrder(order)
+            }
+        }
+    }
+
     // Auth actions
     fun login(email: String, pass: String) {
         if (email.isBlank() || pass.isBlank()) {

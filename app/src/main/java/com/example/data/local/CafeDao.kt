@@ -65,6 +65,9 @@ interface CafeDao {
     @Query("SELECT * FROM orders ORDER BY timestamp DESC")
     fun getAllOrders(): Flow<List<OrderEntity>>
 
+    @Query("SELECT * FROM orders WHERE tableNumber = :tableNumber AND status NOT IN ('PAID', 'CANCELLED', 'REJECTED') ORDER BY timestamp DESC")
+    suspend fun getActiveOrdersForTable(tableNumber: Int): List<OrderEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrder(order: OrderEntity)
 

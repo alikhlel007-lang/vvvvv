@@ -286,17 +286,82 @@ class CafeRepository(private val dao: CafeDao) {
         val total = subtotal + serviceFee
         val orderId = "ord_" + System.currentTimeMillis().toString().takeLast(6)
 
+        // التحقق من وجود جلسة نشطة لهذه الطاولة ووراثة مرحلتها الحالية
+        val activeOrders = try {
+            dao.getActiveOrdersForTable(tableNumber)
+        } catch (_: Exception) {
+            emptyList()
+        }
+
+        val initialStatusName = when {
+            activeOrders.any { it.status == OrderStatus.DELIVERED.name || it.status == OrderStatus.READY.name } -> OrderStatus.DELIVERED.name
+            activeOrders.any { it.status == OrderStatus.PREPARING.name } -> OrderStatus.PREPARING.name
+            else -> OrderStatus.NEW.name
+        }
+
+        val cleanedCustomerName = customerName.ifEmpty { "طاولة $tableNumber" }
+
+        // إذا كان لنفس الزبون طلب نشط بالفعل ضمن نفس الجلسة، يتم دمج الأصناف في طلبه القديم
+        val existingSameCustomerOrder = activeOrders.firstOrNull {
+            it.customerName.trim().equals(cleanedCustomerName.trim(), ignoreCase = true)
+        }
+
+        if (existingSameCustomerOrder != null) {
+            val updatedSummary = if (existingSameCustomerOrder.itemsSummary.isBlank()) {
+                summary
+            } else {
+                "${existingSameCustomerOrder.itemsSummary}، $summary"
+            }
+            val updatedCount = existingSameCustomerOrder.itemsCount + count
+            val updatedSubtotal = existingSameCustomerOrder.subtotal + subtotal
+            val updatedFee = com.example.util.OrderFeeCalculator.calculateServiceFee(updatedSubtotal, currency)
+            val updatedTotal = updatedSubtotal + updatedFee
+            val updatedNotes = when {
+                existingSameCustomerOrder.notes.isBlank() -> notes
+                notes.isBlank() -> existingSameCustomerOrder.notes
+                else -> "${existingSameCustomerOrder.notes} | $notes"
+            }
+
+            val updatedEntity = existingSameCustomerOrder.copy(
+                itemsSummary = updatedSummary,
+                itemsCount = updatedCount,
+                subtotal = updatedSubtotal,
+                serviceFee = updatedFee,
+                totalPrice = updatedTotal,
+                timestamp = System.currentTimeMillis(),
+                notes = updatedNotes
+            )
+            dao.updateOrder(updatedEntity)
+
+            try {
+                val updateMap = hashMapOf<String, Any>(
+                    "itemsSummary" to updatedSummary,
+                    "itemsCount" to updatedCount,
+                    "subtotal" to updatedSubtotal,
+                    "serviceFee" to updatedFee,
+                    "totalPrice" to updatedTotal,
+                    "timestamp" to System.currentTimeMillis(),
+                    "notes" to updatedNotes
+                )
+                firestore?.collection("orders")?.document(existingSameCustomerOrder.id)?.update(updateMap)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+            return existingSameCustomerOrder.id
+        }
+
         val entity = OrderEntity(
             id = orderId,
             tableNumber = tableNumber,
-            customerName = customerName.ifEmpty { "طاولة $tableNumber" },
+            customerName = cleanedCustomerName,
             itemsSummary = summary,
             itemsCount = count,
             totalPrice = total,
             subtotal = subtotal,
             serviceFee = serviceFee,
             currency = currency,
-            status = OrderStatus.NEW.name,
+            status = initialStatusName,
             timestamp = System.currentTimeMillis(),
             notes = notes
         )
@@ -307,14 +372,14 @@ class CafeRepository(private val dao: CafeDao) {
             val orderMap = hashMapOf(
                 "id" to orderId,
                 "tableNumber" to tableNumber,
-                "customerName" to (customerName.ifEmpty { "طاولة $tableNumber" }),
+                "customerName" to cleanedCustomerName,
                 "itemsSummary" to summary,
                 "itemsCount" to count,
                 "totalPrice" to total,
                 "subtotal" to subtotal,
                 "serviceFee" to serviceFee,
                 "currency" to currency,
-                "status" to OrderStatus.NEW.name,
+                "status" to initialStatusName,
                 "timestamp" to System.currentTimeMillis(),
                 "notes" to notes
             )
