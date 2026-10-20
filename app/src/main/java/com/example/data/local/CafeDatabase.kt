@@ -79,219 +79,88 @@ abstract class CafeDatabase : RoomDatabase() {
             dao.insertCategories(categories)
 
             // Menu Items exactly matching Screenshot 2
+            // Menu Items - Exactly 1 item per category as requested by user (ضع في كل قسم صنف واحد)
             val items = listOf(
-                // Burgers
+                // 1. Burgers
                 MenuItemEntity(
                     id = "b1",
                     categoryId = "cat_burgers",
                     nameAr = "برجر كلاسيك",
                     nameEn = "Classic Burger",
-                    descriptionAr = "لحم بقري مشوي مع الجبن الطازج والخس والطماطم",
+                    descriptionAr = "لحم بقري مشوي مع الجبن الطازج والخس والطماطم مع البطاطس المقلية",
                     descriptionEn = "Grilled beef patty with cheese, fresh lettuce and tomatoes",
-                    price = 4.50,
+                    price = 7000.0,
+                    currency = "د.ع",
                     imageType = "burger",
-                    isAvailable = true
-                ),
-                MenuItemEntity(
-                    id = "b2",
-                    categoryId = "cat_burgers",
-                    nameAr = "برجر باللحم المقدد",
-                    nameEn = "Bacon Burger",
-                    descriptionAr = "لحم بقري مع شرائح اللحم المقدد والجبن والخس",
-                    descriptionEn = "Beef patty with bacon strips, melted cheese and lettuce",
-                    price = 5.50,
-                    imageType = "burger",
-                    isAvailable = true
-                ),
-                MenuItemEntity(
-                    id = "b3",
-                    categoryId = "cat_burgers",
-                    nameAr = "برجر حار",
-                    nameEn = "Spicy Jalapeno Burger",
-                    descriptionAr = "لحم بقري مع صلصة حارة وفلفل هالبينو",
-                    descriptionEn = "Spicy beef patty with jalapenos and hot sauce",
-                    price = 5.00,
-                    imageType = "burger",
-                    isAvailable = true
-                ),
-                MenuItemEntity(
-                    id = "b4",
-                    categoryId = "cat_burgers",
-                    nameAr = "برجر دجاج",
-                    nameEn = "Crispy Chicken Burger",
-                    descriptionAr = "دجاج مقرمش مع الخس والصلصة الخاصة",
-                    descriptionEn = "Crispy fried chicken fillet with special sauce and lettuce",
-                    price = 4.00,
-                    imageType = "burger",
-                    isAvailable = true
-                ),
-                MenuItemEntity(
-                    id = "b5",
-                    categoryId = "cat_burgers",
-                    nameAr = "برجر بالمشروم",
-                    nameEn = "Mushroom Swiss Burger",
-                    descriptionAr = "لحم بقري مع المشروم والجبن",
-                    descriptionEn = "Juicy beef patty topped with sautéed mushrooms and cheese",
-                    price = 5.50,
-                    imageType = "burger",
-                    isAvailable = true
-                ),
-                MenuItemEntity(
-                    id = "b6",
-                    categoryId = "cat_burgers",
-                    nameAr = "دبل سماش برجر",
-                    nameEn = "Double Smash Burger",
-                    descriptionAr = "شريحتا لحم سماش مع صوص الشيدر السائل ومخلل",
-                    descriptionEn = "Double smash beef with cheddar sauce and pickles",
-                    price = 6.50,
-                    imageType = "burger",
-                    isAvailable = true
+                    isAvailable = true,
+                    isOffer = true,
+                    offerDiscountPercent = 15,
+                    offerTag = "عرض اليوم"
                 ),
 
-                // Appetizers
+                // 2. Appetizers
                 MenuItemEntity(
                     id = "a1",
                     categoryId = "cat_appetizers",
                     nameAr = "بطاطس مقلية مقرمشة",
                     nameEn = "French Fries",
-                    descriptionAr = "بطاطس ذهبية مقلية ببهارات الكافيه الخاصة",
+                    descriptionAr = "بطاطس ذهبية مقلية ببهارات الكافيه الخاصة وصوص الكاتشب",
                     descriptionEn = "Golden crispy fries with special seasoning",
-                    price = 2.50,
-                    imageType = "fries",
-                    isAvailable = true
-                ),
-                MenuItemEntity(
-                    id = "a2",
-                    categoryId = "cat_appetizers",
-                    nameAr = "أصابع الموزاريلا",
-                    nameEn = "Mozzarella Sticks",
-                    descriptionAr = "أصابع جبنة موزاريلا ذهبية مع صوص المارينارا",
-                    descriptionEn = "Golden fried mozzarella sticks with marinara dip",
-                    price = 3.50,
-                    imageType = "fries",
-                    isAvailable = true
-                ),
-                MenuItemEntity(
-                    id = "a3",
-                    categoryId = "cat_appetizers",
-                    nameAr = "حلقات البصل المقرمشة",
-                    nameEn = "Onion Rings",
-                    descriptionAr = "حلقات بصل مقرمشة مع صوص الرانش اللذيذ",
-                    descriptionEn = "Crispy battered onion rings served with ranch dip",
-                    price = 3.00,
+                    price = 3500.0,
+                    currency = "د.ع",
                     imageType = "fries",
                     isAvailable = true
                 ),
 
-                // Drinks
+                // 3. Drinks
                 MenuItemEntity(
                     id = "d1",
                     categoryId = "cat_drinks",
                     nameAr = "سبانش لاتيه بارد",
                     nameEn = "Iced Spanish Latte",
-                    descriptionAr = "قهوة إسبريسو مع الحليب المكثف المحلى والثلج",
+                    descriptionAr = "قهوة إسبريسو غنية مع الحليب المكثف المحلى والثلج المنعش",
                     descriptionEn = "Rich espresso with condensed milk and ice",
-                    price = 4.00,
-                    imageType = "drink",
-                    isAvailable = true
-                ),
-                MenuItemEntity(
-                    id = "d2",
-                    categoryId = "cat_drinks",
-                    nameAr = "آيس كراميل ماكياتو",
-                    nameEn = "Iced Caramel Macchiato",
-                    descriptionAr = "إسبريسو بارد مع الكراميل والحليب ورغوة ناعمة",
-                    descriptionEn = "Chilled espresso with vanilla, milk, and caramel drizzle",
-                    price = 4.50,
-                    imageType = "drink",
-                    isAvailable = true
-                ),
-                MenuItemEntity(
-                    id = "d3",
-                    categoryId = "cat_drinks",
-                    nameAr = "موهيتو ليمون ونعناع",
-                    nameEn = "Lemon Mint Mojito",
-                    descriptionAr = "مشروب صودا منعش بالليمون الأخضر وأوراق النعناع الطازجة",
-                    descriptionEn = "Refreshing sparkling drink with lime and fresh mint",
-                    price = 3.50,
-                    imageType = "drink",
-                    isAvailable = true
-                ),
-                MenuItemEntity(
-                    id = "d4",
-                    categoryId = "cat_drinks",
-                    nameAr = "عصير برتقال طبيعي",
-                    nameEn = "Fresh Orange Juice",
-                    descriptionAr = "عصير برتقال طازج معصور يومياً بدون سكر مضاف",
-                    descriptionEn = "100% freshly squeezed pure orange juice",
-                    price = 3.00,
+                    price = 4500.0,
+                    currency = "د.ع",
                     imageType = "drink",
                     isAvailable = true
                 ),
 
-                // Meals
+                // 4. Meals
                 MenuItemEntity(
                     id = "m1",
                     categoryId = "cat_meals",
                     nameAr = "وجبة ستيك دجاج مشوي",
                     nameEn = "Grilled Chicken Steak",
-                    descriptionAr = "صدر دجاج متبل مشوي مع الخضار المشوية وصوص الفطر",
+                    descriptionAr = "صدر دجاج متبل مشوي مع الخضار المشوية وصوص الفطر اللذيذ",
                     descriptionEn = "Seasoned grilled chicken breast with vegetables and sauce",
-                    price = 7.50,
-                    imageType = "meals",
-                    isAvailable = true
-                ),
-                MenuItemEntity(
-                    id = "m2",
-                    categoryId = "cat_meals",
-                    nameAr = "باستا ألفريدو بالدجاج",
-                    nameEn = "Chicken Alfredo Pasta",
-                    descriptionAr = "باستا فيتوتشيني مع قطع الدجاج وصوص الكريمة الإيطالي",
-                    descriptionEn = "Fettuccine pasta in rich creamy parmesan alfredo sauce",
-                    price = 6.50,
+                    price = 9000.0,
+                    currency = "د.ع",
                     imageType = "meals",
                     isAvailable = true
                 ),
 
-                // Desserts
+                // 5. Desserts
                 MenuItemEntity(
                     id = "s1",
                     categoryId = "cat_sweets",
                     nameAr = "تشيز كيك فراولة",
                     nameEn = "Strawberry Cheesecake",
-                    descriptionAr = "تشيز كيك نيويورك الكلاسيكي مع صوص الفراولة الطازجة",
+                    descriptionAr = "تشيز كيك نيويورك الكلاسيكي الفاخر مع صوص الفراولة الطازجة",
                     descriptionEn = "Classic baked cheesecake topped with fresh strawberry coulis",
-                    price = 4.50,
+                    price = 5000.0,
+                    currency = "د.ع",
                     imageType = "sweets",
-                    isAvailable = true
-                ),
-                MenuItemEntity(
-                    id = "s2",
-                    categoryId = "cat_sweets",
-                    nameAr = "وافل شوكولاتة بلجيكية",
-                    nameEn = "Belgian Chocolate Waffle",
-                    descriptionAr = "وافل ذهبي مقرمش مغطى بالشوكولاتة البلجيكية وآيسكريم الفانيليا",
-                    descriptionEn = "Warm crispy waffle smothered in Belgian chocolate with vanilla ice cream",
-                    price = 5.00,
-                    imageType = "sweets",
-                    isAvailable = true
+                    isAvailable = true,
+                    isOffer = true,
+                    offerDiscountPercent = 20,
+                    offerTag = "حلى مميز"
                 )
             )
             dao.insertMenuItems(items)
 
-            // Initial Tables 1 to 8 with QR payloads and anti-fraud security tokens
-            val tables = (1..8).map { number ->
-                val secToken = "SEC" + (1000 + number)
-                TableEntity(
-                    id = "table_$number",
-                    tableNumber = number,
-                    label = "طاولة $number",
-                    capacity = if (number % 2 == 0) 4 else 2,
-                    qrPayload = "https://alikhlel007-lang.github.io/vvvvv/?table=$number&sec=$secToken",
-                    securityToken = secToken
-                )
-            }
-            dao.insertTables(tables)
+            // الحساب الجديد وقاعدة البيانات تبدأ خالية من الباركودات حتى يقوم المستخدم بتوليدها من قسم الباركودات
+            // (Tables start empty for new accounts until generated)
 
             // Initial demo orders for the Cashier screen in Iraqi Dinars
             val now = System.currentTimeMillis()

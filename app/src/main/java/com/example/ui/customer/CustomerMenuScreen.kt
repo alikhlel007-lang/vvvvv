@@ -6,16 +6,22 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Path
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -183,260 +189,385 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // TOP HEADER BAR: Right (Switcher), Middle (Logo & Table), Left (Cart, Search & Gear)
-            Row(
+            // UNIFIED CYBER PANEL - EXACTLY MATCHING "بعد" IN SCREENSHOT
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                shape = RoundedCornerShape(22.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF021013)),
+                border = BorderStroke(
+                    width = 1.6.dp,
+                    brush = Brush.horizontalGradient(
+                        listOf(
+                            Color(0xFF00E5FF),
+                            Color(0xFF007E84),
+                            Color(0xFF00E5FF)
+                        )
+                    )
+                )
             ) {
-                // RIGHT SIDE: Fast Switcher between Cashier & Menu
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(CafeSurfaceVariant)
-                        .border(1.dp, CafeCardBorder, RoundedCornerShape(20.dp))
-                        .padding(3.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Inactive Cashier Tab
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .clickable { viewModel.navigateTo(AppScreen.CASHIER_ORDERS) }
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                            .testTag("menu_to_cashier_btn")
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Payment,
-                                contentDescription = null,
-                                tint = accentColor,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "الكاشير",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = CafeTextSecondary
-                            )
-                        }
-                    }
-
-                    // Active Menu Tab
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(accentColor)
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.RestaurantMenu,
-                                contentDescription = null,
-                                tint = Color(0xFF032125),
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "المنيو",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF032125)
-                            )
-                        }
-                    }
-                }
-
-                // Middle Logo & Table Indicator
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { showTablePicker = true }
-                ) {
-                    val customLogoUri by viewModel.cafeCustomLogoUri.collectAsState()
-                    if (!customLogoUri.isNullOrEmpty()) {
-                        AsyncImage(
-                            model = customLogoUri,
-                            contentDescription = "شعار الكافتيريا",
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(CircleShape)
-                                .border(1.dp, accentColor, CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Image(
-                            painter = painterResource(id = R.drawable.cafe_logo),
-                            contentDescription = "Logo",
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(CircleShape)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "طاولة $selectedTableNumber",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = CafeGold
-                        )
-                        Text(
-                            text = "تغيير الطاولة",
-                            fontSize = 10.sp,
-                            color = CafeTextSecondary
-                        )
-                    }
-                }
-
-                // LEFT SIDE: Cart Badge (if cart > 0), Search Toggle & Settings Gear
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Header Cart Icon Button
-                    if (cartCount > 0) {
-                        IconButton(
-                            onClick = { showCartSheet = true },
-                            modifier = Modifier
-                                .size(38.dp)
-                                .clip(CircleShape)
-                                .background(accentColor)
-                                .testTag("header_cart_btn")
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.ShoppingCart,
-                                    contentDescription = "السلة",
-                                    tint = Color(0xFF032125),
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(6.dp))
-                    }
-
-                    // Search Toggle
-                    IconButton(
-                        onClick = { showSearchBox = !showSearchBox },
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(CafeSurfaceVariant)
-                            .border(1.dp, CafeCardBorder, CircleShape)
-                            .testTag("menu_search_toggle")
-                    ) {
-                        Icon(
-                            imageVector = if (showSearchBox) Icons.Default.Close else Icons.Default.Search,
-                            contentDescription = "بحث",
-                            tint = accentColor,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(6.dp))
-
-                    // Settings Gear Button
-                    IconButton(
-                        onClick = { viewModel.navigateTo(AppScreen.SETTINGS) },
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(CafeSurfaceVariant)
-                            .border(1.2.dp, CafeCardBorderGlow, CircleShape)
-                            .testTag("menu_gear_settings_btn")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "الإعدادات",
-                            tint = accentColor,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            }
-
-            // Search box if toggled
-            AnimatedVisibility(visible = showSearchBox) {
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                        .padding(9.dp)
                 ) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { viewModel.setSearchQuery(it) },
-                        placeholder = { Text("ابحث عن صنف أو مشروب...", color = CafeTextSecondary, fontSize = 13.sp) },
+                    // TOP HEADER ROW: Right (Menu/Cashier Switcher), Left (VIP Table Indicator)
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(50.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = CafeInputBg,
-                            unfocusedContainerColor = CafeInputBg,
-                            focusedBorderColor = accentColor,
-                            unfocusedBorderColor = CafeInputBorder,
-                            focusedTextColor = CafeTextPrimary,
-                            unfocusedTextColor = CafeTextPrimary
-                        ),
-                        trailingIcon = {
-                            if (searchQuery.isNotEmpty()) {
-                                IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                                    Icon(imageVector = Icons.Default.Close, contentDescription = "مسح", tint = CafeTextSecondary, modifier = Modifier.size(16.dp))
+                            .padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // 1. In RTL, First child appears on the RIGHT: Fast Switcher between Menu & Cashier
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(CafeSurfaceVariant)
+                                .border(1.dp, CafeCyanPrimary.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
+                                .padding(3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Active Menu Tab
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(CafeCyanPrimary)
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Restaurant,
+                                        contentDescription = null,
+                                        tint = Color(0xFF032125),
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(5.dp))
+                                    Text(
+                                        text = "المنيو",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF032125)
+                                    )
+                                }
+                            }
+
+                            // Inactive Cashier Tab
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .clickable { viewModel.navigateTo(AppScreen.CASHIER_ORDERS) }
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                                    .testTag("menu_to_cashier_btn")
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Payment,
+                                        contentDescription = null,
+                                        tint = CafeCyanPrimary,
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(5.dp))
+                                    Text(
+                                        text = "الكاشير",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.White
+                                    )
                                 }
                             }
                         }
-                    )
+
+                        // 2. In RTL, Second child appears on the LEFT: Table Indicator with Golden Crown and VIP badge
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(Color(0xFF0F0B02))
+                                .border(1.6.dp, CafeGold, RoundedCornerShape(18.dp))
+                                .clickable { showTablePicker = true }
+                                .padding(horizontal = 14.dp, vertical = 7.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.EmojiEvents,
+                                        contentDescription = null,
+                                        tint = CafeGold,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Text(
+                                        text = "VIP",
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = CafeGold
+                                    )
+                                }
+
+                                Text(
+                                    text = "طاولة $selectedTableNumber",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+
+                    // 3 HERO INTERACTIVE NAVIGATION CARDS (قائمة الطلب، العروض والجديد، ألعاب وترفيه)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(182.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // In RTL, FIRST CHILD appears on the RIGHT: 2 Stacked Cards (العروض والجديد + ألعاب وترفيه)
+                        Column(
+                            modifier = Modifier
+                                .weight(1.15f)
+                                .fillMaxHeight(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // A. TOP STACKED CARD: "العروض والجديد" with flame icon & "New" badge
+                            val isOffersSelected = activeMenuTab == 1
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                                    .clickable { viewModel.setCustomerMenuTab(1) }
+                                    .testTag("hero_tab_offers"),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF120324)),
+                                border = BorderStroke(
+                                    width = if (isOffersSelected) 2.dp else 1.3.dp,
+                                    brush = if (isOffersSelected)
+                                        Brush.horizontalGradient(listOf(Color(0xFFD500F9), Color(0xFF7C4DFF)))
+                                    else
+                                        Brush.horizontalGradient(listOf(Color(0xFF7C4DFF).copy(alpha = 0.6f), Color(0xFF311B92)))
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            Brush.horizontalGradient(
+                                                listOf(
+                                                    if (isOffersSelected) Color(0xFF240645) else Color(0xFF17042E),
+                                                    Color(0xFF0C0117)
+                                                )
+                                            )
+                                        ),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Right side in RTL: Flame Icon + Text
+                                    Row(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .padding(start = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.LocalFireDepartment,
+                                            contentDescription = null,
+                                            tint = Color(0xFFFFB300),
+                                            modifier = Modifier.size(34.dp)
+                                        )
+
+                                        Spacer(modifier = Modifier.width(8.dp))
+
+                                        Column(verticalArrangement = Arrangement.Center) {
+                                            Text(
+                                                text = "العروض",
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.Black,
+                                                color = Color.White
+                                            )
+                                            Text(
+                                                text = "والجديد",
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.Black,
+                                                color = Color.White
+                                            )
+                                        }
+                                    }
+
+                                    // Left side in RTL: "New" vertical badge
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxHeight()
+                                            .width(26.dp)
+                                            .background(Color(0xFF7C4DFF)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "New",
+                                            color = Color.White,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            modifier = Modifier.rotate(-90f)
+                                        )
+                                    }
+                                }
+                            }
+
+                            // B. BOTTOM STACKED CARD: "ألعاب وترفيه" with controller icon
+                            val isGamesSelected = activeMenuTab == 2
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                                    .clickable { viewModel.setCustomerMenuTab(2) }
+                                    .testTag("hero_tab_games"),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF021330)),
+                                border = BorderStroke(
+                                    width = if (isGamesSelected) 2.dp else 1.3.dp,
+                                    brush = if (isGamesSelected)
+                                        Brush.horizontalGradient(listOf(Color(0xFF2979FF), Color(0xFF00E5FF)))
+                                    else
+                                        Brush.horizontalGradient(listOf(Color(0xFF1E88E5).copy(alpha = 0.6f), Color(0xFF0D47A1)))
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            Brush.horizontalGradient(
+                                                listOf(
+                                                    if (isGamesSelected) Color(0xFF06255B) else Color(0xFF031638),
+                                                    Color(0xFF020B1C)
+                                                )
+                                            )
+                                        )
+                                        .padding(horizontal = 14.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.SportsEsports,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(34.dp)
+                                    )
+
+                                    Column(
+                                        verticalArrangement = Arrangement.Center,
+                                        horizontalAlignment = Alignment.End
+                                    ) {
+                                        Text(
+                                            text = "ألعاب",
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Black,
+                                            color = Color.White
+                                        )
+                                        Text(
+                                            text = "وترفيه",
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Black,
+                                            color = Color.White
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // In RTL, SECOND CHILD appears on the LEFT: TALL GOLDEN CARD "قائمة الطلب"
+                        val isMenuSelected = activeMenuTab == 0
+                        Card(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .clickable { viewModel.setCustomerMenuTab(0) }
+                                .testTag("hero_tab_menu_list"),
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0701)),
+                            border = BorderStroke(
+                                width = if (isMenuSelected) 2.dp else 1.3.dp,
+                                brush = if (isMenuSelected)
+                                    Brush.verticalGradient(listOf(Color(0xFFFFD54F), CafeGold, Color(0xFF8D6E12)))
+                                else
+                                    Brush.verticalGradient(listOf(CafeGold.copy(alpha = 0.6f), Color(0xFF3E2D07)))
+                            )
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.verticalGradient(
+                                            listOf(
+                                                if (isMenuSelected) Color(0xFF1E1502) else Color(0xFF120C02),
+                                                Color(0xFF070500)
+                                            )
+                                        )
+                                    )
+                                    .padding(8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                // Bottom subtle glowing golden curved wave matching "بعد" in screenshot
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    val wavePath = Path().apply {
+                                        moveTo(0f, size.height * 0.88f)
+                                        quadraticBezierTo(
+                                            size.width * 0.55f, size.height * 0.96f,
+                                            size.width, size.height * 0.76f
+                                        )
+                                        lineTo(size.width, size.height)
+                                        lineTo(0f, size.height)
+                                        close()
+                                    }
+                                    drawPath(
+                                        path = wavePath,
+                                        brush = Brush.verticalGradient(
+                                            listOf(
+                                                CafeGold.copy(alpha = 0.35f),
+                                                Color(0xFFFFD54F).copy(alpha = 0.08f)
+                                            )
+                                        )
+                                    )
+                                }
+
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    // Circular Emblem with fork & knife
+                                    Box(
+                                        modifier = Modifier
+                                            .size(62.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF110B01))
+                                            .border(2.dp, CafeGold, CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Restaurant,
+                                            contentDescription = null,
+                                            tint = CafeGold,
+                                            modifier = Modifier.size(32.dp)
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    Text(
+                                        text = "قائمة الطلب",
+                                        fontSize = 17.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = if (isMenuSelected) Color.White else Color(0xFFE0E0E0),
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
-            }
-
-            // 3-PAGE SWITCHER BAR
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(CafeSurfaceVariant)
-                    .border(1.dp, CafeCardBorder, RoundedCornerShape(16.dp))
-                    .padding(4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Page 0: الطلب العادي
-                MenuPageTabItem(
-                    title = "قائمة الطلب",
-                    icon = Icons.Default.RestaurantMenu,
-                    isSelected = activeMenuTab == 0,
-                    badge = null,
-                    activeColor = accentColor,
-                    modifier = Modifier.weight(1f),
-                    onClick = { viewModel.setCustomerMenuTab(0) }
-                )
-
-                Spacer(modifier = Modifier.width(4.dp))
-
-                // Page 1: العروض والتخفيضات والمواد الجديدة
-                MenuPageTabItem(
-                    title = "العروض والجديد",
-                    icon = Icons.Default.LocalFireDepartment,
-                    isSelected = activeMenuTab == 1,
-                    badge = if (offerItems.isNotEmpty()) "${offerItems.size}" else null,
-                    activeColor = CafeGold,
-                    modifier = Modifier.weight(1.1f),
-                    onClick = { viewModel.setCustomerMenuTab(1) }
-                )
-
-                Spacer(modifier = Modifier.width(4.dp))
-
-                // Page 2: الألعاب والترفيه
-                MenuPageTabItem(
-                    title = "ألعاب وترفيه",
-                    icon = Icons.Default.SportsEsports,
-                    isSelected = activeMenuTab == 2,
-                    badge = "جديد",
-                    activeColor = Color(0xFF7C4DFF),
-                    modifier = Modifier.weight(1f),
-                    onClick = { viewModel.setCustomerMenuTab(2) }
-                )
             }
 
             // RENDER ACTIVE PAGE CONTENT

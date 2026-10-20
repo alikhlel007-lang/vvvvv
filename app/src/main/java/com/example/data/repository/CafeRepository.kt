@@ -420,6 +420,45 @@ class CafeRepository(private val dao: CafeDao) {
         }
     }
 
+    init {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                enforceSingleItemPerCategory()
+            } catch (_: Exception) {}
+        }
+    }
+
+    suspend fun enforceSingleItemPerCategory() {
+        val items = dao.getAllMenuItemsSync()
+        val grouped = items.groupBy { it.categoryId }
+        grouped.forEach { (_, catItems) ->
+            if (catItems.size > 1) {
+                catItems.drop(1).forEach { extra ->
+                    dao.deleteMenuItem(extra)
+                }
+            }
+        }
+    }
+
+    suspend fun generateInitialTables(count: Int = 8) {
+        val newTables = (1..count).map { number ->
+            val secToken = "SEC" + (1000 + number)
+            TableEntity(
+                id = "table_$number",
+                tableNumber = number,
+                label = "طاولة $number",
+                capacity = if (number % 2 == 0) 4 else 2,
+                qrPayload = "$baseWebMenuUrl$number&sec=$secToken",
+                securityToken = secToken
+            )
+        }
+        dao.insertTables(newTables)
+    }
+
+    suspend fun clearAllTables() {
+        dao.deleteAllTables()
+    }
+
     // User Auth
     suspend fun login(email: String, password: String): UserAccount? {
         val user = dao.getUserByEmail(email.trim()) ?: return null
@@ -435,6 +474,9 @@ class CafeRepository(private val dao: CafeDao) {
         password: String,
         cafeName: String
     ): UserAccount {
+        // عند إنشاء حساب جديد، تبدأ الطاولات والباركودات فارغة تماماً
+        dao.deleteAllTables()
+
         val entity = UserEntity(
             id = "u_" + UUID.randomUUID().toString().take(8),
             fullName = fullName,

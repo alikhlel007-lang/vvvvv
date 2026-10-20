@@ -42,6 +42,9 @@ interface CafeDao {
     @Update
     suspend fun updateMenuItem(item: MenuItemEntity)
 
+    @Query("SELECT * FROM menu_items")
+    suspend fun getAllMenuItemsSync(): List<MenuItemEntity>
+
     @Delete
     suspend fun deleteMenuItem(item: MenuItemEntity)
 
@@ -60,6 +63,9 @@ interface CafeDao {
 
     @Delete
     suspend fun deleteTable(table: TableEntity)
+
+    @Query("DELETE FROM cafe_tables")
+    suspend fun deleteAllTables()
 
     // Orders
     @Query("SELECT * FROM orders ORDER BY timestamp DESC")

@@ -287,30 +287,128 @@ fun TablesBarcodeScreen(viewModel: MainViewModel) {
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // TABLES GRID
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp),
-                contentPadding = PaddingValues(top = 4.dp, bottom = 80.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(tables) { table ->
-                    TableQrCard(
-                        table = table,
-                        onOpenMenu = {
-                            viewModel.setSelectedTableNumber(table.tableNumber)
-                            viewModel.navigateTo(AppScreen.CUSTOMER_MENU)
-                        },
-                        onRegenerate = {
-                            viewModel.regenerateTableQr(table)
-                            Toast.makeText(context, "تم تجديد باركود ${table.label} برمز أمان جديد!", Toast.LENGTH_SHORT).show()
-                        },
-                        onDelete = { viewModel.deleteTable(table) }
-                    )
+            if (tables.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(22.dp),
+                        colors = CardDefaults.cardColors(containerColor = CafeSurfaceVariant),
+                        border = CardDefaults.outlinedCardBorder().copy(
+                            brush = Brush.horizontalGradient(listOf(CafeCyanPrimary, CafeGold)),
+                            width = 1.2.dp
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF032125))
+                                    .border(1.5.dp, CafeCyanPrimary, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.QrCode,
+                                    contentDescription = null,
+                                    tint = CafeCyanPrimary,
+                                    modifier = Modifier.size(38.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = "لا توجد باركودات طاولات مسجلة",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = CafeTextPrimary,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Text(
+                                text = "الحساب الجديد يبدأ خالي من الباركودات. يمكنك الآن توليد باركودات مشفرة لطاولات الكافيه أو إضافة طاولاتك يدوياً.",
+                                fontSize = 12.sp,
+                                color = CafeTextSecondary,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 18.sp
+                            )
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            Button(
+                                onClick = {
+                                    viewModel.generateDefaultTables(8)
+                                    Toast.makeText(context, "تم توليد باركودات 8 طاولات بنجاح!", Toast.LENGTH_SHORT).show()
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = CafeCyanPrimary,
+                                    contentColor = Color(0xFF032125)
+                                ),
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier.fillMaxWidth().height(48.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(imageVector = Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("توليد باركودات الطاولات (8 طاولات)", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            OutlinedButton(
+                                onClick = { showAddTableDialog = true },
+                                modifier = Modifier.fillMaxWidth().height(44.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                border = ButtonDefaults.outlinedButtonBorder.copy(
+                                    brush = Brush.horizontalGradient(listOf(CafeCardBorder, CafeCyanPrimary.copy(alpha = 0.5f)))
+                                )
+                            ) {
+                                Text("+ إضافة طاولة مخصصة", color = CafeCyanPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+                }
+            } else {
+                // TABLES GRID
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp),
+                    contentPadding = PaddingValues(top = 4.dp, bottom = 80.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(tables) { table ->
+                        TableQrCard(
+                            table = table,
+                            onOpenMenu = {
+                                viewModel.setSelectedTableNumber(table.tableNumber)
+                                viewModel.navigateTo(AppScreen.CUSTOMER_MENU)
+                            },
+                            onRegenerate = {
+                                viewModel.regenerateTableQr(table)
+                                Toast.makeText(context, "تم تجديد باركود ${table.label} برمز أمان جديد!", Toast.LENGTH_SHORT).show()
+                            },
+                            onDelete = { viewModel.deleteTable(table) }
+                        )
+                    }
                 }
             }
         }

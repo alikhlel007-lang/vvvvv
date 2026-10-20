@@ -38,6 +38,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val db = CafeDatabase.getDatabase(application, viewModelScope)
         repository = CafeRepository(db.cafeDao())
         repository.startFirestoreOrdersListener(viewModelScope)
+        viewModelScope.launch {
+            repository.enforceSingleItemPerCategory()
+        }
     }
 
     // Navigation & Screen State
@@ -367,6 +370,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun regenerateAllTablesQr() {
         viewModelScope.launch {
             repository.regenerateAllTablesQr(tables.value)
+        }
+    }
+
+    fun generateDefaultTables(count: Int = 8) {
+        viewModelScope.launch {
+            repository.generateInitialTables(count)
         }
     }
 
