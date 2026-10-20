@@ -1,6 +1,7 @@
 package com.example.ui.customer
 
 import com.example.util.OrderFeeCalculator
+import com.example.ui.components.MenuCashierSwitcher
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -189,144 +190,88 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // UNIFIED CYBER PANEL - EXACTLY MATCHING "بعد" IN SCREENSHOT
-            Card(
+            // TOP HEADER ROW: Right (Menu/Cashier Switcher), Left (VIP Table Indicator)
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                shape = RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF021013)),
-                border = BorderStroke(
-                    width = 1.6.dp,
-                    brush = Brush.horizontalGradient(
-                        listOf(
-                            Color(0xFF00E5FF),
-                            Color(0xFF007E84),
-                            Color(0xFF00E5FF)
-                        )
-                    )
-                )
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(
+                // 1. In RTL, First child appears on the RIGHT: Fast Switcher between Menu & Cashier
+                MenuCashierSwitcher(
+                    activeTab = "menu",
+                    onSelectMenu = { /* already on menu */ },
+                    onSelectCashier = { viewModel.navigateTo(AppScreen.CASHIER_ORDERS) }
+                )
+
+                // 2. In RTL, Second child appears on the LEFT: Table Indicator with Golden Crown and VIP badge
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(Color(0xFF0F0B02))
+                        .border(1.6.dp, CafeGold, RoundedCornerShape(18.dp))
+                        .clickable { showTablePicker = true }
+                        .padding(horizontal = 14.dp, vertical = 7.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.EmojiEvents,
+                                contentDescription = null,
+                                tint = CafeGold,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = "VIP",
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Black,
+                                color = CafeGold
+                            )
+                        }
+
+                        Text(
+                            text = "طاولة $selectedTableNumber",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White
+                        )
+                    }
+                }
+            }
+
+            // 3 HERO INTERACTIVE NAVIGATION CARDS (قائمة الطلب، العروض والجديد، ألعاب وترفيه) - Exactly matching "بعد"
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 4.dp)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(Color(0xFF021013))
+                    .border(
+                        1.5.dp,
+                        Brush.horizontalGradient(
+                            listOf(
+                                Color(0xFF00E5FF),
+                                Color(0xFF00695C),
+                                Color(0xFF00E5FF)
+                            )
+                        ),
+                        RoundedCornerShape(22.dp)
+                    )
+                    .padding(8.dp)
+            ) {
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(9.dp)
+                        .height(180.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // TOP HEADER ROW: Right (Menu/Cashier Switcher), Left (VIP Table Indicator)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // 1. In RTL, First child appears on the RIGHT: Fast Switcher between Menu & Cashier
-                        Row(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(CafeSurfaceVariant)
-                                .border(1.dp, CafeCyanPrimary.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
-                                .padding(3.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Active Menu Tab
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(CafeCyanPrimary)
-                                    .padding(horizontal = 12.dp, vertical = 6.dp)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.Restaurant,
-                                        contentDescription = null,
-                                        tint = Color(0xFF032125),
-                                        modifier = Modifier.size(15.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(5.dp))
-                                    Text(
-                                        text = "المنيو",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF032125)
-                                    )
-                                }
-                            }
-
-                            // Inactive Cashier Tab
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .clickable { viewModel.navigateTo(AppScreen.CASHIER_ORDERS) }
-                                    .padding(horizontal = 12.dp, vertical = 6.dp)
-                                    .testTag("menu_to_cashier_btn")
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.Payment,
-                                        contentDescription = null,
-                                        tint = CafeCyanPrimary,
-                                        modifier = Modifier.size(15.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(5.dp))
-                                    Text(
-                                        text = "الكاشير",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Color.White
-                                    )
-                                }
-                            }
-                        }
-
-                        // 2. In RTL, Second child appears on the LEFT: Table Indicator with Golden Crown and VIP badge
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(18.dp))
-                                .background(Color(0xFF0F0B02))
-                                .border(1.6.dp, CafeGold, RoundedCornerShape(18.dp))
-                                .clickable { showTablePicker = true }
-                                .padding(horizontal = 14.dp, vertical = 7.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.EmojiEvents,
-                                        contentDescription = null,
-                                        tint = CafeGold,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Text(
-                                        text = "VIP",
-                                        fontSize = 8.sp,
-                                        fontWeight = FontWeight.Black,
-                                        color = CafeGold
-                                    )
-                                }
-
-                                Text(
-                                    text = "طاولة $selectedTableNumber",
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = Color.White
-                                )
-                            }
-                        }
-                    }
-
-                    // 3 HERO INTERACTIVE NAVIGATION CARDS (قائمة الطلب، العروض والجديد، ألعاب وترفيه)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(182.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
                         // In RTL, FIRST CHILD appears on the RIGHT: 2 Stacked Cards (العروض والجديد + ألعاب وترفيه)
                         Column(
                             modifier = Modifier
@@ -568,7 +513,6 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                         }
                     }
                 }
-            }
 
             // RENDER ACTIVE PAGE CONTENT
             when (activeMenuTab) {

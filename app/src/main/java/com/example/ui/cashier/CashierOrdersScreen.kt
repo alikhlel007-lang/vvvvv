@@ -1,6 +1,7 @@
 package com.example.ui.cashier
 
 import android.widget.Toast
+import com.example.ui.components.MenuCashierSwitcher
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -212,68 +213,16 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // RIGHT SIDE: التبديل السريع
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(CafeSurfaceVariant)
-                        .border(1.dp, CafeCardBorder, RoundedCornerShape(20.dp))
-                        .padding(3.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Active Cashier Tab
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(CafeCyanPrimary)
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Payment,
-                                contentDescription = null,
-                                tint = Color(0xFF032125),
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "الكاشير",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF032125)
-                            )
-                        }
-                    }
-
-                    // Inactive Menu Tab
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .clickable { viewModel.navigateTo(AppScreen.CUSTOMER_MENU) }
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                            .testTag("cashier_to_menu_switch_btn")
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Visibility,
-                                contentDescription = null,
-                                tint = CafeCyanPrimary,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "تفقد المنيو",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = CafeTextSecondary
-                            )
-                        }
-                    }
-                }
+                // RIGHT SIDE: التبديل السريع المطابق تماماً لشاشة المنيو
+                MenuCashierSwitcher(
+                    activeTab = "cashier",
+                    onSelectMenu = { viewModel.navigateTo(AppScreen.CUSTOMER_MENU) },
+                    onSelectCashier = { /* already on cashier */ }
+                )
 
                 // CENTER: اسم الكافيه
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -295,17 +244,17 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                 IconButton(
                     onClick = { viewModel.navigateTo(AppScreen.SETTINGS) },
                     modifier = Modifier
-                        .size(42.dp)
+                        .size(38.dp)
                         .clip(CircleShape)
                         .background(CafeSurfaceVariant)
-                        .border(1.2.dp, CafeCardBorderGlow, CircleShape)
+                        .border(1.2.dp, CafeCyanPrimary.copy(alpha = 0.5f), CircleShape)
                         .testTag("cashier_gear_settings_btn")
                 ) {
                     Icon(
                         imageVector = Icons.Default.Settings,
                         contentDescription = "الإعدادات",
                         tint = CafeCyanPrimary,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -24,6 +25,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Payment
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -60,6 +63,7 @@ import com.example.ui.theme.CafeCyanPrimary
 import com.example.ui.theme.CafeGold
 import com.example.ui.theme.CafeInputBg
 import com.example.ui.theme.CafeInputBorder
+import com.example.ui.theme.CafeSurfaceVariant
 import com.example.ui.theme.CafeTextPrimary
 import com.example.ui.theme.CafeTextSecondary
 
@@ -76,17 +80,17 @@ fun CafeLogoHeader(
         Box(
             modifier = Modifier
                 .size(size.dp)
-                .clip(CircleShape)
-                .border(2.dp, Brush.radialGradient(listOf(CafeCyanPrimary, CafeGold, CafeCardBorder)), CircleShape)
-                .background(Color(0xFF071F22)),
+                .clip(RoundedCornerShape(24.dp))
+                .border(2.dp, Brush.radialGradient(listOf(CafeCyanPrimary, CafeGold, CafeCardBorder)), RoundedCornerShape(24.dp))
+                .background(Color(0xFF024446)),
             contentAlignment = Alignment.Center
         ) {
             Image(
                 painter = painterResource(id = R.drawable.cafe_logo),
                 contentDescription = "Cafe Logo",
                 modifier = Modifier
-                    .size((size * 0.88).dp)
-                    .clip(CircleShape)
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(22.dp))
             )
         }
 
@@ -94,7 +98,7 @@ fun CafeLogoHeader(
             Spacer(modifier = Modifier.height(10.dp))
             Text(
                 text = "CAFE",
-                fontSize = 24.sp,
+                fontSize = 22.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = CafeTextPrimary,
                 letterSpacing = 3.sp
@@ -295,5 +299,76 @@ fun CafeSecondaryButton(
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center
         )
+    }
+}
+
+@Composable
+fun MenuCashierSwitcher(
+    activeTab: String, // "menu" or "cashier"
+    onSelectMenu: () -> Unit,
+    onSelectCashier: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(CafeSurfaceVariant)
+            .border(1.dp, CafeCyanPrimary.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
+            .padding(3.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Tab 1: الكاشير (Right tab in RTL)
+        val isCashier = activeTab == "cashier"
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(if (isCashier) CafeCyanPrimary else Color.Transparent)
+                .clickable(enabled = !isCashier) { onSelectCashier() }
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+                .testTag("switch_to_cashier_btn")
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Payment,
+                    contentDescription = null,
+                    tint = if (isCashier) Color(0xFF032125) else CafeCyanPrimary,
+                    modifier = Modifier.size(15.dp)
+                )
+                Spacer(modifier = Modifier.width(5.dp))
+                Text(
+                    text = "الكاشير",
+                    fontSize = 13.sp,
+                    fontWeight = if (isCashier) FontWeight.Bold else FontWeight.SemiBold,
+                    color = if (isCashier) Color(0xFF032125) else Color.White
+                )
+            }
+        }
+
+        // Tab 2: المنيو (Left tab in RTL)
+        val isMenu = activeTab == "menu"
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(if (isMenu) CafeCyanPrimary else Color.Transparent)
+                .clickable(enabled = !isMenu) { onSelectMenu() }
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+                .testTag("switch_to_menu_btn")
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Restaurant,
+                    contentDescription = null,
+                    tint = if (isMenu) Color(0xFF032125) else CafeCyanPrimary,
+                    modifier = Modifier.size(15.dp)
+                )
+                Spacer(modifier = Modifier.width(5.dp))
+                Text(
+                    text = "المنيو",
+                    fontSize = 13.sp,
+                    fontWeight = if (isMenu) FontWeight.Bold else FontWeight.SemiBold,
+                    color = if (isMenu) Color(0xFF032125) else Color.White
+                )
+            }
+        }
     }
 }
