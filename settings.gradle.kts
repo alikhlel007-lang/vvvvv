@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Cafe Menu"
+rootProject.name = "Q-Cafe"
 
 include(":app")

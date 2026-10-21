@@ -82,7 +82,7 @@ fun CafeLogoHeader(
                 .size(size.dp)
                 .clip(RoundedCornerShape(24.dp))
                 .border(2.dp, Brush.radialGradient(listOf(CafeCyanPrimary, CafeGold, CafeCardBorder)), RoundedCornerShape(24.dp))
-                .background(Color(0xFF024446)),
+                .background(Color.Black),
             contentAlignment = Alignment.Center
         ) {
             Image(
@@ -97,11 +97,11 @@ fun CafeLogoHeader(
         if (showText) {
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "CAFE",
+                text = "Q-Cafe",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = CafeTextPrimary,
-                letterSpacing = 3.sp
+                letterSpacing = 2.sp
             )
         }
     }

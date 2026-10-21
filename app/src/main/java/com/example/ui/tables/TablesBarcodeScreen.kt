@@ -90,7 +90,7 @@ fun TablesBarcodeScreen(viewModel: MainViewModel) {
     var showAddTableDialog by remember { mutableStateOf(false) }
     var isExportingPdf by remember { mutableStateOf(false) }
 
-    val cafeName = currentUser?.cafeName ?: "CAFE LUXURY"
+    val cafeName = currentUser?.cafeName ?: "Q-Cafe"
 
     Box(
         modifier = Modifier

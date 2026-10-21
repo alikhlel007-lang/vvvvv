@@ -63,7 +63,7 @@ abstract class CafeDatabase : RoomDatabase() {
                     fullName = "مدير الكافيه",
                     email = "admin@cafe.com",
                     passwordHash = "12345678",
-                    cafeName = "CAFE LUXURY",
+                    cafeName = "Q-Cafe",
                     role = "owner"
                 )
             )

@@ -101,7 +101,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val orderStatusFilter: StateFlow<OrderStatus> = _orderStatusFilter.asStateFlow()
 
     // Cafe Profile & Branding Settings
-    private val _cafeName = MutableStateFlow("CAFE LUXURY")
+    private val _cafeName = MutableStateFlow("Q-Cafe")
     val cafeName: StateFlow<String> = _cafeName.asStateFlow()
 
     private val _cafeOwnerName = MutableStateFlow("صاحب الكافتيريا")
@@ -143,7 +143,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         email: String = _cafeEmail.value,
         customLogoUri: String? = _cafeCustomLogoUri.value
     ) {
-        _cafeName.value = name.ifBlank { "CAFE LUXURY" }
+        _cafeName.value = name.ifBlank { "Q-Cafe" }
         _cafePhone.value = phone
         _cafeOwnerName.value = ownerName.ifBlank { "صاحب الكافتيريا" }
         _cafeEmail.value = email.ifBlank { "cafe.owner@gmail.com" }
@@ -450,7 +450,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     id = "u_" + email.hashCode(),
                     fullName = "مدير الكافيه",
                     email = email.trim(),
-                    cafeName = "CAFE LUXURY",
+                    cafeName = "Q-Cafe",
                     role = "owner"
                 )
                 _currentUser.value = newUser
