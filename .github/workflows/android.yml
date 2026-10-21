@@ -1,10 +1,10 @@
-name: Android CI / Auto Build
+name: Q-Cafe Auto Build & Release
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "**" ]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "**" ]
   workflow_dispatch:
 
 permissions:
@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   build:
-    name: Build Android APK
+    name: Build Q-Cafe APK
     runs-on: ubuntu-latest
 
     steps:
@@ -48,23 +48,37 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Copy & Rename APK for Easy Download
+        run: |
+          mkdir -p output_apks
+          for f in app/build/outputs/apk/debug/*.apk; do
+            [ -f "$f" ] && cp "$f" output_apks/Q-Cafe-debug.apk
+          done
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Cafe-Menu-Debug-APK
-          path: app/build/outputs/apk/debug/*.apk
-          retention-days: 14
+          name: Q-Cafe-Debug-APK
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            output_apks/*.apk
+          retention-days: 30
 
       - name: Create or Update GitHub Release
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
-          tag_name: "latest"
-          name: "Cafe Menu APK (جاهز للتثبيت)"
-          body: "تطبيق منيو الكافيه الإلكتروني - اضغط بالأسفل على ملف .apk لتحميله وتثبيته مباشرة على الهاتف."
-          files: app/build/outputs/apk/debug/*.apk
+          tag_name: "v1.0"
+          name: "Q-Cafe APK (جاهز للتثبيت)"
+          body: |
+            ### ☕ تطبيق Q-Cafe - المنيو الإلكتروني والكاشير
+            تم بناء التطبيق وتجهيز حزمة التثبيت (APK) تلقائياً بنجاح بواسطة GitHub Actions.
+
+            - **طريقة التثبيت:** قم بتحميل ملف `Q-Cafe-debug.apk` المرفق بالأسفل وتثبيته مباشرة على هاتفك الأندرويد.
+          files: |
+            output_apks/Q-Cafe-debug.apk
+            app/build/outputs/apk/debug/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

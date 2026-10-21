@@ -27,6 +27,7 @@ import com.example.ui.cashier.CashierOrdersScreen
 import com.example.ui.customer.CustomerMenuScreen
 import com.example.ui.menu_management.MenuManagementScreen
 import com.example.ui.settings.SettingsScreen
+import com.example.ui.splash.SplashScreen
 import com.example.ui.tables.TablesBarcodeScreen
 import com.example.ui.theme.CafeCyanPrimary
 import com.example.ui.theme.CafeDarkBg
@@ -69,6 +70,10 @@ fun CafeAppNavHost(viewModel: MainViewModel = viewModel()) {
     val currentUser by viewModel.currentUser.collectAsState()
 
     when (currentScreen) {
+        AppScreen.SPLASH -> {
+            SplashScreen(viewModel = viewModel)
+        }
+
         AppScreen.LOGIN -> {
             LoginScreen(viewModel = viewModel)
         }

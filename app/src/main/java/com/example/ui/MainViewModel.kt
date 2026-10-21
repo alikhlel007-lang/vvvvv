@@ -17,9 +17,11 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 enum class AppScreen {
+    SPLASH,
     LOGIN,
     REGISTER,
     FORGOT_PASSWORD,
@@ -40,11 +42,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         repository.startFirestoreOrdersListener(viewModelScope)
         viewModelScope.launch {
             repository.enforceSingleItemPerCategory()
+            delay(1200)
+            if (_currentScreen.value == AppScreen.SPLASH) {
+                _currentScreen.value = if (_currentUser.value != null) AppScreen.CASHIER_ORDERS else AppScreen.LOGIN
+            }
         }
     }
 
     // Navigation & Screen State
-    private val _currentScreen = MutableStateFlow(AppScreen.LOGIN)
+    private val _currentScreen = MutableStateFlow(AppScreen.SPLASH)
     val currentScreen: StateFlow<AppScreen> = _currentScreen.asStateFlow()
 
     // Current Logged In User
