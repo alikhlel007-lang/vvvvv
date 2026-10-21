@@ -1,11 +1,1568 @@
-<!-- See /index.html for the master version -->
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta http-equiv="refresh" content="0; url=../index.html" />
-  <script>window.location.href = "../index.html" + window.location.search;</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Q-Cafe - المنيو الإلكتروني الذكي</title>
+  
+  <!-- Google Fonts: Cairo -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Firebase SDKs (Compat version for smooth standalone single-file usage) -->
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #041215;
+      --bg-gradient-end: #071D22;
+      --surface: #071E22;
+      --surface-variant: #09272D;
+      --cyan-primary: #00DFC0;
+      --cyan-glow: rgba(0, 223, 192, 0.45);
+      --gold: #F5B041;
+      --gold-dark: #C68A27;
+      --card-border: #0E4349;
+      --card-border-glow: #166068;
+      --text-primary: #FFFFFF;
+      --text-secondary: #86ADB2;
+      --text-muted: #5B7D81;
+      --input-bg: #05181B;
+      --hero-purple: #7C4DFF;
+      --hero-purple-bg: #15062C;
+      --hero-blue-bg: #071A2E;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Cairo', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: linear-gradient(180deg, var(--bg-dark) 0%, var(--bg-gradient-end) 45%, #020C0E 100%);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding-bottom: 110px;
+    }
+
+    /* Top Bar - Clean Customer View (No Admin / Cashier Switchers) */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 16px 12px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(4, 18, 21, 0.94);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(14, 67, 73, 0.4);
+    }
+
+    /* Left: Golden VIP Table Badge */
+    .vip-table-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 2px solid var(--gold);
+      background: rgba(14, 25, 28, 0.85);
+      border-radius: 22px;
+      padding: 6px 16px;
+      box-shadow: 0 0 16px rgba(245, 176, 65, 0.25);
+    }
+
+    .vip-trophy-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      line-height: 1;
+    }
+
+    .vip-trophy-box i {
+      color: var(--gold);
+      font-size: 17px;
+    }
+
+    .vip-trophy-box span {
+      color: var(--gold);
+      font-size: 8px;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      margin-top: 2px;
+    }
+
+    .vip-table-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #FFFFFF;
+      letter-spacing: 0.5px;
+    }
+
+    /* Right: Cafe Branding */
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-logo-box {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      border: 1.5px solid var(--cyan-primary);
+      background: #000000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-shadow: 0 0 12px var(--cyan-glow);
+    }
+
+    .brand-logo-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .brand-info {
+      text-align: right;
+    }
+
+    .brand-name {
+      font-size: 17px;
+      font-weight: 900;
+      color: #FFFFFF;
+      line-height: 1.2;
+    }
+
+    .brand-tagline {
+      font-size: 11px;
+      color: var(--cyan-primary);
+      font-weight: 600;
+    }
+
+    /* Live Sync Indicator Pill */
+    .live-status-pill {
+      font-size: 10px;
+      color: #00DFC0;
+      background: rgba(0, 223, 192, 0.12);
+      border: 1px solid rgba(0, 223, 192, 0.35);
+      border-radius: 12px;
+      padding: 2px 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 3px;
+    }
+
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #00DFC0;
+      box-shadow: 0 0 8px #00DFC0;
+      animation: pulse 1.6s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.4; transform: scale(0.9); }
+      50% { opacity: 1; transform: scale(1.3); }
+      100% { opacity: 0.4; transform: scale(0.9); }
+    }
+
+    /* 3 Hero Cards Section (Framed in Cyan Glowing Border) */
+    .hero-container {
+      margin: 14px 14px 10px;
+      padding: 8px;
+      border-radius: 24px;
+      background: #021013;
+      border: 1.8px solid var(--cyan-primary);
+      box-shadow: 0 0 20px rgba(0, 223, 192, 0.2);
+    }
+
+    .hero-grid {
+      display: flex;
+      gap: 10px;
+      height: 175px;
+    }
+
+    /* Left Tall Card: "قائمة الطلب" */
+    .hero-card-left {
+      flex: 1;
+      height: 100%;
+      background: linear-gradient(160deg, #181206 0%, #0c0802 60%, #1c1404 100%);
+      border: 1.6px solid var(--gold);
+      border-radius: 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 14px 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(245, 176, 65, 0.15);
+      transition: transform 0.2s ease;
+      position: relative;
+    }
+
+    .hero-card-left:active {
+      transform: scale(0.97);
+    }
+
+    .hero-order-circle {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      border: 2.5px solid var(--gold);
+      background: rgba(245, 176, 65, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+      box-shadow: 0 0 16px rgba(245, 176, 65, 0.3);
+    }
+
+    .hero-order-circle i {
+      color: var(--gold);
+      font-size: 26px;
+    }
+
+    .hero-order-title {
+      color: #FFFFFF;
+      font-size: 16px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .hero-order-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: var(--cyan-primary);
+      color: #021215;
+      font-size: 11px;
+      font-weight: 900;
+      padding: 2px 7px;
+      border-radius: 10px;
+      display: none;
+    }
+
+    /* Right Stacked Column (العروض والجديد + ألعاب وترفيه) */
+    .hero-col-right {
+      flex: 1.25;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      height: 100%;
+    }
+
+    /* Top Right: "العروض والجديد" */
+    .hero-card-offers {
+      flex: 1;
+      background: linear-gradient(135deg, var(--hero-purple-bg) 0%, #0B0117 100%);
+      border: 1.4px solid rgba(124, 77, 255, 0.7);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s ease;
+    }
+
+    .hero-card-offers:active {
+      transform: scale(0.97);
+    }
+
+    .tag-new {
+      background: var(--hero-purple);
+      color: #FFFFFF;
+      font-size: 10px;
+      font-weight: 900;
+      padding: 4px 6px;
+      border-radius: 8px;
+      letter-spacing: 0.5px;
+    }
+
+    .offers-title-box {
+      text-align: right;
+    }
+
+    .offers-main-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: #FFFFFF;
+      line-height: 1.2;
+    }
+
+    .hero-card-offers i.fa-fire {
+      color: #FF9100;
+      font-size: 26px;
+      filter: drop-shadow(0 0 8px rgba(255, 145, 0, 0.6));
+    }
+
+    /* Bottom Right: "ألعاب وترفيه" */
+    .hero-card-games {
+      flex: 1;
+      background: linear-gradient(135deg, var(--hero-blue-bg) 0%, #030C16 100%);
+      border: 1.4px solid rgba(41, 121, 255, 0.65);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+
+    .hero-card-games:active {
+      transform: scale(0.97);
+    }
+
+    .games-title-box {
+      text-align: right;
+    }
+
+    .games-main-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: #FFFFFF;
+      line-height: 1.2;
+    }
+
+    .hero-card-games i.fa-gamepad {
+      color: #FFFFFF;
+      font-size: 26px;
+      filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.4));
+    }
+
+    /* Categories Horizontal Bar */
+    .categories-bar {
+      display: flex;
+      gap: 10px;
+      padding: 10px 14px 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .categories-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .cat-btn {
+      min-width: 82px;
+      height: 84px;
+      background: var(--surface);
+      border: 1.5px solid var(--card-border);
+      border-radius: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.22s ease;
+    }
+
+    .cat-btn i {
+      font-size: 24px;
+      color: var(--cyan-primary);
+      transition: all 0.22s ease;
+    }
+
+    .cat-btn span {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    /* Active category: Bright Cyan pill matching the screenshot */
+    .cat-btn.active {
+      background: var(--cyan-primary);
+      border-color: var(--cyan-primary);
+      box-shadow: 0 4px 16px rgba(0, 223, 192, 0.45);
+      transform: translateY(-2px);
+    }
+
+    .cat-btn.active i, .cat-btn.active span {
+      color: #021215;
+      font-weight: 900;
+    }
+
+    /* Section Header */
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 18px 8px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 900;
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title i {
+      color: var(--cyan-primary);
+      font-size: 20px;
+    }
+
+    .section-count {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--cyan-primary);
+    }
+
+    /* Food Items List */
+    .items-container {
+      padding: 6px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Item Card (Matching the Screenshot Exactly) */
+    .item-card {
+      background: var(--surface);
+      border: 1.5px solid var(--card-border);
+      border-radius: 22px;
+      padding: 12px 14px;
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .item-card:hover {
+      border-color: var(--card-border-glow);
+    }
+
+    /* Square Food Image (Right Side) */
+    .item-image-wrapper {
+      width: 104px;
+      height: 104px;
+      border-radius: 18px;
+      background: #031316;
+      overflow: hidden;
+      flex-shrink: 0;
+      border: 1px solid rgba(0, 223, 192, 0.2);
+    }
+
+    .item-image-wrapper img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* Content Area (Left Side) */
+    .item-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    /* Offer Badge */
+    .item-offer-tag {
+      align-self: flex-start;
+      background: rgba(245, 176, 65, 0.16);
+      border: 1px solid rgba(245, 176, 65, 0.45);
+      color: var(--gold);
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .item-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #FFFFFF;
+      line-height: 1.25;
+    }
+
+    .item-desc {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .item-gallery-link {
+      font-size: 11px;
+      color: var(--cyan-primary);
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .item-gallery-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Bottom row: Price & "+ طلب" Button */
+    .item-bottom-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 4px;
+    }
+
+    .item-price {
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--cyan-primary);
+      letter-spacing: 0.5px;
+    }
+
+    .btn-add-order {
+      background: var(--cyan-primary);
+      color: #021215;
+      border: none;
+      border-radius: 20px;
+      padding: 6px 16px;
+      font-size: 13px;
+      font-weight: 900;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(0, 223, 192, 0.3);
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    .btn-add-order:active {
+      transform: scale(0.95);
+      background: #00BF9E;
+    }
+
+    /* Floating Cart Bar (Bottom) */
+    .cart-bar-floating {
+      position: fixed;
+      bottom: 14px;
+      left: 14px;
+      right: 14px;
+      height: 60px;
+      background: linear-gradient(90deg, #051A1D 0%, #07262B 100%);
+      border: 1.8px solid var(--cyan-primary);
+      border-radius: 30px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 100;
+      box-shadow: 0 6px 25px rgba(0, 223, 192, 0.4);
+      animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .cart-bar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+    }
+
+    .cart-pill-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: var(--cyan-primary);
+      color: #021215;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      font-size: 18px;
+    }
+
+    .cart-count-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: var(--gold);
+      color: #021215;
+      font-size: 11px;
+      font-weight: 900;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #07262B;
+    }
+
+    .cart-bar-text {
+      text-align: right;
+    }
+
+    .cart-total-amount {
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--cyan-primary);
+    }
+
+    .cart-total-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .btn-checkout-cart {
+      background: var(--cyan-primary);
+      color: #021215;
+      border: none;
+      border-radius: 22px;
+      padding: 9px 18px;
+      font-size: 14px;
+      font-weight: 900;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 2px 10px rgba(0, 223, 192, 0.35);
+    }
+
+    /* Modals & Overlays */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.82);
+      backdrop-filter: blur(8px);
+      z-index: 120;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal-sheet {
+      background: #06191D;
+      border: 1.5px solid var(--card-border-glow);
+      border-radius: 28px 28px 0 0;
+      width: 100%;
+      max-width: 520px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 18px 28px;
+      overflow-y: auto;
+      box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.7);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(14, 67, 73, 0.5);
+      margin-bottom: 14px;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-close-btn {
+      font-size: 22px;
+      color: var(--text-secondary);
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+
+    /* Cart Item Row */
+    .cart-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(14, 67, 73, 0.3);
+    }
+
+    .cart-item-desc h4 {
+      font-size: 14px;
+      font-weight: 800;
+      color: #FFFFFF;
+    }
+
+    .cart-item-desc span {
+      font-size: 12px;
+      color: var(--cyan-primary);
+      font-weight: 700;
+    }
+
+    .qty-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-qty {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--surface-variant);
+      border: 1px solid var(--card-border);
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .btn-qty.plus {
+      background: var(--cyan-primary);
+      color: #021215;
+      border: none;
+    }
+
+    .notes-textarea {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 10px 14px;
+      color: #FFFFFF;
+      font-size: 13px;
+      margin: 14px 0;
+      outline: none;
+      resize: none;
+    }
+
+    .btn-submit-order {
+      width: 100%;
+      height: 52px;
+      border-radius: 26px;
+      background: var(--cyan-primary);
+      color: #021215;
+      font-size: 16px;
+      font-weight: 900;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 18px rgba(0, 223, 192, 0.4);
+    }
+
+    /* Gallery / Details Modal */
+    .gallery-photo-main {
+      width: 100%;
+      height: 220px;
+      border-radius: 18px;
+      object-fit: cover;
+      margin-bottom: 12px;
+    }
+
+    /* Live Tracking Badge */
+    .status-badge {
+      display: inline-block;
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-weight: 800;
+      font-size: 14px;
+      margin: 12px 0;
+    }
+
+    .status-new { background: rgba(0, 223, 192, 0.2); color: var(--cyan-primary); border: 1.5px solid var(--cyan-primary); }
+    .status-prep { background: rgba(245, 176, 65, 0.2); color: var(--gold); border: 1.5px solid var(--gold); }
+    .status-ready { background: rgba(76, 175, 80, 0.2); color: #4CAF50; border: 1.5px solid #4CAF50; }
+    .status-paid { background: rgba(33, 150, 243, 0.2); color: #2196F3; border: 1.5px solid #2196F3; }
+
+    /* Interactive Games Modal */
+    .game-card-box {
+      background: var(--surface-variant);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 16px;
+      text-align: center;
+      margin-bottom: 14px;
+    }
+
+    .wheel-spinner {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: 4px dashed var(--cyan-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 14px auto;
+      font-size: 28px;
+      color: var(--gold);
+      transition: transform 1.5s cubic-bezier(0.2, 0.8, 0.3, 1);
+    }
+  </style>
 </head>
 <body>
-  <p>جاري تحويلك إلى منيو الكافيه...</p>
+
+  <!-- Top Bar: Clean Customer Header (NO Table Switcher, NO Cashier Toggle) -->
+  <header class="top-bar">
+    <!-- Left: Gold VIP Table Badge -->
+    <div class="vip-table-badge" id="vipTableBadge">
+      <div class="vip-trophy-box">
+        <i class="fa-solid fa-trophy"></i>
+        <span>VIP</span>
+      </div>
+      <div class="vip-table-title" id="tableBadgeTitle">طاولة 1</div>
+    </div>
+
+    <!-- Right: Dynamic Cafe Branding -->
+    <div class="brand-section">
+      <div class="brand-info">
+        <div class="brand-name" id="brandCafeName">Q-Cafe</div>
+        <div class="brand-tagline" id="brandCafeTagline">منيو الطلب المباشر</div>
+        <div class="live-status-pill">
+          <span class="pulse-dot"></span>
+          <span id="syncText">متصل مباشر</span>
+        </div>
+      </div>
+      <div class="brand-logo-box" id="brandLogoBox">
+        <i class="fa-solid fa-mug-hot" style="color: var(--cyan-primary); font-size: 22px;"></i>
+      </div>
+    </div>
+  </header>
+
+  <!-- 3 Hero Cards Section (Matching Screenshot) -->
+  <section class="hero-container">
+    <div class="hero-grid">
+      <!-- Left Tall Card: "قائمة الطلب" -->
+      <div class="hero-card-left" onclick="openCartModal()">
+        <span class="hero-order-badge" id="heroCartBadge">0</span>
+        <div class="hero-order-circle">
+          <i class="fa-solid fa-utensils"></i>
+        </div>
+        <div class="hero-order-title">قائمة الطلب</div>
+      </div>
+
+      <!-- Right Stacked Column (العروض والجديد + ألعاب وترفيه) -->
+      <div class="hero-col-right">
+        <!-- Top Right: "العروض والجديد" -->
+        <div class="hero-card-offers" onclick="filterOffersOnly()">
+          <span class="tag-new">New</span>
+          <div class="offers-title-box">
+            <div class="offers-main-title">العروض<br>والجديد</div>
+          </div>
+          <i class="fa-solid fa-fire"></i>
+        </div>
+
+        <!-- Bottom Right: "ألعاب وترفيه" -->
+        <div class="hero-card-games" onclick="openGamesModal()">
+          <div class="games-title-box">
+            <div class="games-main-title">ألعاب<br>وترفيه</div>
+          </div>
+          <i class="fa-solid fa-gamepad"></i>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Categories Horizontal Scroll Bar -->
+  <div class="categories-bar" id="categoriesBar">
+    <div class="cat-btn active" onclick="selectCategory('all', this)">
+      <i class="fa-solid fa-burger"></i>
+      <span>الكل</span>
+    </div>
+    <!-- Dynamically loaded from Firebase Firestore -->
+  </div>
+
+  <!-- Section Header -->
+  <div class="section-header">
+    <div class="section-title" id="sectionTitle">
+      <i class="fa-solid fa-burger" id="sectionIcon"></i>
+      <span id="sectionName">البرجر</span>
+    </div>
+    <div class="section-count" id="itemsCountBadge">1 صنف</div>
+  </div>
+
+  <!-- Food Items List -->
+  <div class="items-container" id="itemsContainer">
+    <!-- Rendered Dynamically from Firebase -->
+  </div>
+
+  <!-- Floating Bottom Cart Bar -->
+  <div class="cart-bar-floating" id="floatingCartBar">
+    <div class="cart-bar-left" onclick="openCartModal()">
+      <div class="cart-pill-icon">
+        <i class="fa-solid fa-cart-shopping"></i>
+        <div class="cart-count-badge" id="cartCountBadge">0</div>
+      </div>
+      <div class="cart-bar-text">
+        <div class="cart-total-amount" id="cartTotalSummary">0 د.ع</div>
+        <div class="cart-total-label">المجموع الكلي</div>
+      </div>
+    </div>
+    <button class="btn-checkout-cart" onclick="openCartModal()">
+      <span>عرض الطلب</span>
+      <i class="fa-solid fa-arrow-left"></i>
+    </button>
+  </div>
+
+  <!-- Cart Modal -->
+  <div class="modal-backdrop" id="cartModal">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fa-solid fa-utensils" style="color: var(--gold);"></i>
+          <span id="cartModalTitle">سلة طلب طاولة 1</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeCartModal()">&times;</button>
+      </div>
+
+      <div id="cartItemsList" style="max-height: 280px; overflow-y: auto; margin-bottom: 12px;"></div>
+
+      <textarea class="notes-textarea" id="orderNotes" placeholder="ملاحظات خاصة للمطبخ (مثال: بدون بصل، زيادة صوص، بدون سكر...)" rows="2"></textarea>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <span style="font-size: 15px; font-weight: 700; color: var(--text-secondary);">المبلغ الإجمالي:</span>
+        <span style="font-size: 20px; font-weight: 900; color: var(--cyan-primary);" id="modalTotalSum">0 د.ع</span>
+      </div>
+
+      <button class="btn-submit-order" id="btnSubmitOrder" onclick="submitCustomerOrder()">
+        <i class="fa-solid fa-paper-plane"></i>
+        <span>إرسال الطلب إلى الكاشير</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Details & Gallery Modal -->
+  <div class="modal-backdrop" id="detailsModal">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <div class="modal-title" id="detailsItemName">تفاصيل الصنف</div>
+        <button class="modal-close-btn" onclick="closeDetailsModal()">&times;</button>
+      </div>
+      <img id="detailsMainImage" class="gallery-photo-main" src="" alt="Item photo">
+      <div class="item-offer-tag" id="detailsOfferBadge" style="margin-bottom: 8px; display:none;">🔥 عرض اليوم</div>
+      <p id="detailsItemDesc" style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 16px;"></p>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <span style="font-size: 18px; font-weight: 900; color: var(--cyan-primary);" id="detailsItemPrice">0 د.ع</span>
+        <button class="btn-add-order" id="detailsAddBtn" onclick="">+ إضافة للطلب</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Games & Entertainment Modal ("ألعاب وترفيه") -->
+  <div class="modal-backdrop" id="gamesModal">
+    <div class="modal-sheet" style="text-align: center;">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fa-solid fa-gamepad" style="color: #2979FF;"></i>
+          <span>ألعاب وتسلية الطاولة</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeGamesModal()">&times;</button>
+      </div>
+
+      <div class="game-card-box">
+        <h4 style="font-size: 16px; font-weight: 800; color: #FFFFFF; margin-bottom: 6px;">🎡 عجلة الحظ للطاولة</h4>
+        <p style="font-size: 12px; color: var(--text-secondary);">لف العجلة واحصل على عبارة حظ أو مفاجأة خاصة بطاولتك!</p>
+        <div class="wheel-spinner" id="wheelSpinner">
+          <i class="fa-solid fa-gift"></i>
+        </div>
+        <button class="btn-add-order" style="margin: 0 auto;" onclick="spinWheel()">اضغط للف العجلة 🎯</button>
+        <div id="wheelResultText" style="margin-top: 10px; font-size: 13px; font-weight: 700; color: var(--gold);"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live Order Tracking Modal -->
+  <div class="modal-backdrop" id="trackingModal">
+    <div class="modal-sheet" style="text-align: center;">
+      <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(0,223,192,0.15); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+        <i class="fa-solid fa-check" style="font-size: 26px; color: var(--cyan-primary);"></i>
+      </div>
+      <h3 style="font-size: 19px; font-weight: 800; margin-bottom: 6px;">تم إرسال طلبك بنجاح!</h3>
+      <p style="font-size: 13px; color: var(--text-secondary);" id="trackingInfoText">وصل الطلب إلى الكاشير ويجري تحضيره الآن.</p>
+
+      <div style="margin: 16px 0; padding: 14px; background: var(--surface-variant); border-radius: 16px;">
+        <div style="font-size: 11px; color: var(--text-secondary);">حالة الطلب المباشرة:</div>
+        <div class="status-badge status-new" id="liveStatusBadge">طلب جديد في الانتظار 🕒</div>
+      </div>
+
+      <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;" id="trackingOrderIdText">رقم الطلب: #---</div>
+
+      <button class="btn-submit-order" onclick="closeTrackingModal()">
+        <span>العودة للمنيو</span>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // 1. Firebase Credentials
+    const firebaseConfig = {
+      apiKey: "AIzaSyAfudWfJUQBYlONgyVs50rRAEadPB4h1E8",
+      authDomain: "cafe00000-dee29.firebaseapp.com",
+      projectId: "cafe00000-dee29",
+      storageBucket: "cafe00000-dee29.firebasestorage.app",
+      messagingSenderId: "686032896219",
+      appId: "1:686032896219:android:df35736a41046ff9520cfe"
+    };
+
+    let db = null;
+    try {
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+      console.log("Firebase Firestore connected successfully");
+    } catch (e) {
+      console.warn("Firestore notice:", e);
+    }
+
+    // 2. Dynamic URL Parameter Extraction
+    const urlParams = new URLSearchParams(window.location.search);
+    const cafeteriaId = urlParams.get('cafeteriaId') || urlParams.get('cafeId') || urlParams.get('cid') || 'u_default';
+    const tableNumber = parseInt(urlParams.get('table') || urlParams.get('tableNumber') || urlParams.get('t') || '1', 10);
+    const secToken = urlParams.get('sec') || '';
+
+    // Set Table number in badge
+    document.getElementById('tableBadgeTitle').innerText = 'طاولة ' + tableNumber;
+    document.getElementById('cartModalTitle').innerText = 'سلة طلب طاولة ' + tableNumber;
+
+    // 3. Fallback High Quality Initial Menu
+    let categories = [
+      { id: "cat_burgers", nameAr: "البرجر", nameEn: "Burgers", iconType: "burger", sortOrder: 1 },
+      { id: "cat_appetizers", nameAr: "المقبلات", nameEn: "Appetizers", iconType: "fries", sortOrder: 2 },
+      { id: "cat_drinks", nameAr: "المشروبات", nameEn: "Drinks", iconType: "drink", sortOrder: 3 },
+      { id: "cat_meals", nameAr: "الوجبات", nameEn: "Meals", iconType: "meals", sortOrder: 4 },
+      { id: "cat_sweets", nameAr: "الحلويات", nameEn: "Sweets", iconType: "sweets", sortOrder: 5 }
+    ];
+
+    let menuItems = [
+      {
+        id: "b1",
+        categoryId: "cat_burgers",
+        nameAr: "برجر كلاسيك",
+        nameEn: "Classic Burger",
+        descriptionAr: "لحم بقري مشوي مع الجبن الطازج والخس والطماطم مع البطاطس المقلية",
+        price: 7000,
+        currency: "د.ع",
+        isAvailable: true,
+        isOffer: true,
+        offerTag: "عرض اليوم",
+        imageUri: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&q=80"
+      },
+      {
+        id: "a1",
+        categoryId: "cat_appetizers",
+        nameAr: "بطاطس مقلية مقرمشة",
+        nameEn: "French Fries",
+        descriptionAr: "بطاطس ذهبية مقرمشة مع بهارات الكافيه الخاصة وصلصة الكاتشب",
+        price: 3000,
+        currency: "د.ع",
+        isAvailable: true,
+        isOffer: false,
+        offerTag: "طازج",
+        imageUri: "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=400&q=80"
+      },
+      {
+        id: "d1",
+        categoryId: "cat_drinks",
+        nameAr: "سبانش لاتيه بارد",
+        nameEn: "Iced Spanish Latte",
+        descriptionAr: "قهوة إسبريسو غنية مع الحليب المكثف المحلى ومكعبات الثلج المنعشة",
+        price: 4500,
+        currency: "د.ع",
+        isAvailable: true,
+        isOffer: true,
+        offerTag: "الأكثر طلباً",
+        imageUri: "https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?w=400&q=80"
+      },
+      {
+        id: "m1",
+        categoryId: "cat_meals",
+        nameAr: "وجبة شاورما عربي دجاج",
+        nameEn: "Chicken Shawarma Meal",
+        descriptionAr: "قطع شاورما دجاج متبلة في خبز الصاج مع الثومية والبطاطس والمخلل",
+        price: 8000,
+        currency: "د.ع",
+        isAvailable: true,
+        isOffer: false,
+        offerTag: "وجبة مميزة",
+        imageUri: "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=400&q=80"
+      },
+      {
+        id: "s1",
+        categoryId: "cat_sweets",
+        nameAr: "تشيز كيك فراولة",
+        nameEn: "Strawberry Cheesecake",
+        descriptionAr: "تشيز كيك كريمي بارد على قاعدة بسكويت مقرمش مع صوص الفراولة الطازجة",
+        price: 5000,
+        currency: "د.ع",
+        isAvailable: true,
+        isOffer: true,
+        offerTag: "حلوى اليوم",
+        imageUri: "https://images.unsplash.com/photo-1524351199678-941a58a3df50?w=400&q=80"
+      }
+    ];
+
+    let currentSelectedCategory = 'cat_burgers';
+    let cart = []; // [{ item, qty }]
+
+    function getCategoryIconClass(type) {
+      switch (type) {
+        case 'burger': return 'fa-solid fa-burger';
+        case 'fries': return 'fa-solid fa-french-fries';
+        case 'drink': return 'fa-solid fa-cup-straw';
+        case 'meals': return 'fa-solid fa-utensils';
+        case 'sweets': return 'fa-solid fa-cake-candles';
+        case 'pizza': return 'fa-solid fa-pizza-slice';
+        default: return 'fa-solid fa-utensils';
+      }
+    }
+
+    // 4. Listen to Real-time Multi-tenant Data from Firebase
+    function initFirebaseMultiTenantSync() {
+      if (!db) {
+        renderCategories();
+        renderItems();
+        return;
+      }
+
+      // A. Listen to Cafe Profile
+      db.collection('cafeterias').doc(cafeteriaId).onSnapshot((doc) => {
+        if (doc && doc.exists) {
+          const data = doc.data();
+          if (data.cafeName) document.getElementById('brandCafeName').innerText = data.cafeName;
+          if (data.themeColor) {
+            document.documentElement.style.setProperty('--cyan-primary', data.themeColor);
+          }
+        }
+      }, err => console.log('Cafe profile sync notice:', err));
+
+      // B. Listen to Categories
+      const catSubRef = db.collection('cafeterias').doc(cafeteriaId).collection('categories');
+      catSubRef.onSnapshot((snapshot) => {
+        if (snapshot && !snapshot.empty) {
+          categories = snapshot.docs.map(d => d.data()).sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+          if (!categories.find(c => c.id === currentSelectedCategory)) {
+            currentSelectedCategory = categories[0]?.id || 'all';
+          }
+          renderCategories();
+          renderItems();
+        } else {
+          // Fallback to root categories if subcollection is empty
+          db.collection('categories').onSnapshot((rootSnap) => {
+            if (rootSnap && !rootSnap.empty) {
+              categories = rootSnap.docs.map(d => d.data()).sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+              renderCategories();
+              renderItems();
+            } else {
+              renderCategories();
+              renderItems();
+            }
+          });
+        }
+      }, err => {
+        console.log('Categories listener notice:', err);
+        renderCategories();
+        renderItems();
+      });
+
+      // C. Listen to Menu Items
+      const itemSubRef = db.collection('cafeterias').doc(cafeteriaId).collection('menu_items');
+      itemSubRef.onSnapshot((snapshot) => {
+        if (snapshot && !snapshot.empty) {
+          menuItems = snapshot.docs.map(d => d.data());
+          renderItems();
+        } else {
+          // Fallback to root menu_items
+          db.collection('menu_items').onSnapshot((rootSnap) => {
+            if (rootSnap && !rootSnap.empty) {
+              menuItems = rootSnap.docs.map(d => d.data());
+              renderItems();
+            } else {
+              renderItems();
+            }
+          });
+        }
+      }, err => {
+        console.log('Menu items listener notice:', err);
+        renderItems();
+      });
+    }
+
+    // 5. Render Categories Bar
+    function renderCategories() {
+      const bar = document.getElementById('categoriesBar');
+      bar.innerHTML = '';
+
+      categories.forEach(cat => {
+        const btn = document.createElement('div');
+        const isActive = (cat.id === currentSelectedCategory);
+        btn.className = `cat-btn ${isActive ? 'active' : ''}`;
+        btn.onclick = () => selectCategory(cat.id, btn);
+        btn.innerHTML = `
+          <i class="${getCategoryIconClass(cat.iconType)}"></i>
+          <span>${cat.nameAr}</span>
+        `;
+        bar.appendChild(btn);
+      });
+    }
+
+    function selectCategory(catId, btnEl) {
+      currentSelectedCategory = catId;
+      document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+      if (btnEl) btnEl.classList.add('active');
+      renderItems();
+    }
+
+    function filterOffersOnly() {
+      const offers = menuItems.filter(i => i.isOffer);
+      renderFilteredItems(offers, "العروض والجديد", "fa-solid fa-fire");
+    }
+
+    // 6. Render Items
+    function renderItems() {
+      const activeCat = categories.find(c => c.id === currentSelectedCategory);
+      const catName = activeCat ? activeCat.nameAr : "قائمة الطعام";
+      const iconClass = activeCat ? getCategoryIconClass(activeCat.iconType) : "fa-solid fa-utensils";
+
+      const filtered = menuItems.filter(item => {
+        return (item.categoryId === currentSelectedCategory || currentSelectedCategory === 'all') && item.isAvailable !== false;
+      });
+
+      renderFilteredItems(filtered, catName, iconClass);
+    }
+
+    function renderFilteredItems(itemsList, titleText, iconClass) {
+      document.getElementById('sectionName').innerText = titleText;
+      document.getElementById('sectionIcon').className = iconClass;
+      document.getElementById('itemsCountBadge').innerText = `${itemsList.length} صنف`;
+
+      const container = document.getElementById('itemsContainer');
+      container.innerHTML = '';
+
+      if (itemsList.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
+            <i class="fa-solid fa-bowl-food" style="font-size: 40px; margin-bottom: 12px; color: var(--card-border);"></i>
+            <p>لا توجد أصناف في هذا القسم حالياً.</p>
+          </div>
+        `;
+        return;
+      }
+
+      itemsList.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'item-card';
+
+        const imgSrc = item.imageUri || (item.imageType === 'burger' ? 'public/assets/aistudio/Screenshot_20261022_003318_com_cafe_digitalmenu_MainActivity_0bfef704.jpg' : 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&q=80');
+        const offerBadgeHtml = (item.isOffer || item.offerTag) ? `<div class="item-offer-tag">🔥 ${item.offerTag || 'عرض خاص'}</div>` : '';
+        const priceFormatted = Number(item.price).toLocaleString() + ' ' + (item.currency || 'د.ع');
+
+        card.innerHTML = `
+          <!-- Food Image (Right) -->
+          <div class="item-image-wrapper">
+            <img src="${imgSrc}" alt="${item.nameAr}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&q=80'">
+          </div>
+
+          <!-- Content (Left) -->
+          <div class="item-body">
+            ${offerBadgeHtml}
+            <div class="item-title">${item.nameAr}</div>
+            <div class="item-desc">${item.descriptionAr || ''}</div>
+            <div class="item-gallery-link" onclick="openDetailsModal('${item.id}')">
+              <span>🖼️ مزيد من التفاصيل وصور 📸</span>
+            </div>
+            <div class="item-bottom-row">
+              <div class="item-price">${priceFormatted}</div>
+              <button class="btn-add-order" onclick="addToCart('${item.id}')">
+                <span>+ طلب</span>
+              </button>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // 7. Cart Logic
+    function addToCart(itemId) {
+      const item = menuItems.find(i => i.id === itemId);
+      if (!item) return;
+
+      const existing = cart.find(c => c.item.id === itemId);
+      if (existing) {
+        existing.qty++;
+      } else {
+        cart.push({ item: item, qty: 1 });
+      }
+
+      updateCartBar();
+    }
+
+    function changeQty(itemId, delta) {
+      const entry = cart.find(c => c.item.id === itemId);
+      if (!entry) return;
+
+      entry.qty += delta;
+      if (entry.qty <= 0) {
+        cart = cart.filter(c => c.item.id !== itemId);
+      }
+
+      updateCartBar();
+      renderCartModalList();
+      if (cart.length === 0) closeCartModal();
+    }
+
+    function updateCartBar() {
+      const totalQty = cart.reduce((sum, c) => sum + c.qty, 0);
+      const totalSum = cart.reduce((sum, c) => sum + (c.item.price * c.qty), 0);
+      const currency = cart[0]?.item.currency || 'د.ع';
+
+      const bar = document.getElementById('floatingCartBar');
+      const heroBadge = document.getElementById('heroCartBadge');
+
+      if (totalQty > 0) {
+        bar.style.display = 'flex';
+        heroBadge.style.display = 'inline-block';
+        heroBadge.innerText = totalQty;
+        document.getElementById('cartCountBadge').innerText = totalQty;
+        document.getElementById('cartTotalSummary').innerText = totalSum.toLocaleString() + ' ' + currency;
+        document.getElementById('modalTotalSum').innerText = totalSum.toLocaleString() + ' ' + currency;
+      } else {
+        bar.style.display = 'none';
+        heroBadge.style.display = 'none';
+      }
+    }
+
+    function openCartModal() {
+      if (cart.length === 0) {
+        alert('سلة الطلب فارغة، يرجى اختيار أصناف أولاً بالضغط على (+ طلب)');
+        return;
+      }
+      renderCartModalList();
+      document.getElementById('cartModal').style.display = 'flex';
+    }
+
+    function closeCartModal() {
+      document.getElementById('cartModal').style.display = 'none';
+    }
+
+    function renderCartModalList() {
+      const list = document.getElementById('cartItemsList');
+      list.innerHTML = '';
+
+      cart.forEach(c => {
+        const row = document.createElement('div');
+        row.className = 'cart-row';
+        const priceText = (c.item.price * c.qty).toLocaleString() + ' ' + (c.item.currency || 'د.ع');
+        row.innerHTML = `
+          <div class="cart-item-desc">
+            <h4>${c.item.nameAr}</h4>
+            <span>${priceText}</span>
+          </div>
+          <div class="qty-controls">
+            <button class="btn-qty" onclick="changeQty('${c.item.id}', -1)"><i class="fa-solid fa-minus"></i></button>
+            <span style="font-weight: 900; font-size: 15px;">${c.qty}</span>
+            <button class="btn-qty plus" onclick="changeQty('${c.item.id}', 1)"><i class="fa-solid fa-plus"></i></button>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+    }
+
+    // 8. Submit Order to Firebase Firestore
+    function submitCustomerOrder() {
+      if (cart.length === 0) return;
+
+      const totalQty = cart.reduce((sum, c) => sum + c.qty, 0);
+      const totalSum = cart.reduce((sum, c) => sum + (c.item.price * c.qty), 0);
+      const summary = cart.map(c => `${c.qty}x ${c.item.nameAr}`).join('، ');
+      const notes = document.getElementById('orderNotes').value.trim();
+      const orderId = 'ord_' + Math.floor(100000 + Math.random() * 900000);
+
+      const orderData = {
+        id: orderId,
+        cafeteriaId: cafeteriaId,
+        tableNumber: tableNumber,
+        customerName: 'طاولة ' + tableNumber,
+        itemsSummary: summary,
+        itemsCount: totalQty,
+        totalPrice: totalSum,
+        subtotal: totalSum,
+        serviceFee: 0.0,
+        currency: cart[0]?.item.currency || 'د.ع',
+        status: "NEW",
+        timestamp: Date.now(),
+        notes: notes,
+        securityToken: secToken
+      };
+
+      const btn = document.getElementById('btnSubmitOrder');
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الإرسال للكاشير...';
+      btn.disabled = true;
+
+      const finishOrder = () => {
+        cart = [];
+        updateCartBar();
+        closeCartModal();
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> <span>إرسال الطلب إلى الكاشير</span>';
+        btn.disabled = false;
+        showTrackingModal(orderId);
+      };
+
+      if (db) {
+        // Dual-write: write to multi-tenant subcollection AND root orders
+        const batch = db.batch();
+        const tenantOrderRef = db.collection('cafeterias').doc(cafeteriaId).collection('orders').doc(orderId);
+        const rootOrderRef = db.collection('orders').doc(orderId);
+        batch.set(tenantOrderRef, orderData);
+        batch.set(rootOrderRef, orderData);
+
+        batch.commit()
+          .then(() => {
+            console.log("Order saved to Firestore successfully!");
+            finishOrder();
+          })
+          .catch(err => {
+            console.error("Firestore error:", err);
+            finishOrder();
+          });
+      } else {
+        setTimeout(finishOrder, 700);
+      }
+    }
+
+    // 9. Live Tracking Modal
+    function showTrackingModal(orderId) {
+      document.getElementById('trackingOrderIdText').innerText = 'رقم الطلب: #' + orderId;
+      document.getElementById('trackingInfoText').innerText = `طلب طاولة ${tableNumber} وصل إلى لوحة الكاشير ويجري تحضيره الآن.`;
+      document.getElementById('trackingModal').style.display = 'flex';
+
+      if (db) {
+        db.collection('cafeterias').doc(cafeteriaId).collection('orders').doc(orderId)
+          .onSnapshot(doc => {
+            if (doc && doc.exists) {
+              updateTrackingStatusBadge(doc.data().status);
+            }
+          });
+      }
+    }
+
+    function updateTrackingStatusBadge(status) {
+      const b = document.getElementById('liveStatusBadge');
+      if (status === 'PREPARING') {
+        b.className = 'status-badge status-prep';
+        b.innerText = 'جاري التحضير في المطبخ 🍳';
+      } else if (status === 'DELIVERED' || status === 'READY') {
+        b.className = 'status-badge status-ready';
+        b.innerText = 'طلبك جاهز للتقديم على الطاولة 🍽️';
+      } else if (status === 'PAID') {
+        b.className = 'status-badge status-paid';
+        b.innerText = 'تم تسديد الحساب بنجاح 💵';
+      } else {
+        b.className = 'status-badge status-new';
+        b.innerText = 'طلب جديد في انتظار التأكيد 🕒';
+      }
+    }
+
+    function closeTrackingModal() {
+      document.getElementById('trackingModal').style.display = 'none';
+    }
+
+    // 10. Item Details & Gallery Modal
+    function openDetailsModal(itemId) {
+      const item = menuItems.find(i => i.id === itemId);
+      if (!item) return;
+
+      document.getElementById('detailsItemName').innerText = item.nameAr;
+      document.getElementById('detailsMainImage').src = item.imageUri || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&q=80';
+      document.getElementById('detailsItemDesc').innerText = item.descriptionAr || 'طبق شهي ومميز يتم تحضيره بأعلى معايير الجودة.';
+      document.getElementById('detailsItemPrice').innerText = Number(item.price).toLocaleString() + ' ' + (item.currency || 'د.ع');
+
+      const badge = document.getElementById('detailsOfferBadge');
+      if (item.isOffer) {
+        badge.style.display = 'inline-flex';
+        badge.innerText = '🔥 ' + (item.offerTag || 'عرض خاص');
+      } else {
+        badge.style.display = 'none';
+      }
+
+      const addBtn = document.getElementById('detailsAddBtn');
+      addBtn.onclick = () => {
+        addToCart(item.id);
+        closeDetailsModal();
+      };
+
+      document.getElementById('detailsModal').style.display = 'flex';
+    }
+
+    function closeDetailsModal() {
+      document.getElementById('detailsModal').style.display = 'none';
+    }
+
+    // 11. Interactive Games & Entertainment Modal
+    function openGamesModal() {
+      document.getElementById('gamesModal').style.display = 'flex';
+    }
+
+    function closeGamesModal() {
+      document.getElementById('gamesModal').style.display = 'none';
+    }
+
+    function spinWheel() {
+      const spinner = document.getElementById('wheelSpinner');
+      const randomDeg = 720 + Math.floor(Math.random() * 360);
+      spinner.style.transform = `rotate(${randomDeg}deg)`;
+
+      const fortunes = [
+        "✨ طاولتكم اليوم هي الأكثر تميزاً وإشراقاً في الكافيه!",
+        "☕ فنجان قهوة رائع بانتظاركم بعد قليل!",
+        "🎉 نتمنى لكم يوماً سعيداً ومليئاً بالبهجة واللذة!",
+        "⭐ أنتم ضيوفنا المميزون اليوم، أهلاً وسهلاً بكم!"
+      ];
+      const pick = fortunes[Math.floor(Math.random() * fortunes.length)];
+
+      setTimeout(() => {
+        document.getElementById('wheelResultText').innerText = pick;
+      }, 1500);
+    }
+
+    // Initialize Multi-Tenant Firestore Sync
+    initFirebaseMultiTenantSync();
+  </script>
 </body>
 </html>

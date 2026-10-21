@@ -14,6 +14,9 @@ interface CafeDao {
     @Query("SELECT * FROM categories ORDER BY sortOrder ASC")
     fun getAllCategories(): Flow<List<CategoryEntity>>
 
+    @Query("SELECT * FROM categories ORDER BY sortOrder ASC")
+    suspend fun getAllCategoriesSync(): List<CategoryEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCategory(category: CategoryEntity)
 

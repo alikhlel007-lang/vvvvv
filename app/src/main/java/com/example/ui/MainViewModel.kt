@@ -42,6 +42,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         repository.startFirestoreOrdersListener(viewModelScope)
         viewModelScope.launch {
             repository.enforceSingleItemPerCategory()
+            repository.syncCurrentMenuToFirestore(_currentUser.value?.id ?: "u_default", _cafeName.value, _themeAccentColorHex.value)
             delay(1200)
             if (_currentScreen.value == AppScreen.SPLASH) {
                 _currentScreen.value = if (_currentUser.value != null) AppScreen.CASHIER_ORDERS else AppScreen.LOGIN
@@ -446,23 +447,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         viewModelScope.launch {
             val user = repository.login(email, pass)
-            if (user != null) {
-                _currentUser.value = user
-                _authError.value = null
-                _currentScreen.value = AppScreen.CASHIER_ORDERS
-            } else {
-                // If demo credentials or first login
-                val newUser = UserAccount(
-                    id = "u_" + email.hashCode(),
-                    fullName = "مدير الكافيه",
-                    email = email.trim(),
-                    cafeName = "Q-Cafe",
-                    role = "owner"
-                )
-                _currentUser.value = newUser
-                _authError.value = null
-                _currentScreen.value = AppScreen.CASHIER_ORDERS
-            }
+            val activeUser = user ?: UserAccount(
+                id = "u_" + Math.abs(email.hashCode()),
+                fullName = "مدير الكافيه",
+                email = email.trim(),
+                cafeName = "Q-Cafe",
+                role = "owner"
+            )
+            _currentUser.value = activeUser
+            repository.currentCafeteriaId = activeUser.id
+            repository.syncCurrentMenuToFirestore(activeUser.id, activeUser.cafeName, _themeAccentColorHex.value)
+            _authError.value = null
+            _currentScreen.value = AppScreen.CASHIER_ORDERS
         }
     }
 
@@ -483,6 +479,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val user = repository.register(fullName, email, pass, cafeName)
             _currentUser.value = user
+            repository.currentCafeteriaId = user.id
+            repository.syncCurrentMenuToFirestore(user.id, user.cafeName, _themeAccentColorHex.value)
             _authError.value = null
             _currentScreen.value = AppScreen.CASHIER_ORDERS
         }

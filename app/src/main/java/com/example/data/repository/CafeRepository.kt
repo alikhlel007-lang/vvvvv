@@ -32,40 +32,137 @@ class CafeRepository(private val dao: CafeDao) {
     // Default Web Menu URL for GitHub Pages
     var baseWebMenuUrl: String = "https://alikhlel007-lang.github.io/vvvvv/?table="
 
+    // Multi-tenant cafeteria identifier (defaults to u_default until user logs in or registers)
+    var currentCafeteriaId: String = "u_default"
+
+    fun buildTableQrUrl(baseUrl: String, tableNumber: Int, secToken: String): String {
+        val clean = baseUrl.trim()
+        val sep = if (clean.contains("?")) "&" else "?"
+        return if (clean.contains("table=")) {
+            if (clean.endsWith("table=")) {
+                "${clean}${tableNumber}&cafeteriaId=${currentCafeteriaId}&sec=${secToken}"
+            } else {
+                "${clean}&cafeteriaId=${currentCafeteriaId}&table=${tableNumber}&sec=${secToken}"
+            }
+        } else {
+            "${clean}${sep}cafeteriaId=${currentCafeteriaId}&table=${tableNumber}&sec=${secToken}"
+        }
+    }
+
     fun startFirestoreOrdersListener(scope: CoroutineScope) {
+        val parseOrderDoc: (com.google.firebase.firestore.DocumentSnapshot) -> Unit = { doc ->
+            scope.launch(Dispatchers.IO) {
+                try {
+                    val id = doc.id
+                    val tableNumber = doc.getLong("tableNumber")?.toInt() ?: 1
+                    val customerName = doc.getString("customerName") ?: "طاولة $tableNumber"
+                    val itemsSummary = doc.getString("itemsSummary") ?: ""
+                    val itemsCount = doc.getLong("itemsCount")?.toInt() ?: 1
+                    val totalPrice = doc.getDouble("totalPrice") ?: 0.0
+                    val subtotal = doc.getDouble("subtotal") ?: totalPrice
+                    val serviceFee = doc.getDouble("serviceFee") ?: 0.0
+                    val currency = doc.getString("currency") ?: "د.ع"
+                    val statusStr = doc.getString("status") ?: "NEW"
+                    val timestamp = doc.getLong("timestamp") ?: System.currentTimeMillis()
+                    val notes = doc.getString("notes") ?: ""
+
+                    val entity = OrderEntity(
+                        id = id,
+                        tableNumber = tableNumber,
+                        customerName = customerName,
+                        itemsSummary = itemsSummary,
+                        itemsCount = itemsCount,
+                        totalPrice = totalPrice,
+                        subtotal = subtotal,
+                        serviceFee = serviceFee,
+                        currency = currency,
+                        status = statusStr,
+                        timestamp = timestamp,
+                        notes = notes
+                    )
+                    dao.insertOrder(entity)
+                } catch (_: Exception) {}
+            }
+        }
+
         try {
+            // Listen to root collection orders
             firestore?.collection("orders")?.addSnapshotListener { snapshot, error ->
                 if (error != null || snapshot == null) return@addSnapshotListener
-                scope.launch(Dispatchers.IO) {
-                    for (doc in snapshot.documents) {
-                        val id = doc.id
-                        val tableNumber = doc.getLong("tableNumber")?.toInt() ?: 1
-                        val customerName = doc.getString("customerName") ?: "طاولة $tableNumber"
-                        val itemsSummary = doc.getString("itemsSummary") ?: ""
-                        val itemsCount = doc.getLong("itemsCount")?.toInt() ?: 1
-                        val totalPrice = doc.getDouble("totalPrice") ?: 0.0
-                        val statusStr = doc.getString("status") ?: "NEW"
-                        val timestamp = doc.getLong("timestamp") ?: System.currentTimeMillis()
-                        val notes = doc.getString("notes") ?: ""
-
-                        val entity = OrderEntity(
-                            id = id,
-                            tableNumber = tableNumber,
-                            customerName = customerName,
-                            itemsSummary = itemsSummary,
-                            itemsCount = itemsCount,
-                            totalPrice = totalPrice,
-                            status = statusStr,
-                            timestamp = timestamp,
-                            notes = notes
-                        )
-                        dao.insertOrder(entity)
-                    }
+                for (doc in snapshot.documents) {
+                    parseOrderDoc(doc)
                 }
+            }
+
+            // Listen to multi-tenant orders subcollection for current cafeteria
+            if (currentCafeteriaId.isNotBlank()) {
+                firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")
+                    ?.addSnapshotListener { snapshot, error ->
+                        if (error != null || snapshot == null) return@addSnapshotListener
+                        for (doc in snapshot.documents) {
+                            parseOrderDoc(doc)
+                        }
+                    }
             }
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    suspend fun syncCurrentMenuToFirestore(cafeId: String = currentCafeteriaId, cafeName: String = "Q-Cafe", accentColor: String = "#00DFC0") {
+        currentCafeteriaId = cafeId
+        try {
+            // 1. Save Cafe Profile
+            val cafeProfile = hashMapOf(
+                "cafeteriaId" to cafeId,
+                "cafeName" to cafeName,
+                "themeColor" to accentColor,
+                "updatedAt" to System.currentTimeMillis()
+            )
+            firestore?.collection("cafeterias")?.document(cafeId)?.set(cafeProfile)
+
+            // 2. Sync All Categories
+            val cats = dao.getAllCategoriesSync()
+            for (c in cats) {
+                val catMap = hashMapOf(
+                    "id" to c.id,
+                    "cafeteriaId" to cafeId,
+                    "nameAr" to c.nameAr,
+                    "nameEn" to c.nameEn,
+                    "iconType" to c.iconType,
+                    "sortOrder" to c.sortOrder,
+                    "customImageUri" to (c.customImageUri ?: "")
+                )
+                firestore?.collection("cafeterias")?.document(cafeId)?.collection("categories")?.document(c.id)?.set(catMap)
+                firestore?.collection("categories")?.document(c.id)?.set(catMap)
+            }
+
+            // 3. Sync All Menu Items
+            val items = dao.getAllMenuItemsSync()
+            for (i in items) {
+                val itemMap = hashMapOf(
+                    "id" to i.id,
+                    "cafeteriaId" to cafeId,
+                    "categoryId" to i.categoryId,
+                    "nameAr" to i.nameAr,
+                    "nameEn" to i.nameEn,
+                    "descriptionAr" to i.descriptionAr,
+                    "descriptionEn" to i.descriptionEn,
+                    "price" to i.price,
+                    "currency" to i.currency,
+                    "imageType" to i.imageType,
+                    "isAvailable" to i.isAvailable,
+                    "imageUri" to (i.imageUri ?: ""),
+                    "bgImageUri" to (i.bgImageUri ?: ""),
+                    "galleryImages" to (if (i.galleryImagesStr.isBlank()) emptyList<String>() else i.galleryImagesStr.split("|||")),
+                    "isOffer" to i.isOffer,
+                    "offerDiscountPercent" to i.offerDiscountPercent,
+                    "offerTag" to i.offerTag
+                )
+                firestore?.collection("cafeterias")?.document(cafeId)?.collection("menu_items")?.document(i.id)?.set(itemMap)
+                firestore?.collection("menu_items")?.document(i.id)?.set(itemMap)
+            }
+        } catch (_: Exception) {}
     }
 
     // Categories
@@ -87,12 +184,14 @@ class CafeRepository(private val dao: CafeDao) {
         try {
             val map = hashMapOf(
                 "id" to catId,
+                "cafeteriaId" to currentCafeteriaId,
                 "nameAr" to nameAr,
                 "nameEn" to nameEn,
                 "iconType" to iconType,
                 "sortOrder" to 99,
                 "customImageUri" to (customImageUri ?: "")
             )
+            firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("categories")?.document(catId)?.set(map)
             firestore?.collection("categories")?.document(catId)?.set(map)
         } catch (_: Exception) {}
     }
@@ -100,22 +199,24 @@ class CafeRepository(private val dao: CafeDao) {
     suspend fun updateCategory(category: MenuCategory) {
         dao.updateCategory(category.toEntity())
         try {
-            firestore?.collection("categories")?.document(category.id)?.set(
-                hashMapOf(
-                    "id" to category.id,
-                    "nameAr" to category.nameAr,
-                    "nameEn" to category.nameEn,
-                    "iconType" to category.iconType,
-                    "sortOrder" to category.sortOrder,
-                    "customImageUri" to (category.customImageUri ?: "")
-                )
+            val map = hashMapOf(
+                "id" to category.id,
+                "cafeteriaId" to currentCafeteriaId,
+                "nameAr" to category.nameAr,
+                "nameEn" to category.nameEn,
+                "iconType" to category.iconType,
+                "sortOrder" to category.sortOrder,
+                "customImageUri" to (category.customImageUri ?: "")
             )
+            firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("categories")?.document(category.id)?.set(map)
+            firestore?.collection("categories")?.document(category.id)?.set(map)
         } catch (_: Exception) {}
     }
 
     suspend fun deleteCategory(category: MenuCategory) {
         dao.deleteCategory(category.toEntity())
         try {
+            firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("categories")?.document(category.id)?.delete()
             firestore?.collection("categories")?.document(category.id)?.delete()
         } catch (_: Exception) {}
     }
@@ -167,6 +268,7 @@ class CafeRepository(private val dao: CafeDao) {
         try {
             val itemMap = hashMapOf(
                 "id" to itemId,
+                "cafeteriaId" to currentCafeteriaId,
                 "categoryId" to categoryId,
                 "nameAr" to nameAr,
                 "nameEn" to nameEn,
@@ -183,6 +285,7 @@ class CafeRepository(private val dao: CafeDao) {
                 "offerDiscountPercent" to offerDiscountPercent,
                 "offerTag" to offerTag
             )
+            firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("menu_items")?.document(itemId)?.set(itemMap)
             firestore?.collection("menu_items")?.document(itemId)?.set(itemMap)
         } catch (_: Exception) {}
     }
@@ -192,6 +295,7 @@ class CafeRepository(private val dao: CafeDao) {
         try {
             val itemMap = hashMapOf(
                 "id" to item.id,
+                "cafeteriaId" to currentCafeteriaId,
                 "categoryId" to item.categoryId,
                 "nameAr" to item.nameAr,
                 "nameEn" to item.nameEn,
@@ -208,6 +312,7 @@ class CafeRepository(private val dao: CafeDao) {
                 "offerDiscountPercent" to item.offerDiscountPercent,
                 "offerTag" to item.offerTag
             )
+            firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("menu_items")?.document(item.id)?.set(itemMap)
             firestore?.collection("menu_items")?.document(item.id)?.set(itemMap)
         } catch (_: Exception) {}
     }
@@ -215,6 +320,7 @@ class CafeRepository(private val dao: CafeDao) {
     suspend fun deleteMenuItem(item: MenuItem) {
         dao.deleteMenuItem(item.toEntity())
         try {
+            firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("menu_items")?.document(item.id)?.delete()
             firestore?.collection("menu_items")?.document(item.id)?.delete()
         } catch (_: Exception) {}
     }
@@ -227,8 +333,7 @@ class CafeRepository(private val dao: CafeDao) {
     suspend fun addTable(number: Int, label: String, capacity: Int, cafeName: String, customBaseUrl: String? = null) {
         val baseUrl = customBaseUrl ?: baseWebMenuUrl
         val secToken = "SEC" + UUID.randomUUID().toString().take(6).uppercase()
-        val sep = if (baseUrl.contains("?")) "&" else "?"
-        val payload = "$baseUrl${number}${sep}sec=$secToken"
+        val payload = buildTableQrUrl(baseUrl, number, secToken)
         val entity = TableEntity(
             id = "table_$number",
             tableNumber = number,
@@ -243,8 +348,7 @@ class CafeRepository(private val dao: CafeDao) {
     suspend fun regenerateTableQr(table: CafeTable, customBaseUrl: String? = null) {
         val baseUrl = customBaseUrl ?: baseWebMenuUrl
         val newSec = "SEC" + UUID.randomUUID().toString().take(6).uppercase()
-        val sep = if (baseUrl.contains("?")) "&" else "?"
-        val newPayload = "$baseUrl${table.tableNumber}${sep}sec=$newSec"
+        val newPayload = buildTableQrUrl(baseUrl, table.tableNumber, newSec)
         val updated = table.copy(qrPayload = newPayload, securityToken = newSec)
         dao.updateTable(updated.toEntity())
     }
@@ -253,8 +357,7 @@ class CafeRepository(private val dao: CafeDao) {
         val baseUrl = customBaseUrl ?: baseWebMenuUrl
         tables.forEach { table ->
             val newSec = "SEC" + UUID.randomUUID().toString().take(6).uppercase()
-            val sep = if (baseUrl.contains("?")) "&" else "?"
-            val newPayload = "$baseUrl${table.tableNumber}${sep}sec=$newSec"
+            val newPayload = buildTableQrUrl(baseUrl, table.tableNumber, newSec)
             dao.updateTable(table.copy(qrPayload = newPayload, securityToken = newSec).toEntity())
         }
     }

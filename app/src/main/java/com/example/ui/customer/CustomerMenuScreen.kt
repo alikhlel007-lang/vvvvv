@@ -133,6 +133,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
     val cart by viewModel.cart.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val activeMenuTab by viewModel.customerMenuTab.collectAsState()
+    val currentUser by viewModel.currentUser.collectAsState()
 
     // Dynamic Theme Customization
     val themeAccentHex by viewModel.themeAccentColorHex.collectAsState()
@@ -198,20 +199,24 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 1. In RTL, First child appears on the RIGHT: Fast Switcher between Menu & Cashier
-                MenuCashierSwitcher(
-                    activeTab = "menu",
-                    onSelectMenu = { /* already on menu */ },
-                    onSelectCashier = { viewModel.navigateTo(AppScreen.CASHIER_ORDERS) }
-                )
+                // In RTL, First child appears on the RIGHT:
+                // Hide Cashier/Menu switcher completely from customer interface (only show for logged in staff)
+                if (currentUser != null) {
+                    MenuCashierSwitcher(
+                        activeTab = "menu",
+                        onSelectMenu = { /* already on menu */ },
+                        onSelectCashier = { viewModel.navigateTo(AppScreen.CASHIER_ORDERS) }
+                    )
+                } else {
+                    Spacer(modifier = Modifier.width(1.dp))
+                }
 
-                // 2. In RTL, Second child appears on the LEFT: Table Indicator with Golden Crown and VIP badge
+                // In RTL, Second child appears on the LEFT: Table Indicator with Golden Trophy and VIP badge (Read-only)
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(18.dp))
                         .background(Color(0xFF0F0B02))
                         .border(1.6.dp, CafeGold, RoundedCornerShape(18.dp))
-                        .clickable { showTablePicker = true }
                         .padding(horizontal = 14.dp, vertical = 7.dp)
                 ) {
                     Row(
