@@ -519,15 +519,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         _unverifiedEmail.value = result.email
                     }
                     is AuthResult.Success -> {
-                        val user = result.user
-                        _currentUser.value = user
-                        _cafeName.value = user.cafeName
-                        _cafeOwnerName.value = user.fullName
-                        _cafeEmail.value = user.email
-                        repository.currentCafeteriaId = user.id
-                        repository.syncCurrentMenuToFirestore(user.id, user.cafeName, _themeAccentColorHex.value)
-                        _authError.value = null
-                        _currentScreen.value = AppScreen.CASHIER_ORDERS
+                        _registrationSuccessMessage.value = "تم إنشاء الحساب بنجاح! يرجى تسجيل الدخول بعد التحقق من بريدك الإلكتروني."
+                        _unverifiedEmail.value = result.user.email
                     }
                     is AuthResult.Error -> {
                         _authError.value = result.message
