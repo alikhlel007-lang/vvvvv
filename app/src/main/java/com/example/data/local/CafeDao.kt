@@ -70,6 +70,9 @@ interface CafeDao {
     @Query("DELETE FROM cafe_tables")
     suspend fun deleteAllTables()
 
+    @Query("DELETE FROM orders")
+    suspend fun deleteAllOrders()
+
     // Orders
     @Query("SELECT * FROM orders ORDER BY timestamp DESC")
     fun getAllOrders(): Flow<List<OrderEntity>>

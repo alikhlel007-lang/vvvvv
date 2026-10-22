@@ -159,70 +159,8 @@ abstract class CafeDatabase : RoomDatabase() {
             )
             dao.insertMenuItems(items)
 
-            // الحساب الجديد وقاعدة البيانات تبدأ خالية من الباركودات حتى يقوم المستخدم بتوليدها من قسم الباركودات
-            // (Tables start empty for new accounts until generated)
-
-            // Initial demo orders for the Cashier screen in Iraqi Dinars
-            val now = System.currentTimeMillis()
-            val demoOrders = listOf(
-                OrderEntity(
-                    id = "ord_101",
-                    tableNumber = 3,
-                    customerName = "أحمد الربيعي",
-                    itemsSummary = "2x برجر كلاسيك، 1x سبانش لاتيه بارد",
-                    itemsCount = 3,
-                    totalPrice = 12250.0,
-                    subtotal = 12000.0,
-                    serviceFee = 250.0,
-                    currency = "د.ع",
-                    status = "NEW",
-                    timestamp = now - 180000,
-                    notes = "بدون بصل"
-                ),
-                OrderEntity(
-                    id = "ord_102",
-                    tableNumber = 3,
-                    customerName = "حيدر الكرخي",
-                    itemsSummary = "1x برجر باللحم المقدد، 1x موهيتو ليمون",
-                    itemsCount = 2,
-                    totalPrice = 9250.0,
-                    subtotal = 9000.0,
-                    serviceFee = 250.0,
-                    currency = "د.ع",
-                    status = "NEW",
-                    timestamp = now - 120000,
-                    notes = "سكر خفيف"
-                ),
-                OrderEntity(
-                    id = "ord_103",
-                    tableNumber = 5,
-                    customerName = "علي السعدي",
-                    itemsSummary = "1x برجر حار، 1x بطاطس مقلية",
-                    itemsCount = 2,
-                    totalPrice = 8250.0,
-                    subtotal = 8000.0,
-                    serviceFee = 250.0,
-                    currency = "د.ع",
-                    status = "PREPARING",
-                    timestamp = now - 650000,
-                    notes = "الصلصة جانباً"
-                ),
-                OrderEntity(
-                    id = "ord_104",
-                    tableNumber = 2,
-                    customerName = "سارة حسن",
-                    itemsSummary = "1x وافل شوكولاتة بلجيكية، 1x كابتشينو",
-                    itemsCount = 2,
-                    totalPrice = 10250.0,
-                    subtotal = 10000.0,
-                    serviceFee = 250.0,
-                    currency = "د.ع",
-                    status = "READY",
-                    timestamp = now - 1200000,
-                    notes = ""
-                )
-            )
-            demoOrders.forEach { dao.insertOrder(it) }
+            // الحساب الجديد وقاعدة البيانات تبدأ خالية من الباركودات والطلبات تماماً
+            // (Tables and Orders start completely empty for new accounts)
         }
     }
 }

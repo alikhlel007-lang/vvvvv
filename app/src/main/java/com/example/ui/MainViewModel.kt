@@ -12,6 +12,7 @@ import com.example.data.model.OrderRecord
 import com.example.data.model.OrderStatus
 import com.example.data.model.UserAccount
 import com.example.data.repository.CafeRepository
+import com.example.data.repository.AuthResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -103,6 +104,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _authSuccessMessage = MutableStateFlow<String?>(null)
     val authSuccessMessage: StateFlow<String?> = _authSuccessMessage.asStateFlow()
 
+    private val _authLoading = MutableStateFlow(false)
+    val authLoading: StateFlow<Boolean> = _authLoading.asStateFlow()
+
+    private val _unverifiedEmail = MutableStateFlow<String?>(null)
+    val unverifiedEmail: StateFlow<String?> = _unverifiedEmail.asStateFlow()
+
+    private val _registrationSuccessMessage = MutableStateFlow<String?>(null)
+    val registrationSuccessMessage: StateFlow<String?> = _registrationSuccessMessage.asStateFlow()
+
     // Cashier filter (default to NEW stage, "الكل" option removed)
     private val _orderStatusFilter = MutableStateFlow<OrderStatus>(OrderStatus.NEW)
     val orderStatusFilter: StateFlow<OrderStatus> = _orderStatusFilter.asStateFlow()
@@ -174,6 +184,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun navigateTo(screen: AppScreen) {
         _currentScreen.value = screen
         _authError.value = null
+        _authSuccessMessage.value = null
+        _unverifiedEmail.value = null
+        _registrationSuccessMessage.value = null
     }
 
     fun selectCategory(categoryId: String?) {
@@ -445,20 +458,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _authError.value = "يرجى إدخال البريد الإلكتروني وكلمة المرور"
             return
         }
+        _authLoading.value = true
+        _authError.value = null
+        _authSuccessMessage.value = null
+        _unverifiedEmail.value = null
+
         viewModelScope.launch {
-            val user = repository.login(email, pass)
-            val activeUser = user ?: UserAccount(
-                id = "u_" + Math.abs(email.hashCode()),
-                fullName = "مدير الكافيه",
-                email = email.trim(),
-                cafeName = "Q-Cafe",
-                role = "owner"
-            )
-            _currentUser.value = activeUser
-            repository.currentCafeteriaId = activeUser.id
-            repository.syncCurrentMenuToFirestore(activeUser.id, activeUser.cafeName, _themeAccentColorHex.value)
-            _authError.value = null
-            _currentScreen.value = AppScreen.CASHIER_ORDERS
+            try {
+                when (val result = repository.login(email, pass)) {
+                    is AuthResult.Success -> {
+                        val user = result.user
+                        _currentUser.value = user
+                        _cafeName.value = user.cafeName
+                        _cafeOwnerName.value = user.fullName
+                        _cafeEmail.value = user.email
+                        repository.currentCafeteriaId = user.id
+                        repository.syncCurrentMenuToFirestore(user.id, user.cafeName, _themeAccentColorHex.value)
+                        _authError.value = null
+                        _currentScreen.value = AppScreen.CASHIER_ORDERS
+                    }
+                    is AuthResult.EmailNotVerified -> {
+                        _unverifiedEmail.value = result.email
+                        _authError.value = result.message
+                    }
+                    is AuthResult.Error -> {
+                        _authError.value = result.message
+                    }
+                    else -> {}
+                }
+            } finally {
+                _authLoading.value = false
+            }
         }
     }
 
@@ -476,13 +506,63 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
+        _authLoading.value = true
+        _authError.value = null
+        _authSuccessMessage.value = null
+        _registrationSuccessMessage.value = null
+
         viewModelScope.launch {
-            val user = repository.register(fullName, email, pass, cafeName)
-            _currentUser.value = user
-            repository.currentCafeteriaId = user.id
-            repository.syncCurrentMenuToFirestore(user.id, user.cafeName, _themeAccentColorHex.value)
-            _authError.value = null
-            _currentScreen.value = AppScreen.CASHIER_ORDERS
+            try {
+                when (val result = repository.register(fullName, email, pass, cafeName)) {
+                    is AuthResult.VerificationEmailSent -> {
+                        _registrationSuccessMessage.value = result.message
+                        _unverifiedEmail.value = result.email
+                    }
+                    is AuthResult.Success -> {
+                        val user = result.user
+                        _currentUser.value = user
+                        _cafeName.value = user.cafeName
+                        _cafeOwnerName.value = user.fullName
+                        _cafeEmail.value = user.email
+                        repository.currentCafeteriaId = user.id
+                        repository.syncCurrentMenuToFirestore(user.id, user.cafeName, _themeAccentColorHex.value)
+                        _authError.value = null
+                        _currentScreen.value = AppScreen.CASHIER_ORDERS
+                    }
+                    is AuthResult.Error -> {
+                        _authError.value = result.message
+                    }
+                    else -> {}
+                }
+            } finally {
+                _authLoading.value = false
+            }
+        }
+    }
+
+    fun resendVerificationEmail(email: String, password: String? = null) {
+        if (email.isBlank()) {
+            _authError.value = "يرجى إدخال البريد الإلكتروني"
+            return
+        }
+        _authLoading.value = true
+        _authError.value = null
+        _authSuccessMessage.value = null
+
+        viewModelScope.launch {
+            try {
+                when (val result = repository.resendEmailVerification(email, password)) {
+                    is AuthResult.VerificationEmailSent -> {
+                        _authSuccessMessage.value = result.message
+                    }
+                    is AuthResult.Error -> {
+                        _authError.value = result.message
+                    }
+                    else -> {}
+                }
+            } finally {
+                _authLoading.value = false
+            }
         }
     }
 
@@ -491,8 +571,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _authError.value = "يرجى إدخال بريد إلكتروني صحيح"
             return
         }
+        _authLoading.value = true
         _authError.value = null
-        _authSuccessMessage.value = "تم إرسال رابط إعادة تعيين كلمة المرور إلى $email"
+        _authSuccessMessage.value = null
+
+        viewModelScope.launch {
+            try {
+                when (val result = repository.sendPasswordReset(email)) {
+                    is AuthResult.VerificationEmailSent -> {
+                        _authSuccessMessage.value = result.message
+                    }
+                    is AuthResult.Error -> {
+                        _authError.value = result.message
+                    }
+                    else -> {}
+                }
+            } finally {
+                _authLoading.value = false
+            }
+        }
+    }
+
+    fun dismissRegistrationSuccess() {
+        _registrationSuccessMessage.value = null
+        _currentScreen.value = AppScreen.LOGIN
     }
 
     fun logout() {

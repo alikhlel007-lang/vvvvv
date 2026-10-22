@@ -48,6 +48,13 @@ import com.example.ui.theme.CafeSurface
 import com.example.ui.theme.CafeTextPrimary
 import com.example.ui.theme.CafeTextSecondary
 
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.MarkEmailRead
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+
 @Composable
 fun RegisterScreen(viewModel: MainViewModel) {
     var fullName by remember { mutableStateOf("") }
@@ -57,6 +64,8 @@ fun RegisterScreen(viewModel: MainViewModel) {
     var confirmPassword by remember { mutableStateOf("") }
 
     val authError by viewModel.authError.collectAsState()
+    val authLoading by viewModel.authLoading.collectAsState()
+    val regSuccessMessage by viewModel.registrationSuccessMessage.collectAsState()
 
     Box(
         modifier = Modifier
@@ -169,33 +178,56 @@ fun RegisterScreen(viewModel: MainViewModel) {
                     )
 
                     if (authError != null) {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Text(
-                            text = authError ?: "",
-                            color = Color(0xFFFF6B6B),
-                            fontSize = 12.sp,
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Card(
                             modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF3B151E))
+                        ) {
+                            Text(
+                                text = authError ?: "",
+                                color = Color(0xFFFF8B8B),
+                                fontSize = 12.sp,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                textAlign = TextAlign.Center,
+                                lineHeight = 18.sp
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(18.dp))
 
                     // Submit Register
-                    CafePrimaryButton(
-                        text = "إنشاء حساب",
-                        showArrow = false,
-                        onClick = {
-                            viewModel.register(
-                                fullName = fullName,
-                                email = email,
-                                pass = password,
-                                confirmPass = confirmPassword,
-                                cafeName = cafeName
+                    if (authLoading) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                color = CafeCyanPrimary,
+                                modifier = Modifier.size(32.dp)
                             )
-                        },
-                        testTag = "reg_submit_button"
-                    )
+                        }
+                    } else {
+                        CafePrimaryButton(
+                            text = "إنشاء حساب وإرسال رابط التفعيل",
+                            showArrow = false,
+                            onClick = {
+                                viewModel.register(
+                                    fullName = fullName,
+                                    email = email,
+                                    pass = password,
+                                    confirmPass = confirmPassword,
+                                    cafeName = cafeName
+                                )
+                            },
+                            testTag = "reg_submit_button"
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -216,6 +248,46 @@ fun RegisterScreen(viewModel: MainViewModel) {
                     )
                 }
             }
+        }
+
+        if (regSuccessMessage != null) {
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissRegistrationSuccess() },
+                containerColor = CafeSurface,
+                shape = RoundedCornerShape(20.dp),
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.MarkEmailRead,
+                        contentDescription = null,
+                        tint = CafeCyanPrimary,
+                        modifier = Modifier.size(48.dp)
+                    )
+                },
+                title = {
+                    Text(
+                        text = "تأكيد البريد الإلكتروني",
+                        color = CafeTextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        textAlign = TextAlign.Center
+                    )
+                },
+                text = {
+                    Text(
+                        text = regSuccessMessage ?: "",
+                        color = CafeTextSecondary,
+                        fontSize = 13.sp,
+                        lineHeight = 20.sp,
+                        textAlign = TextAlign.Center
+                    )
+                },
+                confirmButton = {
+                    CafePrimaryButton(
+                        text = "الانتقال لتسجيل الدخول",
+                        onClick = { viewModel.dismissRegistrationSuccess() }
+                    )
+                }
+            )
         }
     }
 }

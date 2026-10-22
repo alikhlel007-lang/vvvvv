@@ -53,13 +53,21 @@ import com.example.ui.theme.CafeSurface
 import com.example.ui.theme.CafeTextPrimary
 import com.example.ui.theme.CafeTextSecondary
 
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.CircularProgressIndicator
+
 @Composable
 fun LoginScreen(viewModel: MainViewModel) {
-    var emailOrUsername by remember { mutableStateOf("admin@cafe.com") }
-    var password by remember { mutableStateOf("12345678") }
+    var emailOrUsername by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
     var rememberMe by remember { mutableStateOf(true) }
 
     val authError by viewModel.authError.collectAsState()
+    val authSuccess by viewModel.authSuccessMessage.collectAsState()
+    val authLoading by viewModel.authLoading.collectAsState()
+    val unverifiedEmail by viewModel.unverifiedEmail.collectAsState()
 
     Box(
         modifier = Modifier
@@ -183,25 +191,102 @@ fun LoginScreen(viewModel: MainViewModel) {
                         )
                     }
 
-                    if (authError != null) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = authError ?: "",
-                            color = Color(0xFFFF6B6B),
-                            fontSize = 12.sp,
+                    if (authSuccess != null) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Card(
                             modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F3E44))
+                        ) {
+                            Text(
+                                text = authSuccess ?: "",
+                                color = CafeCyanPrimary,
+                                fontSize = 12.sp,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                textAlign = TextAlign.Center,
+                                lineHeight = 18.sp
+                            )
+                        }
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    if (authError != null) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF3B151E))
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = authError ?: "",
+                                    color = Color(0xFFFF8B8B),
+                                    fontSize = 12.sp,
+                                    textAlign = TextAlign.Center,
+                                    lineHeight = 18.sp
+                                )
+
+                                if (unverifiedEmail != null) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(
+                                        modifier = Modifier
+                                            .clickable {
+                                                viewModel.resendVerificationEmail(
+                                                    email = unverifiedEmail ?: emailOrUsername,
+                                                    password = password
+                                                )
+                                            }
+                                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                                            .background(CafeCyanPrimary.copy(alpha = 0.15f), RoundedCornerShape(8.dp)),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Refresh,
+                                            contentDescription = null,
+                                            tint = CafeCyanPrimary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "إعادة إرسال رابط التفعيل الآن",
+                                            color = CafeCyanPrimary,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     // Login Action
-                    CafePrimaryButton(
-                        text = "Login",
-                        onClick = { viewModel.login(emailOrUsername, password) },
-                        testTag = "login_submit_button"
-                    )
+                    if (authLoading) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                color = CafeCyanPrimary,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    } else {
+                        CafePrimaryButton(
+                            text = "Login / تسجيل الدخول",
+                            onClick = { viewModel.login(emailOrUsername, password) },
+                            testTag = "login_submit_button"
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(20.dp))
 

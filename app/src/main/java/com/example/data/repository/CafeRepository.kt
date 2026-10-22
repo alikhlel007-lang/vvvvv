@@ -13,13 +13,28 @@ import com.example.data.model.MenuItem
 import com.example.data.model.OrderRecord
 import com.example.data.model.OrderStatus
 import com.example.data.model.UserAccount
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.UUID
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+
+sealed class AuthResult {
+    data class Success(val user: UserAccount) : AuthResult()
+    data class EmailNotVerified(val email: String, val message: String) : AuthResult()
+    data class VerificationEmailSent(val email: String, val message: String) : AuthResult()
+    data class Error(val message: String) : AuthResult()
+}
 
 class CafeRepository(private val dao: CafeDao) {
 
@@ -28,6 +43,23 @@ class CafeRepository(private val dao: CafeDao) {
     } catch (_: Exception) {
         null
     }
+
+    private val firebaseAuth: FirebaseAuth? = try {
+        FirebaseAuth.getInstance()
+    } catch (_: Exception) {
+        null
+    }
+
+    private suspend fun <T> com.google.android.gms.tasks.Task<T>.awaitTask(): T =
+        suspendCancellableCoroutine { continuation ->
+            addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    continuation.resume(task.result)
+                } else {
+                    continuation.resumeWithException(task.exception ?: RuntimeException("Task failed"))
+                }
+            }
+        }
 
     // Default Web Menu URL for GitHub Pages
     var baseWebMenuUrl: String = "https://alikhlel007-lang.github.io/vvvvv/?table="
@@ -562,13 +594,74 @@ class CafeRepository(private val dao: CafeDao) {
         dao.deleteAllTables()
     }
 
-    // User Auth
-    suspend fun login(email: String, password: String): UserAccount? {
-        val user = dao.getUserByEmail(email.trim()) ?: return null
-        if (user.passwordHash == password.trim() || user.passwordHash.isEmpty()) {
-            return user.toDomain()
+    // User Auth with Firebase Authentication & Email Verification
+    suspend fun login(email: String, password: String): AuthResult {
+        val cleanEmail = email.trim()
+        val cleanPass = password.trim()
+
+        if (cleanEmail.isBlank() || cleanPass.isBlank()) {
+            return AuthResult.Error("يرجى إدخال البريد الإلكتروني وكلمة المرور")
         }
-        return null
+
+        if (firebaseAuth != null) {
+            return try {
+                val authResult = firebaseAuth.signInWithEmailAndPassword(cleanEmail, cleanPass).awaitTask()
+                val firebaseUser = authResult.user ?: return AuthResult.Error("تعذر التحقق من المستخدم")
+
+                // Reload to refresh isEmailVerified from Firebase
+                firebaseUser.reload().awaitTask()
+
+                if (!firebaseUser.isEmailVerified) {
+                    firebaseAuth.signOut()
+                    AuthResult.EmailNotVerified(
+                        email = cleanEmail,
+                        message = "لم يتم تفعيل الحساب بعد! يرجى مراجعة بريدك الإلكتروني ($cleanEmail) والضغط على رابط التحقق قبل تسجيل الدخول."
+                    )
+                } else {
+                    val uid = firebaseUser.uid
+                    val localUser = dao.getUserByEmail(cleanEmail)
+                    val account = if (localUser != null) {
+                        localUser.toDomain()
+                    } else {
+                        val newAccount = UserAccount(
+                            id = uid,
+                            fullName = firebaseUser.displayName ?: "مدير الكافيه",
+                            email = cleanEmail,
+                            cafeName = "Q-Cafe",
+                            role = "owner"
+                        )
+                        dao.insertUser(
+                            UserEntity(
+                                id = uid,
+                                fullName = newAccount.fullName,
+                                email = cleanEmail,
+                                passwordHash = cleanPass,
+                                cafeName = newAccount.cafeName,
+                                role = newAccount.role
+                            )
+                        )
+                        newAccount
+                    }
+                    currentCafeteriaId = uid
+                    AuthResult.Success(account)
+                }
+            } catch (e: Exception) {
+                val errorMsg = when (e) {
+                    is FirebaseAuthInvalidUserException -> "لا يوجد حساب مسجل بهذا البريد الإلكتروني"
+                    is FirebaseAuthInvalidCredentialsException -> "البريد الإلكتروني أو كلمة المرور غير صحيحة"
+                    else -> e.localizedMessage ?: "فشل تسجيل الدخول. تأكد من صحة البيانات واتصال الإنترنت"
+                }
+                AuthResult.Error(errorMsg)
+            }
+        } else {
+            val user = dao.getUserByEmail(cleanEmail)
+            return if (user != null && user.passwordHash == cleanPass) {
+                currentCafeteriaId = user.id
+                AuthResult.Success(user.toDomain())
+            } else {
+                AuthResult.Error("البريد الإلكتروني أو كلمة المرور غير صحيحة")
+            }
+        }
     }
 
     suspend fun register(
@@ -576,20 +669,133 @@ class CafeRepository(private val dao: CafeDao) {
         email: String,
         password: String,
         cafeName: String
-    ): UserAccount {
-        // عند إنشاء حساب جديد، تبدأ الطاولات والباركودات فارغة تماماً
+    ): AuthResult {
+        // الحساب الجديد يبدأ فارغاً تماماً من الطاولات والطلبات التجريبية
         dao.deleteAllTables()
+        dao.deleteAllOrders()
 
-        val entity = UserEntity(
-            id = "u_" + UUID.randomUUID().toString().take(8),
-            fullName = fullName,
-            email = email.trim(),
-            passwordHash = password.trim(),
-            cafeName = cafeName.ifEmpty { "CAFE" },
-            role = "owner"
-        )
-        dao.insertUser(entity)
-        return entity.toDomain()
+        val cleanEmail = email.trim()
+        val cleanPass = password.trim()
+        val cleanCafeName = cafeName.trim().ifEmpty { "Q-Cafe" }
+        val cleanFullName = fullName.trim().ifEmpty { "مدير الكافيه" }
+
+        if (cleanEmail.isBlank() || cleanPass.isBlank()) {
+            return AuthResult.Error("يرجى ملء جميع الحقول المطلوبة")
+        }
+
+        if (cleanPass.length < 6) {
+            return AuthResult.Error("كلمة المرور يجب أن لا تقل عن 6 أحرف")
+        }
+
+        if (firebaseAuth != null) {
+            return try {
+                val authResult = firebaseAuth.createUserWithEmailAndPassword(cleanEmail, cleanPass).awaitTask()
+                val firebaseUser = authResult.user ?: return AuthResult.Error("تعذر إنشاء الحساب في Firebase")
+
+                // Send email verification link
+                firebaseUser.sendEmailVerification().awaitTask()
+
+                val uid = firebaseUser.uid
+                val userProfile = hashMapOf(
+                    "id" to uid,
+                    "fullName" to cleanFullName,
+                    "email" to cleanEmail,
+                    "cafeName" to cleanCafeName,
+                    "role" to "owner",
+                    "createdAt" to System.currentTimeMillis()
+                )
+                firestore?.collection("cafeterias")?.document(uid)?.set(userProfile)
+                firestore?.collection("users")?.document(uid)?.set(userProfile)
+
+                val entity = UserEntity(
+                    id = uid,
+                    fullName = cleanFullName,
+                    email = cleanEmail,
+                    passwordHash = cleanPass,
+                    cafeName = cleanCafeName,
+                    role = "owner"
+                )
+                dao.insertUser(entity)
+
+                // Sign out so user must verify their email before accessing the cashier
+                firebaseAuth.signOut()
+
+                AuthResult.VerificationEmailSent(
+                    email = cleanEmail,
+                    message = "تم إنشاء الحساب بنجاح! تم إرسال رابط تأكيد إلى بريدك الإلكتروني ($cleanEmail).\n\nيرجى فتح بريدك الإلكتروني والضغط على رابط التحقق قبل تسجيل الدخول."
+                )
+            } catch (e: Exception) {
+                val errorMsg = when (e) {
+                    is FirebaseAuthUserCollisionException -> "البريد الإلكتروني مسجل بالفعل، يرجى تسجيل الدخول"
+                    is FirebaseAuthWeakPasswordException -> "كلمة المرور ضعيفة جداً"
+                    is FirebaseAuthInvalidCredentialsException -> "صيغة البريد الإلكتروني غير صحيحة"
+                    else -> e.localizedMessage ?: "حدث خطأ أثناء إنشاء الحساب في Firebase"
+                }
+                AuthResult.Error(errorMsg)
+            }
+        } else {
+            val entity = UserEntity(
+                id = "u_" + UUID.randomUUID().toString().take(8),
+                fullName = cleanFullName,
+                email = cleanEmail,
+                passwordHash = cleanPass,
+                cafeName = cleanCafeName,
+                role = "owner"
+            )
+            dao.insertUser(entity)
+            currentCafeteriaId = entity.id
+            return AuthResult.Success(entity.toDomain())
+        }
+    }
+
+    suspend fun resendEmailVerification(email: String, password: String? = null): AuthResult {
+        val cleanEmail = email.trim()
+        if (firebaseAuth == null) {
+            return AuthResult.Error("خدمة Firebase غير متوفرة")
+        }
+        return try {
+            var currentUser = firebaseAuth.currentUser
+            if ((currentUser == null || currentUser.email != cleanEmail) && !password.isNullOrBlank()) {
+                val res = firebaseAuth.signInWithEmailAndPassword(cleanEmail, password.trim()).awaitTask()
+                currentUser = res.user
+            }
+            if (currentUser != null) {
+                currentUser.sendEmailVerification().awaitTask()
+                firebaseAuth.signOut()
+                AuthResult.VerificationEmailSent(
+                    email = cleanEmail,
+                    message = "تمت إعادة إرسال رابط التفعيل إلى $cleanEmail بنجاح! تفقد بريدك الوارد والبريد غير الهام (Spam)."
+                )
+            } else {
+                AuthResult.Error("يرجى إدخال كلمة المرور مع البريد لإعادة إرسال الرابط")
+            }
+        } catch (e: Exception) {
+            AuthResult.Error(e.localizedMessage ?: "تعذر إعادة إرسال رابط التفعيل")
+        }
+    }
+
+    suspend fun sendPasswordReset(email: String): AuthResult {
+        val cleanEmail = email.trim()
+        if (cleanEmail.isBlank() || !cleanEmail.contains("@")) {
+            return AuthResult.Error("يرجى إدخال بريد إلكتروني صالح")
+        }
+        if (firebaseAuth == null) {
+            return AuthResult.Error("خدمة Firebase غير متوفرة")
+        }
+        return try {
+            firebaseAuth.sendPasswordResetEmail(cleanEmail).awaitTask()
+            AuthResult.VerificationEmailSent(
+                email = cleanEmail,
+                message = "تم إرسال رابط إعادة تعيين كلمة المرور إلى $cleanEmail بنجاح! تفقد بريدك الإلكتروني واتبع الرابط لتغيير كلمة المرور."
+            )
+        } catch (e: Exception) {
+            val errorMsg = when (e) {
+                is FirebaseAuthInvalidUserException -> "لا يوجد حساب مسجل بهذا البريد الإلكتروني"
+                is FirebaseAuthInvalidCredentialsException -> "صيغة البريد الإلكتروني غير صحيحة"
+                else -> e.localizedMessage ?: "فشل إرسال رابط إعادة تعيين كلمة المرور"
+            }
+            AuthResult.Error(errorMsg)
+        }
     }
 
     // Mapping extensions

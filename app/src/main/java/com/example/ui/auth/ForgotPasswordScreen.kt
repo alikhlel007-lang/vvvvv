@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -48,6 +49,8 @@ fun ForgotPasswordScreen(viewModel: MainViewModel) {
     var email by remember { mutableStateOf("") }
     val authError by viewModel.authError.collectAsState()
     val authSuccess by viewModel.authSuccessMessage.collectAsState()
+
+    val authLoading by viewModel.authLoading.collectAsState()
 
     Box(
         modifier = Modifier
@@ -115,34 +118,66 @@ fun ForgotPasswordScreen(viewModel: MainViewModel) {
                     )
 
                     if (authError != null) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = authError ?: "",
-                            color = Color(0xFFFF6B6B),
-                            fontSize = 12.sp,
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Card(
                             modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF3B151E))
+                        ) {
+                            Text(
+                                text = authError ?: "",
+                                color = Color(0xFFFF8B8B),
+                                fontSize = 12.sp,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                textAlign = TextAlign.Center,
+                                lineHeight = 18.sp
+                            )
+                        }
                     }
 
                     if (authSuccess != null) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = authSuccess ?: "",
-                            color = CafeCyanPrimary,
-                            fontSize = 12.sp,
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Card(
                             modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F3E44))
+                        ) {
+                            Text(
+                                text = authSuccess ?: "",
+                                color = CafeCyanPrimary,
+                                fontSize = 12.sp,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                textAlign = TextAlign.Center,
+                                lineHeight = 18.sp
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    CafePrimaryButton(
-                        text = "إرسال رابط إعادة تعيين",
-                        onClick = { viewModel.forgotPassword(email) },
-                        testTag = "forgot_submit_button"
-                    )
+                    if (authLoading) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            androidx.compose.material3.CircularProgressIndicator(
+                                color = CafeCyanPrimary,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    } else {
+                        CafePrimaryButton(
+                            text = "إرسال رابط إعادة تعيين كلمة المرور",
+                            onClick = { viewModel.forgotPassword(email) },
+                            testTag = "forgot_submit_button"
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(20.dp))
 
