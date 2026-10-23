@@ -1052,7 +1052,7 @@
 
     // 2. Dynamic URL Parameter Extraction
     const urlParams = new URLSearchParams(window.location.search);
-    const cafeteriaId = urlParams.get('cafeteriaId') || urlParams.get('cafeId') || urlParams.get('cid') || 'u_default';
+    let cafeteriaId = urlParams.get('cafeteriaId') || urlParams.get('cafeId') || urlParams.get('cid') || 'u_default';
     const tableNumber = parseInt(urlParams.get('table') || urlParams.get('tableNumber') || urlParams.get('t') || '1', 10);
     const secToken = urlParams.get('sec') || '';
 
@@ -1152,12 +1152,52 @@
       }
     }
 
+    function getItemImageUrl(item) {
+      if (!item) return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500&q=80';
+      if (item.imageUri && (item.imageUri.startsWith('http://') || item.imageUri.startsWith('https://') || item.imageUri.startsWith('data:image'))) {
+        return item.imageUri;
+      }
+      const type = (item.imageType || '').toLowerCase();
+      const name = (item.nameAr || '').toLowerCase();
+      if (type === 'burger' || name.includes('برجر') || name.includes('برغر')) {
+        return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&q=80';
+      }
+      if (type === 'fries' || name.includes('بطاطس') || name.includes('مقبلات') || name.includes('أصابع')) {
+        return 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=500&q=80';
+      }
+      if (type === 'drink' || name.includes('لاتيه') || name.includes('قهوة') || name.includes('عصير') || name.includes('شاي') || name.includes('مشروب')) {
+        return 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?w=500&q=80';
+      }
+      if (type === 'sweets' || name.includes('كيك') || name.includes('حلو') || name.includes('وافل') || name.includes('كريب') || name.includes('تشيز')) {
+        return 'https://images.unsplash.com/photo-1524351199678-941a58a3df50?w=500&q=80';
+      }
+      if (type === 'pizza' || name.includes('بيتزا')) {
+        return 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&q=80';
+      }
+      if (type === 'meals' || name.includes('شاورما') || name.includes('وجبة') || name.includes('دجاج') || name.includes('لحم')) {
+        return 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=500&q=80';
+      }
+      return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500&q=80';
+    }
+
     // 4. Listen to Real-time Multi-tenant Data from Firebase
     function initFirebaseMultiTenantSync() {
       if (!db) {
         renderCategories();
         renderItems();
         return;
+      }
+
+      if (cafeteriaId === 'u_default') {
+        db.collection('cafeterias').limit(3).get().then(snap => {
+          if (!snap.empty) {
+            const firstValid = snap.docs.find(d => d.id !== 'u_default') || snap.docs[0];
+            if (firstValid && firstValid.id !== 'u_default') {
+              cafeteriaId = firstValid.id;
+              initFirebaseMultiTenantSync();
+            }
+          }
+        }).catch(err => console.log('Auto cafeteria lookup notice:', err));
       }
 
       // A. Listen to Cafe Profile
@@ -1288,14 +1328,14 @@
         const card = document.createElement('div');
         card.className = 'item-card';
 
-        const imgSrc = item.imageUri || (item.imageType === 'burger' ? 'public/assets/aistudio/Screenshot_20261022_003318_com_cafe_digitalmenu_MainActivity_0bfef704.jpg' : 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&q=80');
+        const imgSrc = getItemImageUrl(item);
         const offerBadgeHtml = (item.isOffer || item.offerTag) ? `<div class="item-offer-tag">🔥 ${item.offerTag || 'عرض خاص'}</div>` : '';
         const priceFormatted = Number(item.price).toLocaleString() + ' ' + (item.currency || 'د.ع');
 
         card.innerHTML = `
           <!-- Food Image (Right) -->
           <div class="item-image-wrapper">
-            <img src="${imgSrc}" alt="${item.nameAr}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&q=80'">
+            <img src="${imgSrc}" alt="${item.nameAr}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80'">
           </div>
 
           <!-- Content (Left) -->
@@ -1445,16 +1485,10 @@
       };
 
       if (db) {
-        // Dual-write: write to multi-tenant subcollection AND root orders
-        const batch = db.batch();
-        const tenantOrderRef = db.collection('cafeterias').doc(cafeteriaId).collection('orders').doc(orderId);
-        const rootOrderRef = db.collection('orders').doc(orderId);
-        batch.set(tenantOrderRef, orderData);
-        batch.set(rootOrderRef, orderData);
-
-        batch.commit()
+        // Multi-tenant: write strictly to this cafeteria's orders subcollection
+        db.collection('cafeterias').doc(cafeteriaId).collection('orders').doc(orderId).set(orderData)
           .then(() => {
-            console.log("Order saved to Firestore successfully!");
+            console.log("Order saved to cafeteria subcollection successfully!");
             finishOrder();
           })
           .catch(err => {
@@ -1509,7 +1543,7 @@
       if (!item) return;
 
       document.getElementById('detailsItemName').innerText = item.nameAr;
-      document.getElementById('detailsMainImage').src = item.imageUri || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&q=80';
+      document.getElementById('detailsMainImage').src = getItemImageUrl(item);
       document.getElementById('detailsItemDesc').innerText = item.descriptionAr || 'طبق شهي ومميز يتم تحضيره بأعلى معايير الجودة.';
       document.getElementById('detailsItemPrice').innerText = Number(item.price).toLocaleString() + ' ' + (item.currency || 'د.ع');
 

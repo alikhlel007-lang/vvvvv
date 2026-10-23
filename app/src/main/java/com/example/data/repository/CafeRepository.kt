@@ -65,25 +65,33 @@ class CafeRepository(private val dao: CafeDao) {
     // Multi-tenant cafeteria identifier (defaults to u_default until user logs in or registers)
     var currentCafeteriaId: String = "u_default"
 
+    private var ordersListenerRegistration: com.google.firebase.firestore.ListenerRegistration? = null
+
     fun buildTableQrUrl(baseUrl: String, tableNumber: Int, secToken: String): String {
         val clean = baseUrl.trim()
-        val sep = if (clean.contains("?")) "&" else "?"
-        return if (clean.contains("table=")) {
-            if (clean.endsWith("table=")) {
-                "${clean}${tableNumber}&cafeteriaId=${currentCafeteriaId}&sec=${secToken}"
-            } else {
-                "${clean}&cafeteriaId=${currentCafeteriaId}&table=${tableNumber}&sec=${secToken}"
-            }
-        } else {
-            "${clean}${sep}cafeteriaId=${currentCafeteriaId}&table=${tableNumber}&sec=${secToken}"
-        }
+        val baseWithoutQuery = if (clean.contains("?")) clean.substringBefore("?") else clean
+        val normalized = if (baseWithoutQuery.endsWith("/")) baseWithoutQuery else "$baseWithoutQuery/"
+        return "${normalized}?cafeteriaId=${currentCafeteriaId}&table=${tableNumber}&sec=${secToken}"
     }
 
-    fun startFirestoreOrdersListener(scope: CoroutineScope) {
+    fun startFirestoreOrdersListener(scope: CoroutineScope, cafeId: String = currentCafeteriaId) {
+        // Cancel any existing listener registration
+        ordersListenerRegistration?.remove()
+        ordersListenerRegistration = null
+
+        val targetCafeId = cafeId.ifBlank { currentCafeteriaId }
+        if (targetCafeId.isBlank() || targetCafeId == "u_default") {
+            return
+        }
+
         val parseOrderDoc: (com.google.firebase.firestore.DocumentSnapshot) -> Unit = { doc ->
             scope.launch(Dispatchers.IO) {
                 try {
                     val id = doc.id
+                    val docCafeId = doc.getString("cafeteriaId") ?: targetCafeId
+                    // Strict isolation: discard orders from other cafeterias
+                    if (docCafeId != targetCafeId) return@launch
+
                     val tableNumber = doc.getLong("tableNumber")?.toInt() ?: 1
                     val customerName = doc.getString("customerName") ?: "طاولة $tableNumber"
                     val itemsSummary = doc.getString("itemsSummary") ?: ""
@@ -116,24 +124,15 @@ class CafeRepository(private val dao: CafeDao) {
         }
 
         try {
-            // Listen to root collection orders
-            firestore?.collection("orders")?.addSnapshotListener { snapshot, error ->
-                if (error != null || snapshot == null) return@addSnapshotListener
-                for (doc in snapshot.documents) {
-                    parseOrderDoc(doc)
-                }
-            }
-
-            // Listen to multi-tenant orders subcollection for current cafeteria
-            if (currentCafeteriaId.isNotBlank()) {
-                firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")
-                    ?.addSnapshotListener { snapshot, error ->
-                        if (error != null || snapshot == null) return@addSnapshotListener
-                        for (doc in snapshot.documents) {
-                            parseOrderDoc(doc)
-                        }
+            // Strictly listen to THIS cafeteria's orders subcollection ONLY.
+            // Do NOT listen to global collection("orders") to prevent cross-tenant leakage.
+            ordersListenerRegistration = firestore?.collection("cafeterias")?.document(targetCafeId)?.collection("orders")
+                ?.addSnapshotListener { snapshot, error ->
+                    if (error != null || snapshot == null) return@addSnapshotListener
+                    for (doc in snapshot.documents) {
+                        parseOrderDoc(doc)
                     }
-            }
+                }
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -504,6 +503,7 @@ class CafeRepository(private val dao: CafeDao) {
         try {
             val orderMap = hashMapOf(
                 "id" to orderId,
+                "cafeteriaId" to currentCafeteriaId,
                 "tableNumber" to tableNumber,
                 "customerName" to cleanedCustomerName,
                 "itemsSummary" to summary,
@@ -516,6 +516,7 @@ class CafeRepository(private val dao: CafeDao) {
                 "timestamp" to System.currentTimeMillis(),
                 "notes" to notes
             )
+            firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")?.document(orderId)?.set(orderMap)
             firestore?.collection("orders")?.document(orderId)?.set(orderMap)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -529,6 +530,7 @@ class CafeRepository(private val dao: CafeDao) {
             val updated = order.copy(status = OrderStatus.PAID).toEntity()
             dao.updateOrder(updated)
             try {
+                firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")?.document(order.id)?.update("status", OrderStatus.PAID.name)
                 firestore?.collection("orders")?.document(order.id)?.update("status", OrderStatus.PAID.name)
             } catch (_: Exception) {}
         }
@@ -538,6 +540,7 @@ class CafeRepository(private val dao: CafeDao) {
         val updated = currentOrder.copy(status = newStatus).toEntity()
         dao.updateOrder(updated)
         try {
+            firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")?.document(orderId)?.update("status", newStatus.name)
             firestore?.collection("orders")?.document(orderId)?.update("status", newStatus.name)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -547,45 +550,37 @@ class CafeRepository(private val dao: CafeDao) {
     suspend fun deleteOrder(order: OrderRecord) {
         dao.deleteOrder(order.toEntity())
         try {
+            firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")?.document(order.id)?.delete()
             firestore?.collection("orders")?.document(order.id)?.delete()
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
-    init {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                enforceSingleItemPerCategory()
-            } catch (_: Exception) {}
-        }
-    }
-
-    suspend fun enforceSingleItemPerCategory() {
-        val items = dao.getAllMenuItemsSync()
-        val grouped = items.groupBy { it.categoryId }
-        grouped.forEach { (_, catItems) ->
-            if (catItems.size > 1) {
-                catItems.drop(1).forEach { extra ->
-                    dao.deleteMenuItem(extra)
-                }
-            }
-        }
-    }
-
     suspend fun generateInitialTables(count: Int = 8) {
         val newTables = (1..count).map { number ->
             val secToken = "SEC" + (1000 + number)
+            val payload = buildTableQrUrl(baseWebMenuUrl, number, secToken)
             TableEntity(
                 id = "table_$number",
                 tableNumber = number,
                 label = "طاولة $number",
                 capacity = if (number % 2 == 0) 4 else 2,
-                qrPayload = "$baseWebMenuUrl$number&sec=$secToken",
+                qrPayload = payload,
                 securityToken = secToken
             )
         }
         dao.insertTables(newTables)
+    }
+
+    suspend fun updateExistingTablesCafeteriaId() {
+        try {
+            val currentTables = dao.getAllTablesSync()
+            currentTables.forEach { table ->
+                val newPayload = buildTableQrUrl(baseWebMenuUrl, table.tableNumber, table.securityToken)
+                dao.updateTable(table.copy(qrPayload = newPayload))
+            }
+        } catch (_: Exception) {}
     }
 
     suspend fun clearAllTables() {
@@ -773,6 +768,19 @@ class CafeRepository(private val dao: CafeDao) {
             }
             AuthResult.Error(errorMsg)
         }
+    }
+
+    fun stopFirestoreOrdersListener() {
+        ordersListenerRegistration?.remove()
+        ordersListenerRegistration = null
+    }
+
+    fun logout() {
+        stopFirestoreOrdersListener()
+        try {
+            firebaseAuth.signOut()
+        } catch (_: Exception) {}
+        currentCafeteriaId = "u_default"
     }
 
     // Mapping extensions

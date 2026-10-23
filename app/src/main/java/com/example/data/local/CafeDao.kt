@@ -55,6 +55,9 @@ interface CafeDao {
     @Query("SELECT * FROM cafe_tables ORDER BY tableNumber ASC")
     fun getAllTables(): Flow<List<TableEntity>>
 
+    @Query("SELECT * FROM cafe_tables ORDER BY tableNumber ASC")
+    suspend fun getAllTablesSync(): List<TableEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTable(table: TableEntity)
 

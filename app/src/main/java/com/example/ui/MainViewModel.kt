@@ -40,10 +40,39 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         val db = CafeDatabase.getDatabase(application, viewModelScope)
         repository = CafeRepository(db.cafeDao())
-        repository.startFirestoreOrdersListener(viewModelScope)
         viewModelScope.launch {
-            repository.enforceSingleItemPerCategory()
-            repository.syncCurrentMenuToFirestore(_currentUser.value?.id ?: "u_default", _cafeName.value, _themeAccentColorHex.value)
+            try {
+                val authUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+                if (authUser != null && authUser.isEmailVerified) {
+                    val localUser = db.cafeDao().getUserByEmail(authUser.email ?: "")
+                    val userAccount = if (localUser != null) {
+                        UserAccount(
+                            id = authUser.uid,
+                            fullName = localUser.fullName,
+                            email = localUser.email,
+                            cafeName = localUser.cafeName,
+                            role = localUser.role
+                        )
+                    } else {
+                        UserAccount(
+                            id = authUser.uid,
+                            fullName = authUser.displayName ?: "مدير الكافيه",
+                            email = authUser.email ?: "",
+                            cafeName = "Q-Cafe",
+                            role = "owner"
+                        )
+                    }
+                    _currentUser.value = userAccount
+                    _cafeName.value = userAccount.cafeName
+                    _cafeOwnerName.value = userAccount.fullName
+                    _cafeEmail.value = userAccount.email
+                    repository.currentCafeteriaId = userAccount.id
+                    repository.updateExistingTablesCafeteriaId()
+                    repository.startFirestoreOrdersListener(viewModelScope, userAccount.id)
+                    repository.syncCurrentMenuToFirestore(userAccount.id, userAccount.cafeName, _themeAccentColorHex.value)
+                }
+            } catch (_: Exception) {}
+
             delay(1200)
             if (_currentScreen.value == AppScreen.SPLASH) {
                 _currentScreen.value = if (_currentUser.value != null) AppScreen.CASHIER_ORDERS else AppScreen.LOGIN
@@ -473,6 +502,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         _cafeOwnerName.value = user.fullName
                         _cafeEmail.value = user.email
                         repository.currentCafeteriaId = user.id
+                        repository.updateExistingTablesCafeteriaId()
+                        repository.startFirestoreOrdersListener(viewModelScope, user.id)
                         repository.syncCurrentMenuToFirestore(user.id, user.cafeName, _themeAccentColorHex.value)
                         _authError.value = null
                         _currentScreen.value = AppScreen.CASHIER_ORDERS
@@ -591,6 +622,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun logout() {
+        repository.logout()
         _currentUser.value = null
         _cart.value = emptyList()
         _currentScreen.value = AppScreen.LOGIN
