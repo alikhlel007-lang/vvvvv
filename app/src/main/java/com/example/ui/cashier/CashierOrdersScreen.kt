@@ -632,8 +632,12 @@ fun UnifiedTableSessionCard(
                     val custFee = customerOrders.sumOf { it.serviceFee }
                     val custTotal = customerOrders.sumOf { it.totalPrice }
                     val custCurrency = customerOrders.firstOrNull()?.currency ?: "د.ع"
-                    val itemsCombined = customerOrders.joinToString(" + ") { it.itemsSummary }
-                    val notesCombined = customerOrders.map { it.notes }.filter { it.isNotBlank() }.joinToString(" | ")
+                    val itemsCombined = com.example.util.OrderSummaryHelper.combineAndMultiplySummaries(
+                        customerOrders.map { it.itemsSummary }
+                    )
+                    val notesCombined = com.example.util.OrderSummaryHelper.combineNotes(
+                        customerOrders.map { it.notes }
+                    )
 
                     Column(
                         modifier = Modifier

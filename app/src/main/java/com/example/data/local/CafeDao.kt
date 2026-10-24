@@ -29,6 +29,9 @@ interface CafeDao {
     @Delete
     suspend fun deleteCategory(category: CategoryEntity)
 
+    @Query("DELETE FROM categories")
+    suspend fun deleteAllCategories()
+
     // Menu Items
     @Query("SELECT * FROM menu_items")
     fun getAllMenuItems(): Flow<List<MenuItemEntity>>
@@ -50,6 +53,9 @@ interface CafeDao {
 
     @Delete
     suspend fun deleteMenuItem(item: MenuItemEntity)
+
+    @Query("DELETE FROM menu_items")
+    suspend fun deleteAllMenuItems()
 
     // Tables
     @Query("SELECT * FROM cafe_tables ORDER BY tableNumber ASC")

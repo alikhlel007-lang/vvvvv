@@ -36,7 +36,7 @@ sealed class AuthResult {
     data class Error(val message: String) : AuthResult()
 }
 
-class CafeRepository(private val dao: CafeDao) {
+class CafeRepository(private val dao: CafeDao, private val context: android.content.Context? = null) {
 
     private val firestore: FirebaseFirestore?
         get() = try {
@@ -138,6 +138,281 @@ class CafeRepository(private val dao: CafeDao) {
         }
     }
 
+    fun saveCafeProfile(
+        cafeId: String,
+        cafeName: String,
+        phone: String,
+        ownerName: String,
+        email: String,
+        address: String,
+        welcomeNote: String,
+        logoType: String,
+        customLogoUri: String?,
+        menuUrl: String,
+        themeColor: String
+    ) {
+        val prefs = context?.getSharedPreferences("cafe_profile_prefs", android.content.Context.MODE_PRIVATE)
+        prefs?.edit()?.apply {
+            putString("cafe_name_$cafeId", cafeName)
+            putString("cafe_phone_$cafeId", phone)
+            putString("cafe_owner_$cafeId", ownerName)
+            putString("cafe_email_$cafeId", email)
+            putString("cafe_address_$cafeId", address)
+            putString("cafe_welcome_$cafeId", welcomeNote)
+            putString("cafe_logo_type_$cafeId", logoType)
+            putString("cafe_logo_uri_$cafeId", customLogoUri ?: "")
+            putString("cafe_menu_url_$cafeId", menuUrl)
+            putString("cafe_theme_color_$cafeId", themeColor)
+            apply()
+        }
+
+        try {
+            val profileMap = hashMapOf<String, Any?>(
+                "cafeteriaId" to cafeId,
+                "cafeName" to cafeName,
+                "phone" to phone,
+                "ownerName" to ownerName,
+                "email" to email,
+                "address" to address,
+                "welcomeNote" to welcomeNote,
+                "logoType" to logoType,
+                "customLogoUri" to (customLogoUri ?: ""),
+                "menuUrl" to menuUrl,
+                "themeColor" to themeColor,
+                "updatedAt" to System.currentTimeMillis()
+            )
+            firestore?.collection("cafeterias")?.document(cafeId)?.set(profileMap, com.google.firebase.firestore.SetOptions.merge())
+        } catch (_: Exception) {}
+    }
+
+    fun loadCafeProfile(cafeId: String): Map<String, String> {
+        val map = mutableMapOf<String, String>()
+        val prefs = context?.getSharedPreferences("cafe_profile_prefs", android.content.Context.MODE_PRIVATE)
+        prefs?.let { p ->
+            p.getString("cafe_name_$cafeId", null)?.let { map["cafeName"] = it }
+            p.getString("cafe_phone_$cafeId", null)?.let { map["phone"] = it }
+            p.getString("cafe_owner_$cafeId", null)?.let { map["ownerName"] = it }
+            p.getString("cafe_email_$cafeId", null)?.let { map["email"] = it }
+            p.getString("cafe_address_$cafeId", null)?.let { map["address"] = it }
+            p.getString("cafe_welcome_$cafeId", null)?.let { map["welcomeNote"] = it }
+            p.getString("cafe_logo_type_$cafeId", null)?.let { map["logoType"] = it }
+            p.getString("cafe_logo_uri_$cafeId", null)?.let { map["customLogoUri"] = it }
+            p.getString("cafe_menu_url_$cafeId", null)?.let { map["menuUrl"] = it }
+            p.getString("cafe_theme_color_$cafeId", null)?.let { map["themeColor"] = it }
+        }
+        return map
+    }
+
+    suspend fun fetchAndSyncCafeProfileFromFirestore(cafeId: String): Map<String, String>? {
+        return try {
+            val snap = firestore?.collection("cafeterias")?.document(cafeId)?.get()?.awaitTask()
+            if (snap != null && snap.exists()) {
+                val name = snap.getString("cafeName") ?: snap.getString("name") ?: ""
+                val phone = snap.getString("phone") ?: ""
+                val owner = snap.getString("ownerName") ?: snap.getString("fullName") ?: ""
+                val email = snap.getString("email") ?: ""
+                val addr = snap.getString("address") ?: ""
+                val welcome = snap.getString("welcomeNote") ?: ""
+                val logoType = snap.getString("logoType") ?: "custom"
+                val logoUri = snap.getString("customLogoUri") ?: ""
+                val menuUrl = snap.getString("menuUrl") ?: ""
+                val theme = snap.getString("themeColor") ?: ""
+
+                if (name.isNotBlank()) {
+                    saveCafeProfile(
+                        cafeId = cafeId,
+                        cafeName = name,
+                        phone = phone,
+                        ownerName = owner,
+                        email = email,
+                        address = addr,
+                        welcomeNote = welcome,
+                        logoType = logoType,
+                        customLogoUri = logoUri.ifBlank { null },
+                        menuUrl = menuUrl.ifBlank { baseWebMenuUrl },
+                        themeColor = theme.ifBlank { "#00DFC0" }
+                    )
+                }
+                loadCafeProfile(cafeId)
+            } else null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    suspend fun clearLocalMenuAndOrders() {
+        dao.deleteAllCategories()
+        dao.deleteAllMenuItems()
+        dao.deleteAllOrders()
+    }
+
+    suspend fun loadMenuForCafeteria(cafeId: String) {
+        currentCafeteriaId = cafeId
+        if (cafeId.isBlank() || cafeId == "u_default") return
+
+        try {
+            val catDocs = firestore?.collection("cafeterias")?.document(cafeId)?.collection("categories")?.get()?.awaitTask()
+            val itemDocs = firestore?.collection("cafeterias")?.document(cafeId)?.collection("menu_items")?.get()?.awaitTask()
+
+            val hasRemoteCategories = catDocs != null && !catDocs.isEmpty
+            val hasRemoteItems = itemDocs != null && !itemDocs.isEmpty
+
+            if (hasRemoteCategories) {
+                dao.deleteAllCategories()
+                val loadedCategories = catDocs.documents.mapNotNull { doc ->
+                    val id = doc.id
+                    val nameAr = doc.getString("nameAr") ?: return@mapNotNull null
+                    val nameEn = doc.getString("nameEn") ?: ""
+                    val iconType = doc.getString("iconType") ?: "burger"
+                    val sortOrder = doc.getLong("sortOrder")?.toInt() ?: 0
+                    val customImageUri = doc.getString("customImageUri")
+                    CategoryEntity(id, nameAr, nameEn, iconType, sortOrder, customImageUri)
+                }
+                dao.insertCategories(loadedCategories)
+            }
+
+            if (hasRemoteItems) {
+                dao.deleteAllMenuItems()
+                val loadedItems = itemDocs.documents.mapNotNull { doc ->
+                    val id = doc.id
+                    val categoryId = doc.getString("categoryId") ?: return@mapNotNull null
+                    val nameAr = doc.getString("nameAr") ?: return@mapNotNull null
+                    val nameEn = doc.getString("nameEn") ?: ""
+                    val descriptionAr = doc.getString("descriptionAr") ?: ""
+                    val descriptionEn = doc.getString("descriptionEn") ?: ""
+                    val price = doc.getDouble("price") ?: 0.0
+                    val currency = doc.getString("currency") ?: "د.ع"
+                    val imageType = doc.getString("imageType") ?: "burger"
+                    val isAvailable = doc.getBoolean("isAvailable") ?: true
+                    val imageUri = doc.getString("imageUri")
+                    val bgImageUri = doc.getString("bgImageUri")
+                    val isOffer = doc.getBoolean("isOffer") ?: false
+                    val offerDiscountPercent = doc.getLong("offerDiscountPercent")?.toInt() ?: 0
+                    val offerTag = doc.getString("offerTag") ?: "عرض خاص"
+
+                    MenuItemEntity(
+                        id = id,
+                        categoryId = categoryId,
+                        nameAr = nameAr,
+                        nameEn = nameEn,
+                        descriptionAr = descriptionAr,
+                        descriptionEn = descriptionEn,
+                        price = price,
+                        currency = currency,
+                        imageType = imageType,
+                        isAvailable = isAvailable,
+                        imageUri = imageUri,
+                        bgImageUri = bgImageUri,
+                        galleryImagesStr = "",
+                        isOffer = isOffer,
+                        offerDiscountPercent = offerDiscountPercent,
+                        offerTag = offerTag
+                    )
+                }
+                dao.insertMenuItems(loadedItems)
+            } else if (!hasRemoteCategories && !hasRemoteItems) {
+                // Newly created cafeteria with empty cloud menu:
+                // Seed initial categories & items specifically for this cafeteria
+                dao.deleteAllCategories()
+                dao.deleteAllMenuItems()
+                seedInitialMenuForCafeteria(cafeId)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    suspend fun seedInitialMenuForCafeteria(cafeId: String) {
+        val initialCategories = listOf(
+            CategoryEntity("cat_burgers", "البرجر", "Burgers", "burger", 1),
+            CategoryEntity("cat_appetizers", "المقبلات", "Appetizers", "fries", 2),
+            CategoryEntity("cat_drinks", "المشروبات", "Drinks", "drink", 3),
+            CategoryEntity("cat_meals", "الوجبات", "Meals", "meals", 4),
+            CategoryEntity("cat_sweets", "الحلويات", "Desserts", "sweets", 5)
+        )
+        dao.insertCategories(initialCategories)
+
+        val initialItems = listOf(
+            MenuItemEntity(
+                id = "b1",
+                categoryId = "cat_burgers",
+                nameAr = "برجر كلاسيك",
+                nameEn = "Classic Burger",
+                descriptionAr = "لحم بقري مشوي مع الجبن الطازج والخس والطماطم مع البطاطس المقلية",
+                descriptionEn = "Grilled beef patty with cheese, fresh lettuce and tomatoes",
+                price = 7000.0,
+                currency = "د.ع",
+                imageType = "burger",
+                isAvailable = true,
+                isOffer = true,
+                offerDiscountPercent = 15,
+                offerTag = "عرض اليوم"
+            ),
+            MenuItemEntity(
+                id = "a1",
+                categoryId = "cat_appetizers",
+                nameAr = "بطاطس مقلية مقرمشة",
+                nameEn = "French Fries",
+                descriptionAr = "بطاطس ذهبية مقرمشة مع بهارات الكافيه الخاصة وصلصة الكاتشب",
+                descriptionEn = "Golden crispy french fries with special cafe seasonings",
+                price = 3000.0,
+                currency = "د.ع",
+                imageType = "fries",
+                isAvailable = true,
+                isOffer = false,
+                offerTag = "طازج"
+            ),
+            MenuItemEntity(
+                id = "d1",
+                categoryId = "cat_drinks",
+                nameAr = "سبانش لاتيه بارد",
+                nameEn = "Iced Spanish Latte",
+                descriptionAr = "قهوة إسبريسو غنية مع الحليب المكثف المحلى ومكعبات الثلج المنعشة",
+                descriptionEn = "Rich espresso with sweet condensed milk and ice cubes",
+                price = 4500.0,
+                currency = "د.ع",
+                imageType = "drink",
+                isAvailable = true,
+                isOffer = true,
+                offerDiscountPercent = 10,
+                offerTag = "الأكثر طلباً"
+            ),
+            MenuItemEntity(
+                id = "m1",
+                categoryId = "cat_meals",
+                nameAr = "وجبة شاورما عربي دجاج",
+                nameEn = "Chicken Shawarma Meal",
+                descriptionAr = "قطع شاورما دجاج متبلة في خبز الصاج مع الثومية والبطاطس والمخلل",
+                descriptionEn = "Seasoned chicken shawarma in saj bread with garlic sauce and fries",
+                price = 8000.0,
+                currency = "د.ع",
+                imageType = "meals",
+                isAvailable = true,
+                isOffer = false,
+                offerTag = "وجبة مميزة"
+            ),
+            MenuItemEntity(
+                id = "s1",
+                categoryId = "cat_sweets",
+                nameAr = "تشيز كيك فراولة",
+                nameEn = "Strawberry Cheesecake",
+                descriptionAr = "تشيز كيك كريمي بارد على قاعدة بسكويت مقرمش مع صوص الفراولة الطازجة",
+                descriptionEn = "Creamy cheesecake on crunchy biscuit base with strawberry sauce",
+                price = 5000.0,
+                currency = "د.ع",
+                imageType = "sweets",
+                isAvailable = true,
+                isOffer = true,
+                offerDiscountPercent = 20,
+                offerTag = "حلوى اليوم"
+            )
+        )
+        dao.insertMenuItems(initialItems)
+
+        // Upload to this cafeteria's Firestore
+        syncCurrentMenuToFirestore(cafeId)
+    }
+
     suspend fun syncCurrentMenuToFirestore(cafeId: String = currentCafeteriaId, cafeName: String = "Q-Cafe", accentColor: String = "#00DFC0") {
         currentCafeteriaId = cafeId
         try {
@@ -148,7 +423,7 @@ class CafeRepository(private val dao: CafeDao) {
                 "themeColor" to accentColor,
                 "updatedAt" to System.currentTimeMillis()
             )
-            firestore?.collection("cafeterias")?.document(cafeId)?.set(cafeProfile)
+            firestore?.collection("cafeterias")?.document(cafeId)?.set(cafeProfile, com.google.firebase.firestore.SetOptions.merge())
 
             // 2. Sync All Categories
             val cats = dao.getAllCategoriesSync()
@@ -163,7 +438,6 @@ class CafeRepository(private val dao: CafeDao) {
                     "customImageUri" to (c.customImageUri ?: "")
                 )
                 firestore?.collection("cafeterias")?.document(cafeId)?.collection("categories")?.document(c.id)?.set(catMap)
-                firestore?.collection("categories")?.document(c.id)?.set(catMap)
             }
 
             // 3. Sync All Menu Items
@@ -189,7 +463,6 @@ class CafeRepository(private val dao: CafeDao) {
                     "offerTag" to i.offerTag
                 )
                 firestore?.collection("cafeterias")?.document(cafeId)?.collection("menu_items")?.document(i.id)?.set(itemMap)
-                firestore?.collection("menu_items")?.document(i.id)?.set(itemMap)
             }
         } catch (_: Exception) {}
     }
@@ -221,7 +494,6 @@ class CafeRepository(private val dao: CafeDao) {
                 "customImageUri" to (customImageUri ?: "")
             )
             firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("categories")?.document(catId)?.set(map)
-            firestore?.collection("categories")?.document(catId)?.set(map)
         } catch (_: Exception) {}
     }
 
@@ -238,7 +510,6 @@ class CafeRepository(private val dao: CafeDao) {
                 "customImageUri" to (category.customImageUri ?: "")
             )
             firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("categories")?.document(category.id)?.set(map)
-            firestore?.collection("categories")?.document(category.id)?.set(map)
         } catch (_: Exception) {}
     }
 
@@ -246,7 +517,6 @@ class CafeRepository(private val dao: CafeDao) {
         dao.deleteCategory(category.toEntity())
         try {
             firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("categories")?.document(category.id)?.delete()
-            firestore?.collection("categories")?.document(category.id)?.delete()
         } catch (_: Exception) {}
     }
 
@@ -315,7 +585,6 @@ class CafeRepository(private val dao: CafeDao) {
                 "offerTag" to offerTag
             )
             firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("menu_items")?.document(itemId)?.set(itemMap)
-            firestore?.collection("menu_items")?.document(itemId)?.set(itemMap)
         } catch (_: Exception) {}
     }
 
@@ -342,7 +611,6 @@ class CafeRepository(private val dao: CafeDao) {
                 "offerTag" to item.offerTag
             )
             firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("menu_items")?.document(item.id)?.set(itemMap)
-            firestore?.collection("menu_items")?.document(item.id)?.set(itemMap)
         } catch (_: Exception) {}
     }
 
@@ -350,7 +618,6 @@ class CafeRepository(private val dao: CafeDao) {
         dao.deleteMenuItem(item.toEntity())
         try {
             firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("menu_items")?.document(item.id)?.delete()
-            firestore?.collection("menu_items")?.document(item.id)?.delete()
         } catch (_: Exception) {}
     }
 
@@ -439,20 +706,16 @@ class CafeRepository(private val dao: CafeDao) {
         }
 
         if (existingSameCustomerOrder != null) {
-            val updatedSummary = if (existingSameCustomerOrder.itemsSummary.isBlank()) {
-                summary
-            } else {
-                "${existingSameCustomerOrder.itemsSummary}، $summary"
-            }
+            val updatedSummary = com.example.util.OrderSummaryHelper.combineAndMultiplySummaries(
+                listOf(existingSameCustomerOrder.itemsSummary, summary)
+            )
             val updatedCount = existingSameCustomerOrder.itemsCount + count
             val updatedSubtotal = existingSameCustomerOrder.subtotal + subtotal
             val updatedFee = com.example.util.OrderFeeCalculator.calculateServiceFee(updatedSubtotal, currency)
             val updatedTotal = updatedSubtotal + updatedFee
-            val updatedNotes = when {
-                existingSameCustomerOrder.notes.isBlank() -> notes
-                notes.isBlank() -> existingSameCustomerOrder.notes
-                else -> "${existingSameCustomerOrder.notes} | $notes"
-            }
+            val updatedNotes = com.example.util.OrderSummaryHelper.combineNotes(
+                listOf(existingSameCustomerOrder.notes, notes)
+            )
 
             val updatedEntity = existingSameCustomerOrder.copy(
                 itemsSummary = updatedSummary,
@@ -475,7 +738,7 @@ class CafeRepository(private val dao: CafeDao) {
                     "timestamp" to System.currentTimeMillis(),
                     "notes" to updatedNotes
                 )
-                firestore?.collection("orders")?.document(existingSameCustomerOrder.id)?.update(updateMap)
+                firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")?.document(existingSameCustomerOrder.id)?.update(updateMap)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -517,7 +780,6 @@ class CafeRepository(private val dao: CafeDao) {
                 "notes" to notes
             )
             firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")?.document(orderId)?.set(orderMap)
-            firestore?.collection("orders")?.document(orderId)?.set(orderMap)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -531,7 +793,6 @@ class CafeRepository(private val dao: CafeDao) {
             dao.updateOrder(updated)
             try {
                 firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")?.document(order.id)?.update("status", OrderStatus.PAID.name)
-                firestore?.collection("orders")?.document(order.id)?.update("status", OrderStatus.PAID.name)
             } catch (_: Exception) {}
         }
     }
@@ -541,7 +802,6 @@ class CafeRepository(private val dao: CafeDao) {
         dao.updateOrder(updated)
         try {
             firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")?.document(orderId)?.update("status", newStatus.name)
-            firestore?.collection("orders")?.document(orderId)?.update("status", newStatus.name)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -551,7 +811,6 @@ class CafeRepository(private val dao: CafeDao) {
         dao.deleteOrder(order.toEntity())
         try {
             firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")?.document(order.id)?.delete()
-            firestore?.collection("orders")?.document(order.id)?.delete()
         } catch (e: Exception) {
             e.printStackTrace()
         }

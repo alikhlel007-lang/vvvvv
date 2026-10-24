@@ -954,6 +954,25 @@
 
       <div id="cartItemsList" style="max-height: 280px; overflow-y: auto; margin-bottom: 12px;"></div>
 
+      <!-- Customer Name Input (إجباري) -->
+      <div style="margin-bottom: 12px; text-align: right;">
+        <label for="customerNameInput" style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; color: var(--gold); margin-bottom: 6px;">
+          <i class="fa-solid fa-user"></i>
+          <span>اسم الزبون (إجباري لإتمام الطلب):</span>
+        </label>
+        <input 
+          type="text" 
+          id="customerNameInput" 
+          class="notes-textarea" 
+          style="min-height: 44px; height: 44px; padding: 10px 14px; font-size: 14px; resize: none; margin-bottom: 0;"
+          placeholder="اكتب اسمك هنا (مثال: علي، أحمد، سارة)..." 
+          maxlength="40"
+        />
+        <div id="customerNameError" style="display: none; color: #ff5252; font-size: 12px; font-weight: 700; margin-top: 4px;">
+          ⚠️ يرجى كتابة اسمك أولاً لإرسال الطلب إلى الكاشير
+        </div>
+      </div>
+
       <textarea class="notes-textarea" id="orderNotes" placeholder="ملاحظات خاصة للمطبخ (مثال: بدون بصل، زيادة صوص، بدون سكر...)" rows="2"></textarea>
 
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
@@ -1414,6 +1433,13 @@
         return;
       }
       renderCartModalList();
+      const savedName = localStorage.getItem('cafe_customer_name') || '';
+      const nameInput = document.getElementById('customerNameInput');
+      if (nameInput && savedName) {
+        nameInput.value = savedName;
+      }
+      const err = document.getElementById('customerNameError');
+      if (err) err.style.display = 'none';
       document.getElementById('cartModal').style.display = 'flex';
     }
 
@@ -1448,6 +1474,24 @@
     function submitCustomerOrder() {
       if (cart.length === 0) return;
 
+      const nameInput = document.getElementById('customerNameInput');
+      const custName = (nameInput ? nameInput.value.trim() : '') || '';
+      if (!custName) {
+        const err = document.getElementById('customerNameError');
+        if (err) err.style.display = 'block';
+        if (nameInput) {
+          nameInput.focus();
+          nameInput.style.border = '1.5px solid #ff5252';
+        }
+        return;
+      }
+      const err = document.getElementById('customerNameError');
+      if (err) err.style.display = 'none';
+      if (nameInput) nameInput.style.border = '1px solid var(--card-border)';
+      try {
+        localStorage.setItem('cafe_customer_name', custName);
+      } catch (_) {}
+
       const totalQty = cart.reduce((sum, c) => sum + c.qty, 0);
       const totalSum = cart.reduce((sum, c) => sum + (c.item.price * c.qty), 0);
       const summary = cart.map(c => `${c.qty}x ${c.item.nameAr}`).join('، ');
@@ -1458,7 +1502,7 @@
         id: orderId,
         cafeteriaId: cafeteriaId,
         tableNumber: tableNumber,
-        customerName: 'طاولة ' + tableNumber,
+        customerName: custName,
         itemsSummary: summary,
         itemsCount: totalQty,
         totalPrice: totalSum,

@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 enum class AppScreen {
@@ -39,15 +40,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         val db = CafeDatabase.getDatabase(application, viewModelScope)
-        repository = CafeRepository(db.cafeDao())
+        repository = CafeRepository(db.cafeDao(), application)
         viewModelScope.launch {
             try {
                 val authUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
                 if (authUser != null && authUser.isEmailVerified) {
+                    val uid = authUser.uid
                     val localUser = db.cafeDao().getUserByEmail(authUser.email ?: "")
-                    val userAccount = if (localUser != null) {
+                    val baseAccount = if (localUser != null) {
                         UserAccount(
-                            id = authUser.uid,
+                            id = uid,
                             fullName = localUser.fullName,
                             email = localUser.email,
                             cafeName = localUser.cafeName,
@@ -55,21 +57,66 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         )
                     } else {
                         UserAccount(
-                            id = authUser.uid,
+                            id = uid,
                             fullName = authUser.displayName ?: "مدير الكافيه",
                             email = authUser.email ?: "",
                             cafeName = "Q-Cafe",
                             role = "owner"
                         )
                     }
+
+                    // 1. Load persistent profile from SharedPreferences
+                    val cachedProfile = repository.loadCafeProfile(uid)
+                    val effectiveCafeName = cachedProfile["cafeName"] ?: baseAccount.cafeName
+                    val effectiveOwnerName = cachedProfile["ownerName"] ?: baseAccount.fullName
+                    val effectiveEmail = cachedProfile["email"] ?: baseAccount.email
+
+                    val userAccount = baseAccount.copy(
+                        cafeName = effectiveCafeName,
+                        fullName = effectiveOwnerName,
+                        email = effectiveEmail
+                    )
+
                     _currentUser.value = userAccount
-                    _cafeName.value = userAccount.cafeName
-                    _cafeOwnerName.value = userAccount.fullName
-                    _cafeEmail.value = userAccount.email
-                    repository.currentCafeteriaId = userAccount.id
+                    _cafeName.value = effectiveCafeName
+                    _cafeOwnerName.value = effectiveOwnerName
+                    _cafeEmail.value = effectiveEmail
+                    cachedProfile["phone"]?.let { _cafePhone.value = it }
+                    cachedProfile["address"]?.let { _cafeAddress.value = it }
+                    cachedProfile["welcomeNote"]?.let { _cafeWelcomeNote.value = it }
+                    cachedProfile["logoType"]?.let { _cafeLogoType.value = it }
+                    cachedProfile["customLogoUri"]?.let { _cafeCustomLogoUri.value = it.ifBlank { null } }
+                    cachedProfile["menuUrl"]?.let {
+                        if (it.isNotBlank()) {
+                            _webMenuUrl.value = it
+                            repository.baseWebMenuUrl = it
+                        }
+                    }
+
+                    repository.currentCafeteriaId = uid
                     repository.updateExistingTablesCafeteriaId()
-                    repository.startFirestoreOrdersListener(viewModelScope, userAccount.id)
-                    repository.syncCurrentMenuToFirestore(userAccount.id, userAccount.cafeName, _themeAccentColorHex.value)
+                    repository.startFirestoreOrdersListener(viewModelScope, uid)
+                    repository.loadMenuForCafeteria(uid)
+
+                    // 2. Refresh profile from Firestore in background
+                    launch(Dispatchers.IO) {
+                        repository.fetchAndSyncCafeProfileFromFirestore(uid)?.let { remote ->
+                            remote["cafeName"]?.let { if (it.isNotBlank()) _cafeName.value = it }
+                            remote["phone"]?.let { if (it.isNotBlank()) _cafePhone.value = it }
+                            remote["ownerName"]?.let { if (it.isNotBlank()) _cafeOwnerName.value = it }
+                            remote["email"]?.let { if (it.isNotBlank()) _cafeEmail.value = it }
+                            remote["address"]?.let { if (it.isNotBlank()) _cafeAddress.value = it }
+                            remote["welcomeNote"]?.let { if (it.isNotBlank()) _cafeWelcomeNote.value = it }
+                            remote["logoType"]?.let { if (it.isNotBlank()) _cafeLogoType.value = it }
+                            remote["customLogoUri"]?.let { _cafeCustomLogoUri.value = it.ifBlank { null } }
+                            remote["menuUrl"]?.let {
+                                if (it.isNotBlank()) {
+                                    _webMenuUrl.value = it
+                                    repository.baseWebMenuUrl = it
+                                }
+                            }
+                        }
+                    }
                 }
             } catch (_: Exception) {}
 
@@ -208,6 +255,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 email = _cafeEmail.value
             )
         }
+
+        // Persist profile settings permanently in SharedPreferences & Firestore
+        val cafeId = _currentUser.value?.id ?: repository.currentCafeteriaId
+        repository.saveCafeProfile(
+            cafeId = cafeId,
+            cafeName = _cafeName.value,
+            phone = _cafePhone.value,
+            ownerName = _cafeOwnerName.value,
+            email = _cafeEmail.value,
+            address = _cafeAddress.value,
+            welcomeNote = _cafeWelcomeNote.value,
+            logoType = _cafeLogoType.value,
+            customLogoUri = _cafeCustomLogoUri.value,
+            menuUrl = _webMenuUrl.value,
+            themeColor = _themeAccentColorHex.value
+        )
     }
 
     fun navigateTo(screen: AppScreen) {
@@ -497,14 +560,56 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 when (val result = repository.login(email, pass)) {
                     is AuthResult.Success -> {
                         val user = result.user
-                        _currentUser.value = user
-                        _cafeName.value = user.cafeName
-                        _cafeOwnerName.value = user.fullName
-                        _cafeEmail.value = user.email
                         repository.currentCafeteriaId = user.id
+
+                        val cachedProfile = repository.loadCafeProfile(user.id)
+                        val effectiveCafeName = cachedProfile["cafeName"] ?: user.cafeName
+                        val effectiveOwnerName = cachedProfile["ownerName"] ?: user.fullName
+                        val effectiveEmail = cachedProfile["email"] ?: user.email
+
+                        _currentUser.value = user.copy(
+                            cafeName = effectiveCafeName,
+                            fullName = effectiveOwnerName,
+                            email = effectiveEmail
+                        )
+                        _cafeName.value = effectiveCafeName
+                        _cafeOwnerName.value = effectiveOwnerName
+                        _cafeEmail.value = effectiveEmail
+                        cachedProfile["phone"]?.let { _cafePhone.value = it }
+                        cachedProfile["address"]?.let { _cafeAddress.value = it }
+                        cachedProfile["welcomeNote"]?.let { _cafeWelcomeNote.value = it }
+                        cachedProfile["logoType"]?.let { _cafeLogoType.value = it }
+                        cachedProfile["customLogoUri"]?.let { _cafeCustomLogoUri.value = it.ifBlank { null } }
+                        cachedProfile["menuUrl"]?.let {
+                            if (it.isNotBlank()) {
+                                _webMenuUrl.value = it
+                                repository.baseWebMenuUrl = it
+                            }
+                        }
+
                         repository.updateExistingTablesCafeteriaId()
                         repository.startFirestoreOrdersListener(viewModelScope, user.id)
-                        repository.syncCurrentMenuToFirestore(user.id, user.cafeName, _themeAccentColorHex.value)
+                        repository.loadMenuForCafeteria(user.id)
+
+                        viewModelScope.launch(Dispatchers.IO) {
+                            repository.fetchAndSyncCafeProfileFromFirestore(user.id)?.let { remote ->
+                                remote["cafeName"]?.let { if (it.isNotBlank()) _cafeName.value = it }
+                                remote["phone"]?.let { if (it.isNotBlank()) _cafePhone.value = it }
+                                remote["ownerName"]?.let { if (it.isNotBlank()) _cafeOwnerName.value = it }
+                                remote["email"]?.let { if (it.isNotBlank()) _cafeEmail.value = it }
+                                remote["address"]?.let { if (it.isNotBlank()) _cafeAddress.value = it }
+                                remote["welcomeNote"]?.let { if (it.isNotBlank()) _cafeWelcomeNote.value = it }
+                                remote["logoType"]?.let { if (it.isNotBlank()) _cafeLogoType.value = it }
+                                remote["customLogoUri"]?.let { _cafeCustomLogoUri.value = it.ifBlank { null } }
+                                remote["menuUrl"]?.let {
+                                    if (it.isNotBlank()) {
+                                        _webMenuUrl.value = it
+                                        repository.baseWebMenuUrl = it
+                                    }
+                                }
+                            }
+                        }
+
                         _authError.value = null
                         _currentScreen.value = AppScreen.CASHIER_ORDERS
                     }
@@ -623,6 +728,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun logout() {
         repository.logout()
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.clearLocalMenuAndOrders()
+        }
         _currentUser.value = null
         _cart.value = emptyList()
         _currentScreen.value = AppScreen.LOGIN
