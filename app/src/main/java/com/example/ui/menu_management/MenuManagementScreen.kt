@@ -1,6 +1,8 @@
 package com.example.ui.menu_management
 
 import android.widget.Toast
+import java.util.Locale
+import com.example.util.OrderFeeCalculator
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -137,20 +139,22 @@ fun MenuManagementScreen(viewModel: MainViewModel) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
+                    Button(
                         onClick = { viewModel.navigateTo(AppScreen.SETTINGS) },
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(CafeSurfaceVariant)
-                            .border(1.dp, CafeCardBorder, CircleShape)
-                            .testTag("menu_mgmt_back_btn")
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = CafeSurfaceVariant,
+                            contentColor = CafeCyanPrimary
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, CafeCyanPrimary.copy(alpha = 0.5f)),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 7.dp),
+                        modifier = Modifier.testTag("menu_mgmt_back_btn")
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = "الرجوع للإعدادات",
-                            tint = CafeCyanPrimary,
-                            modifier = Modifier.size(20.dp)
+                        Text(
+                            text = "عودة",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CafeCyanPrimary
                         )
                     }
 
@@ -651,15 +655,22 @@ fun ItemGearSettingsDialog(
     onSave: (MenuItem) -> Unit,
     onDelete: () -> Unit
 ) {
-    var priceStr by remember { mutableStateOf(item.price.toString()) }
+    val initialBasePrice = if (item.isOffer && item.offerDiscountPercent > 0) {
+        item.price / (1.0 - (item.offerDiscountPercent / 100.0))
+    } else {
+        item.price
+    }
+    var basePriceStr by remember { mutableStateOf(if (initialBasePrice % 1.0 == 0.0) initialBasePrice.toLong().toString() else initialBasePrice.toString()) }
     var currency by remember { mutableStateOf(item.currency) }
     var isAvailable by remember { mutableStateOf(item.isAvailable) }
     var itemImageUri by remember { mutableStateOf(item.imageUri) }
     var itemBgImageUri by remember { mutableStateOf(item.bgImageUri) }
     var galleryImages by remember { mutableStateOf(item.galleryImages) }
     var isOffer by remember { mutableStateOf(item.isOffer) }
-    var discountPercentStr by remember { mutableStateOf(item.offerDiscountPercent.toString()) }
-    var offerTag by remember { mutableStateOf(item.offerTag) }
+    var offerMode by remember { mutableStateOf("price") } // "price" أو "percent"
+    var offerNewPriceStr by remember { mutableStateOf(if (item.isOffer) (if (item.price % 1.0 == 0.0) item.price.toLong().toString() else item.price.toString()) else "") }
+    var discountPercentStr by remember { mutableStateOf(if (item.offerDiscountPercent > 0) item.offerDiscountPercent.toString() else "") }
+    var offerTag by remember { mutableStateOf(item.offerTag.ifBlank { "عرض خاص" }) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
     val itemImagePicker = rememberLauncherForActivityResult(
@@ -770,9 +781,17 @@ fun ItemGearSettingsDialog(
                     }
 
                     OutlinedTextField(
-                        value = priceStr,
-                        onValueChange = { priceStr = it },
-                        label = { Text("السعر ($currency)", color = CafeTextSecondary) },
+                        value = basePriceStr,
+                        onValueChange = { input ->
+                            basePriceStr = input
+                            val baseP = input.toDoubleOrNull()
+                            val disc = discountPercentStr.toIntOrNull()
+                            if (isOffer && baseP != null && disc != null && disc in 1..99) {
+                                val newP = baseP * (1.0 - disc / 100.0)
+                                offerNewPriceStr = if (newP % 1.0 == 0.0) newP.toLong().toString() else String.format(Locale.US, "%.1f", newP)
+                            }
+                        },
+                        label = { Text("السعر الأساسي ($currency)", color = CafeTextSecondary) },
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = CafeInputBg,
@@ -1021,16 +1040,70 @@ fun ItemGearSettingsDialog(
                     }
 
                     if (isOffer) {
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // اختيار طريقة إدخال العرض: بالسعر الجديد مباشرة أو بالنسبة المئوية
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (offerMode == "price") CafeGold else CafeSurface)
+                                    .border(1.dp, if (offerMode == "price") CafeGold else CafeInputBorder, RoundedCornerShape(8.dp))
+                                    .clickable { offerMode = "price" }
+                                    .padding(vertical = 6.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "كتابة السعر الجديد 💵",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (offerMode == "price") Color(0xFF032125) else CafeTextPrimary
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (offerMode == "percent") CafeGold else CafeSurface)
+                                    .border(1.dp, if (offerMode == "percent") CafeGold else CafeInputBorder, RoundedCornerShape(8.dp))
+                                    .clickable { offerMode = "percent" }
+                                    .padding(vertical = 6.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "كتابة نسبة الخصم %",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (offerMode == "percent") Color(0xFF032125) else CafeTextPrimary
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // حقل السعر الجديد في العرض
                             OutlinedTextField(
-                                value = discountPercentStr,
-                                onValueChange = { discountPercentStr = it },
-                                label = { Text("نسبة الخصم %", fontSize = 11.sp) },
-                                modifier = Modifier.weight(1f),
+                                value = offerNewPriceStr,
+                                onValueChange = { input ->
+                                    offerNewPriceStr = input
+                                    val newP = input.toDoubleOrNull()
+                                    val baseP = basePriceStr.toDoubleOrNull() ?: item.price
+                                    if (newP != null && baseP > 0 && newP < baseP) {
+                                        val disc = kotlin.math.round(((baseP - newP) / baseP) * 100).toInt()
+                                        discountPercentStr = disc.toString()
+                                    }
+                                },
+                                label = { Text("السعر الجديد ($currency)", fontSize = 11.sp) },
+                                modifier = Modifier.weight(1.2f),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedContainerColor = CafeSurface,
                                     unfocusedContainerColor = CafeSurface,
@@ -1041,11 +1114,20 @@ fun ItemGearSettingsDialog(
                                 )
                             )
 
+                            // حقل نسبة الخصم %
                             OutlinedTextField(
-                                value = offerTag,
-                                onValueChange = { offerTag = it },
-                                label = { Text("شارة العرض", fontSize = 11.sp) },
-                                modifier = Modifier.weight(1f),
+                                value = discountPercentStr,
+                                onValueChange = { input ->
+                                    discountPercentStr = input
+                                    val disc = input.toIntOrNull()
+                                    val baseP = basePriceStr.toDoubleOrNull() ?: item.price
+                                    if (disc != null && disc in 1..99 && baseP > 0) {
+                                        val newP = baseP * (1.0 - disc / 100.0)
+                                        offerNewPriceStr = if (newP % 1.0 == 0.0) newP.toLong().toString() else String.format(java.util.Locale.US, "%.1f", newP)
+                                    }
+                                },
+                                label = { Text("الخصم %", fontSize = 11.sp) },
+                                modifier = Modifier.weight(0.8f),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedContainerColor = CafeSurface,
                                     unfocusedContainerColor = CafeSurface,
@@ -1055,6 +1137,45 @@ fun ItemGearSettingsDialog(
                                     unfocusedTextColor = CafeTextPrimary
                                 )
                             )
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        OutlinedTextField(
+                            value = offerTag,
+                            onValueChange = { offerTag = it },
+                            label = { Text("شارة العرض (مثل: عرض خاص، تخفيض)", fontSize = 11.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = CafeSurface,
+                                unfocusedContainerColor = CafeSurface,
+                                focusedBorderColor = CafeGold,
+                                unfocusedBorderColor = CafeInputBorder,
+                                focusedTextColor = CafeTextPrimary,
+                                unfocusedTextColor = CafeTextPrimary
+                            )
+                        )
+
+                        // معاينة العرض
+                        val previewNewPrice = offerNewPriceStr.toDoubleOrNull()
+                        val previewBasePrice = basePriceStr.toDoubleOrNull() ?: item.price
+                        if (previewNewPrice != null && previewNewPrice > 0) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0xFF2E2205))
+                                    .border(0.8.dp, CafeGold.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = "معاينة: قبل ${OrderFeeCalculator.formatPrice(previewBasePrice, currency)} ⬅ في العرض ${OrderFeeCalculator.formatPrice(previewNewPrice, currency)} (خصم ${discountPercentStr.ifBlank { "0" }}%)",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CafeGold
+                                )
+                            }
                         }
                     }
                 }
@@ -1147,17 +1268,33 @@ fun ItemGearSettingsDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val p = priceStr.toDoubleOrNull() ?: item.price
+                    val baseP = basePriceStr.toDoubleOrNull() ?: item.price
+                    val offerNewP = offerNewPriceStr.toDoubleOrNull()
                     val disc = discountPercentStr.toIntOrNull() ?: 0
+
+                    val finalPrice = if (isOffer && offerNewP != null && offerNewP > 0) {
+                        offerNewP
+                    } else if (isOffer && disc > 0) {
+                        baseP * (1.0 - disc / 100.0)
+                    } else {
+                        baseP
+                    }
+
+                    val finalDiscount = if (isOffer) {
+                        if (disc > 0) disc
+                        else if (baseP > 0 && finalPrice < baseP) kotlin.math.round(((baseP - finalPrice) / baseP) * 100).toInt()
+                        else 0
+                    } else 0
+
                     val updated = item.copy(
-                        price = p,
+                        price = finalPrice,
                         currency = currency,
                         isAvailable = isAvailable,
                         imageUri = itemImageUri,
                         bgImageUri = itemBgImageUri,
                         galleryImages = galleryImages,
                         isOffer = isOffer,
-                        offerDiscountPercent = disc,
+                        offerDiscountPercent = finalDiscount,
                         offerTag = offerTag.ifBlank { "عرض خاص" }
                     )
                     onSave(updated)
@@ -1239,6 +1376,10 @@ fun AddItemDialog(
     var bgImageUri by remember { mutableStateOf<String?>(null) }
     var galleryImages by remember { mutableStateOf<List<String>>(emptyList()) }
     var isOffer by remember { mutableStateOf(false) }
+    var offerMode by remember { mutableStateOf("price") } // "price" أو "percent"
+    var offerNewPriceStr by remember { mutableStateOf("") }
+    var discountPercentStr by remember { mutableStateOf("15") }
+    var offerTag by remember { mutableStateOf("عرض خاص") }
 
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -1461,43 +1602,214 @@ fun AddItemDialog(
                     }
                 }
 
-                // Show as Offer Toggle
-                Row(
+                // Show as Offer Toggle & Flexible Offer Controls
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .background(CafeInputBg)
-                        .padding(8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("إظهار في صفحة العروض والتخفيضات؟", fontSize = 11.sp, color = CafeTextPrimary)
-                    Switch(
-                        checked = isOffer,
-                        onCheckedChange = { isOffer = it },
-                        colors = SwitchDefaults.colors(checkedThumbColor = CafeGold)
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("إظهار في صفحة العروض والتخفيضات؟", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = CafeTextPrimary)
+                            Text("تحديد سعر جديد مخفض أو نسبة مئوية", fontSize = 10.sp, color = CafeTextSecondary)
+                        }
+                        Switch(
+                            checked = isOffer,
+                            onCheckedChange = { isOffer = it },
+                            colors = SwitchDefaults.colors(checkedThumbColor = CafeGold)
+                        )
+                    }
+
+                    if (isOffer) {
+                        HorizontalDivider(color = CafeInputBorder.copy(alpha = 0.5f))
+
+                        // اختيار طريقة تحديد العرض: كتابة السعر الجديد أو نسبة الخصم
+                        Text("اختر طريقة تحديد العرض:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = CafeCyanPrimary)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            val modes = listOf(
+                                "price" to "كتابة السعر الجديد 💵",
+                                "percent" to "كتابة نسبة الخصم %"
+                            )
+                            modes.forEach { (mode, label) ->
+                                val isSelected = offerMode == mode
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) CafeCyanPrimary else CafeSurfaceVariant)
+                                        .border(1.dp, if (isSelected) CafeCyanPrimary else CafeInputBorder, RoundedCornerShape(8.dp))
+                                        .clickable {
+                                            offerMode = mode
+                                            val currentBase = priceStr.toDoubleOrNull() ?: 0.0
+                                            if (mode == "price" && offerNewPriceStr.isBlank() && currentBase > 0) {
+                                                val pct = discountPercentStr.toDoubleOrNull() ?: 15.0
+                                                val calculated = (currentBase * (1.0 - (pct / 100.0))).coerceAtLeast(0.0)
+                                                offerNewPriceStr = if (calculated % 1.0 == 0.0) calculated.toInt().toString() else "%.2f".format(calculated)
+                                            } else if (mode == "percent" && discountPercentStr.isBlank() && currentBase > 0) {
+                                                val np = offerNewPriceStr.toDoubleOrNull() ?: (currentBase * 0.85)
+                                                val pct = (((currentBase - np) / currentBase) * 100.0).coerceIn(0.0, 100.0)
+                                                discountPercentStr = pct.toInt().toString()
+                                            }
+                                        }
+                                        .padding(vertical = 7.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = label,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) Color(0xFF032125) else CafeTextPrimary
+                                    )
+                                }
+                            }
+                        }
+
+                        // الحقول بناءً على الاختيار مع التزامن
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = offerNewPriceStr,
+                                onValueChange = { input ->
+                                    offerNewPriceStr = input
+                                    val newP = input.toDoubleOrNull()
+                                    val baseP = priceStr.toDoubleOrNull()
+                                    if (newP != null && baseP != null && baseP > 0) {
+                                        val pct = (((baseP - newP) / baseP) * 100.0).coerceIn(0.0, 100.0)
+                                        discountPercentStr = pct.toInt().toString()
+                                    }
+                                },
+                                label = { Text("السعر الجديد ($currency)", color = CafeTextSecondary, fontSize = 11.sp) },
+                                modifier = Modifier.weight(1f),
+                                enabled = offerMode == "price",
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedContainerColor = CafeInputBg,
+                                    unfocusedContainerColor = CafeInputBg,
+                                    disabledContainerColor = CafeSurfaceVariant.copy(alpha = 0.5f),
+                                    focusedBorderColor = CafeCyanPrimary,
+                                    unfocusedBorderColor = CafeInputBorder,
+                                    focusedTextColor = CafeTextPrimary,
+                                    unfocusedTextColor = CafeTextPrimary
+                                )
+                            )
+
+                            OutlinedTextField(
+                                value = discountPercentStr,
+                                onValueChange = { input ->
+                                    discountPercentStr = input
+                                    val pct = input.toDoubleOrNull()
+                                    val baseP = priceStr.toDoubleOrNull()
+                                    if (pct != null && baseP != null && baseP > 0) {
+                                        val newP = (baseP * (1.0 - (pct / 100.0))).coerceAtLeast(0.0)
+                                        offerNewPriceStr = if (newP % 1.0 == 0.0) newP.toInt().toString() else "%.2f".format(newP)
+                                    }
+                                },
+                                label = { Text("نسبة الخصم %", color = CafeTextSecondary, fontSize = 11.sp) },
+                                modifier = Modifier.weight(1f),
+                                enabled = offerMode == "percent",
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedContainerColor = CafeInputBg,
+                                    unfocusedContainerColor = CafeInputBg,
+                                    disabledContainerColor = CafeSurfaceVariant.copy(alpha = 0.5f),
+                                    focusedBorderColor = CafeCyanPrimary,
+                                    unfocusedBorderColor = CafeInputBorder,
+                                    focusedTextColor = CafeTextPrimary,
+                                    unfocusedTextColor = CafeTextPrimary
+                                )
+                            )
+                        }
+
+                        // وسم العرض
+                        OutlinedTextField(
+                            value = offerTag,
+                            onValueChange = { offerTag = it },
+                            label = { Text("وسم العرض (مثال: عرض خاص، خصم 20%)", color = CafeTextSecondary, fontSize = 11.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = CafeInputBg,
+                                unfocusedContainerColor = CafeInputBg,
+                                focusedBorderColor = CafeCyanPrimary,
+                                unfocusedBorderColor = CafeInputBorder,
+                                focusedTextColor = CafeTextPrimary,
+                                unfocusedTextColor = CafeTextPrimary
+                            )
+                        )
+
+                        // معاينة العرض
+                        val baseP = priceStr.toDoubleOrNull() ?: 0.0
+                        val previewNewPrice = offerNewPriceStr.toDoubleOrNull() ?: (if (baseP > 0) baseP * 0.85 else 0.0)
+                        val previewDiscount = discountPercentStr.toIntOrNull() ?: 15
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(CafeGold.copy(alpha = 0.12f))
+                                .border(1.dp, CafeGold.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                                .padding(8.dp)
+                        ) {
+                            Text(
+                                text = "✨ معاينة العرض: سيباع الصنف بسعر " +
+                                        (if (previewNewPrice % 1.0 == 0.0) "${previewNewPrice.toInt()}" else "%.2f".format(previewNewPrice)) +
+                                        " $currency بدلاً من $priceStr $currency (خصم $previewDiscount%)",
+                                fontSize = 10.sp,
+                                color = CafeGold,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
                 }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    val price = priceStr.toDoubleOrNull() ?: 3.0
+                    val basePrice = priceStr.toDoubleOrNull() ?: 3.0
                     if (nameAr.isNotBlank()) {
+                        val finalPrice: Double
+                        val finalDiscount: Int
+                        if (isOffer) {
+                            if (offerMode == "price") {
+                                val np = offerNewPriceStr.toDoubleOrNull() ?: basePrice
+                                finalPrice = np
+                                finalDiscount = if (basePrice > 0 && np < basePrice) {
+                                    (((basePrice - np) / basePrice) * 100.0).toInt().coerceIn(0, 100)
+                                } else {
+                                    discountPercentStr.toIntOrNull() ?: 0
+                                }
+                            } else {
+                                val disc = discountPercentStr.toIntOrNull() ?: 15
+                                finalDiscount = disc
+                                finalPrice = if (basePrice > 0) (basePrice * (1.0 - (disc / 100.0))).coerceAtLeast(0.0) else 0.0
+                            }
+                        } else {
+                            finalPrice = basePrice
+                            finalDiscount = 0
+                        }
+
                         onAdd(
                             nameAr,
                             nameEn.ifBlank { nameAr },
                             descAr,
-                            price,
+                            finalPrice,
                             currency,
                             imageType,
                             imageUri,
                             bgImageUri,
                             galleryImages,
                             isOffer,
-                            if (isOffer) 15 else 0,
-                            if (isOffer) "عرض خاص" else ""
+                            finalDiscount,
+                            if (isOffer) offerTag.ifBlank { "عرض خاص" } else ""
                         )
                     }
                 },

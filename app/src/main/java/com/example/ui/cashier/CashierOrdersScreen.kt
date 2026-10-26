@@ -816,7 +816,7 @@ fun UnifiedTableSessionCard(
                                         val priceText = if (item.totalPrice > 0.0) {
                                             "السعر  ${OrderFeeCalculator.formatPrice(item.totalPrice, item.currency)}"
                                         } else {
-                                            "مجاني"
+                                            "السعر  0 ${item.currency}"
                                         }
                                         Text(
                                             text = priceText,

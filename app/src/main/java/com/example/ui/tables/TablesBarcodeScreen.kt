@@ -1,6 +1,7 @@
 package com.example.ui.tables
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -111,18 +112,22 @@ fun TablesBarcodeScreen(viewModel: MainViewModel) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
+                    Button(
                         onClick = { viewModel.navigateTo(AppScreen.SETTINGS) },
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(CafeSurfaceVariant)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = CafeSurfaceVariant,
+                            contentColor = CafeCyanPrimary
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, CafeCyanPrimary.copy(alpha = 0.5f)),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 7.dp),
+                        modifier = Modifier.testTag("tables_mgmt_back_btn")
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.QrCode,
-                            contentDescription = "الرجوع",
-                            tint = CafeCyanPrimary,
-                            modifier = Modifier.size(20.dp)
+                        Text(
+                            text = "عودة",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CafeCyanPrimary
                         )
                     }
 

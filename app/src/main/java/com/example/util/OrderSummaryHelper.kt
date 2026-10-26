@@ -34,17 +34,20 @@ object OrderSummaryHelper {
 
         summaries.forEach { summary ->
             if (summary.isBlank()) return@forEach
-            // تقسيم حسب الفاصلة العربية أو الإنجليزية أو علامة الزائد أو السطر الجديد
-            val tokens = summary.split(Regex("[،,+\n]"))
+            // تقسيم حسب الفاصلة العربية والسطر الجديد فقط (عدم التقسيم بالفواصل الإنجليزية لمنع كسر الأرقام مثل 7,000)
+            val tokens = summary.split(Regex("""[،\n\r]+"""))
             for (rawToken in tokens) {
                 val token = rawToken.trim()
                 if (token.isBlank()) continue
+                // تجاهل أي شظايا رقمية أو عملات متبقية مثل "000 د.ع"
+                if (token.matches(Regex("""^[\d,\.]+\s*(د\.ع|\$|USD)?$"""))) continue
 
                 // البحث عن نمط يحتوي على السعر: "2x برجر كلاسيك بسعر 14,000 د.ع"
                 val matchWithPrice = Regex("""^(\d+)\s*[xX×*]?\s*(.+?)\s+بسعر\s+([\d,.]+)\s*(د\.ع|\$|USD)?$""").find(token)
                 if (matchWithPrice != null) {
                     val count = matchWithPrice.groupValues[1].toIntOrNull() ?: 1
                     val name = matchWithPrice.groupValues[2].trim()
+                    if (name.isBlank() || name.matches(Regex("""^[\d,\.]+\s*(د\.ع|\$|USD)?$"""))) continue
                     val priceStr = matchWithPrice.groupValues[3].replace(",", "").trim()
                     val priceVal = priceStr.toDoubleOrNull() ?: 0.0
                     val curr = matchWithPrice.groupValues[4].ifBlank { "د.ع" }
@@ -62,6 +65,7 @@ object OrderSummaryHelper {
                     if (matchNoPrice != null) {
                         val count = matchNoPrice.groupValues[1].toIntOrNull() ?: 1
                         val name = matchNoPrice.groupValues[2].trim()
+                        if (name.isBlank() || name.matches(Regex("""^[\d,\.]+\s*(د\.ع|\$|USD)?$"""))) continue
                         val existing = itemMap[name]
                         if (existing != null) {
                             existing.quantity += count
@@ -69,6 +73,7 @@ object OrderSummaryHelper {
                             itemMap[name] = ItemData(count, 0.0, "د.ع")
                         }
                     } else {
+                        if (token.matches(Regex("""^[\d,\.]+\s*(د\.ع|\$|USD)?$"""))) continue
                         val existing = itemMap[token]
                         if (existing != null) {
                             existing.quantity += 1

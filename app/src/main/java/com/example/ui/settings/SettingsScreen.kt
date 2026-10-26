@@ -9,6 +9,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -163,19 +164,22 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
+                    Button(
                         onClick = { viewModel.navigateTo(AppScreen.CASHIER_ORDERS) },
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(CafeSurfaceVariant)
-                            .testTag("settings_back_btn")
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = CafeSurfaceVariant,
+                            contentColor = accentColor
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.5f)),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 7.dp),
+                        modifier = Modifier.testTag("settings_back_btn")
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = "الرجوع للكاشير",
-                            tint = accentColor,
-                            modifier = Modifier.size(20.dp)
+                        Text(
+                            text = "عودة",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = accentColor
                         )
                     }
 
@@ -503,8 +507,6 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                     Icon(imageVector = Icons.Default.QrCode, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text("إدارة باركودات الطاولات وتصدير PDF للطباعة", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(14.dp))
                                 }
                             }
                         }
@@ -580,8 +582,6 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                     Icon(imageVector = Icons.Default.RestaurantMenu, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text("فتح إدارة القوائم والأصناف والأسعار", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(14.dp))
                                 }
                             }
                         }
