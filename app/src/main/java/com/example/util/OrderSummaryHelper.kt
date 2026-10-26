@@ -1,5 +1,12 @@
 package com.example.util
 
+data class ParsedOrderItem(
+    val name: String,
+    val quantity: Int,
+    val totalPrice: Double,
+    val currency: String
+)
+
 object OrderSummaryHelper {
 
     private data class ItemData(
@@ -18,11 +25,11 @@ object OrderSummaryHelper {
     }
 
     /**
-     * تجميع الأصناف وضرب الكميات والأسعار المتكررة لنفس الزبون تلقائياً
-     * مثال: "1x برجر كلاسيك بسعر 7,000 د.ع" + "1x برجر كلاسيك بسعر 7,000 د.ع" => "2x برجر كلاسيك بسعر 14,000 د.ع"
+     * تفكيك وتجميع الأصناف في كائنات مهيكلة لعرضها كصفوف منسقة عند الكاشير
+     * [اسم الصنف]   [عدد X]   [السعر X]
      */
-    fun combineAndMultiplySummaries(summaries: List<String>): String {
-        if (summaries.isEmpty()) return ""
+    fun parseOrderItems(summaries: List<String>): List<ParsedOrderItem> {
+        if (summaries.isEmpty()) return emptyList()
         val itemMap = linkedMapOf<String, ItemData>()
 
         summaries.forEach { summary ->
@@ -73,12 +80,23 @@ object OrderSummaryHelper {
             }
         }
 
-        if (itemMap.isEmpty()) return ""
-        return itemMap.entries.joinToString("، ") { (name, data) ->
-            if (data.totalPrice > 0.0) {
-                "${data.quantity}x $name بسعر ${OrderFeeCalculator.formatPrice(data.totalPrice, data.currency)}"
+        return itemMap.map { (name, data) ->
+            ParsedOrderItem(name, data.quantity, data.totalPrice, data.currency)
+        }
+    }
+
+    /**
+     * تجميع الأصناف وضرب الكميات والأسعار المتكررة لنفس الزبون تلقائياً
+     * مثال: "1x برجر كلاسيك بسعر 7,000 د.ع" + "1x برجر كلاسيك بسعر 7,000 د.ع" => "2x برجر كلاسيك بسعر 14,000 د.ع"
+     */
+    fun combineAndMultiplySummaries(summaries: List<String>): String {
+        val items = parseOrderItems(summaries)
+        if (items.isEmpty()) return ""
+        return items.joinToString("، ") { item ->
+            if (item.totalPrice > 0.0) {
+                "${item.quantity}x ${item.name} بسعر ${OrderFeeCalculator.formatPrice(item.totalPrice, item.currency)}"
             } else {
-                "${data.quantity}x $name"
+                "${item.quantity}x ${item.name}"
             }
         }
     }

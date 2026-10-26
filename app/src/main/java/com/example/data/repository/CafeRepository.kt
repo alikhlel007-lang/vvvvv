@@ -688,22 +688,63 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
         val total = subtotal + serviceFee
         val orderId = "ord_" + System.currentTimeMillis().toString().takeLast(6)
 
-        // التحقق من وجود جلسة نشطة لهذه الطاولة ووراثة مرحلتها الحالية
+        // التحقق من وجود جلسة نشطة لهذه الطاولة
         val activeOrders = try {
             dao.getActiveOrdersForTable(tableNumber)
         } catch (_: Exception) {
             emptyList()
         }
 
-        val initialStatusName = when {
-            activeOrders.any { it.status == OrderStatus.DELIVERED.name || it.status == OrderStatus.READY.name } -> OrderStatus.DELIVERED.name
-            activeOrders.any { it.status == OrderStatus.PREPARING.name } -> OrderStatus.PREPARING.name
-            else -> OrderStatus.NEW.name
-        }
-
         val cleanedCustomerName = customerName.ifEmpty { "طاولة $tableNumber" }
 
-        // إنشاء الطلب كطلب مستقل يمر بالمرحلتين الأولى والثانية مع إتاحة خيار الدمج اليدوي للكاشير
+        // إذا كان هناك طلب سابق لنفس الطاولة/الزبون ما زال في قائمة "طلبات جديدة" (NEW) يتم الدمج تلقائياً
+        val existingNewOrder = activeOrders.firstOrNull {
+            it.status == OrderStatus.NEW.name &&
+            (it.customerName.trim().equals(cleanedCustomerName.trim(), ignoreCase = true) || cleanedCustomerName == "طاولة $tableNumber")
+        }
+
+        if (existingNewOrder != null) {
+            val updatedSummary = com.example.util.OrderSummaryHelper.combineAndMultiplySummaries(
+                listOf(existingNewOrder.itemsSummary, summary)
+            )
+            val updatedCount = existingNewOrder.itemsCount + count
+            val updatedSubtotal = existingNewOrder.subtotal + subtotal
+            val updatedFee = com.example.util.OrderFeeCalculator.calculateServiceFee(updatedSubtotal, currency)
+            val updatedTotal = updatedSubtotal + updatedFee
+            val updatedNotes = com.example.util.OrderSummaryHelper.combineNotes(
+                listOf(existingNewOrder.notes, notes)
+            )
+
+            val updatedEntity = existingNewOrder.copy(
+                itemsSummary = updatedSummary,
+                itemsCount = updatedCount,
+                subtotal = updatedSubtotal,
+                serviceFee = updatedFee,
+                totalPrice = updatedTotal,
+                timestamp = System.currentTimeMillis(),
+                notes = updatedNotes
+            )
+            dao.updateOrder(updatedEntity)
+
+            try {
+                val updateMap = hashMapOf<String, Any>(
+                    "itemsSummary" to updatedSummary,
+                    "itemsCount" to updatedCount,
+                    "subtotal" to updatedSubtotal,
+                    "serviceFee" to updatedFee,
+                    "totalPrice" to updatedTotal,
+                    "timestamp" to System.currentTimeMillis(),
+                    "notes" to updatedNotes
+                )
+                firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")?.document(existingNewOrder.id)?.update(updateMap)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+            return existingNewOrder.id
+        }
+
+        // إذا كان الطلب السابق قد وصل لقسم التحضير أو تسديد الحساب، يعامل كطلب جديد اعتيادي (NEW)
         val entity = OrderEntity(
             id = orderId,
             tableNumber = tableNumber,
@@ -714,7 +755,7 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
             subtotal = subtotal,
             serviceFee = serviceFee,
             currency = currency,
-            status = initialStatusName,
+            status = OrderStatus.NEW.name,
             timestamp = System.currentTimeMillis(),
             notes = notes
         )
@@ -733,7 +774,7 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
                 "subtotal" to subtotal,
                 "serviceFee" to serviceFee,
                 "currency" to currency,
-                "status" to initialStatusName,
+                "status" to OrderStatus.NEW.name,
                 "timestamp" to System.currentTimeMillis(),
                 "notes" to notes
             )
@@ -795,21 +836,41 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
     }
 
     /**
+     * دمج طلب جديد مع طلب سابق قيد التحضير لنفس الطاولة
+     */
+    suspend fun mergeNewOrderIntoPreparing(newOrder: OrderRecord, preparingOrders: List<OrderRecord>) {
+        if (preparingOrders.isEmpty()) return
+        val targetPreparingOrder = preparingOrders.first()
+        val allOrders = listOf(targetPreparingOrder, newOrder)
+        mergeOrdersIntoOne(allOrders)
+        updateOrderStatus(targetPreparingOrder.id, targetPreparingOrder, OrderStatus.PREPARING)
+    }
+
+    /**
      * الدمج التلقائي عند الانتقال للمرحلة الثالثة (تسديد حساب الطاولة)
      * في حال وصل إلى المرحلة الثالثة كلا الطلبين ولم يتم الدمج بينهما يدوياً، يتم الدمج تلقائياً
      */
-    suspend fun autoMergeCustomerOrdersForTable(orders: List<OrderRecord>) {
-        val unpaidOrders = orders.filter { it.status != OrderStatus.PAID }
-        val byCustomer = unpaidOrders.groupBy { it.customerName }
+    suspend fun autoMergeCustomerOrdersForTable(tableNumber: Int, ordersToAdvance: List<OrderRecord>) {
+        ordersToAdvance.forEach { order ->
+            if (order.status != OrderStatus.PAID) {
+                updateOrderStatus(order.id, order, OrderStatus.DELIVERED)
+            }
+        }
 
+        val allActiveForTable = try {
+            dao.getActiveOrdersForTable(tableNumber)
+        } catch (_: Exception) {
+            emptyList()
+        }
+
+        val deliveredOrders = allActiveForTable
+            .filter { it.status == OrderStatus.DELIVERED.name || it.status == OrderStatus.READY.name }
+            .map { it.toDomain() }
+
+        val byCustomer = deliveredOrders.groupBy { it.customerName }
         byCustomer.forEach { (_, custOrders) ->
             if (custOrders.size > 1) {
                 mergeOrdersIntoOne(custOrders)
-                val target = custOrders.first()
-                updateOrderStatus(target.id, target, OrderStatus.DELIVERED)
-            } else if (custOrders.size == 1) {
-                val single = custOrders.first()
-                updateOrderStatus(single.id, single, OrderStatus.DELIVERED)
             }
         }
     }

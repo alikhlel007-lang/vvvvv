@@ -90,7 +90,11 @@ data class TableSession(
     val tableNumber: Int,
     val orders: List<OrderRecord>,
     val stage: OrderStatus,
-    val lastTimestamp: Long
+    val lastTimestamp: Long,
+    val hasPreparingOrder: Boolean = false,
+    val hasDeliveredOrder: Boolean = false,
+    val preparingOrders: List<OrderRecord> = emptyList(),
+    val sessionId: String = ""
 )
 
 @Composable
@@ -99,8 +103,8 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
     val orders by viewModel.orders.collectAsState()
     val activeFilter by viewModel.orderStatusFilter.collectAsState()
 
-    // تجميع كافة الطلبات في جلسات وفواتير موحدة حسب كل طاولة
-    // (التخلص من الطلبات الفردية المنعزلة، وفاتورة واحدة متكاملة لكل جلسة)
+    // تجميع الطلبات في جلسات موحدة حسب المراحل المستقلة لكل طاولة
+    // بعد التسديد تعود الطاولة نظيفة وجاهزة تماماً لاستقبال طلبات جديدة
     val tableSessions = remember(orders) {
         val byTable = orders.groupBy { it.tableNumber }
         val sessionsList = mutableListOf<TableSession>()
@@ -112,50 +116,81 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                 it.status != OrderStatus.REJECTED
             }
 
-            if (activeOrders.isNotEmpty()) {
-                // تحديد مرحلة الجلسة الحالية
-                val stage = when {
-                    activeOrders.any { it.status == OrderStatus.DELIVERED || it.status == OrderStatus.READY } -> OrderStatus.DELIVERED
-                    activeOrders.any { it.status == OrderStatus.PREPARING } -> OrderStatus.PREPARING
-                    else -> OrderStatus.NEW
-                }
+            val newOrders = activeOrders.filter { it.status == OrderStatus.NEW }
+            val prepOrders = activeOrders.filter { it.status == OrderStatus.PREPARING }
+            val delivOrders = activeOrders.filter { it.status == OrderStatus.DELIVERED || it.status == OrderStatus.READY }
 
-                // تضمين الطلبات النشطة والطلبات المسددة فردياً ضمن نفس الجلسة لتبقى موحدة في فاتورة واحدة
-                val earliestActiveTime = activeOrders.minOf { it.timestamp }
-                val sessionOrders = tableOrders.filter {
-                    it in activeOrders || (it.status == OrderStatus.PAID && it.timestamp >= earliestActiveTime - 14400000L)
-                }.sortedBy { it.timestamp }
-
+            // 1. طلبات جديدة (NEW)
+            if (newOrders.isNotEmpty()) {
                 sessionsList.add(
                     TableSession(
                         tableNumber = tableNumber,
-                        orders = sessionOrders,
-                        stage = stage,
-                        lastTimestamp = sessionOrders.maxOf { it.timestamp }
+                        orders = newOrders.sortedBy { it.timestamp },
+                        stage = OrderStatus.NEW,
+                        lastTimestamp = newOrders.maxOf { it.timestamp },
+                        hasPreparingOrder = prepOrders.isNotEmpty(),
+                        hasDeliveredOrder = delivOrders.isNotEmpty(),
+                        preparingOrders = prepOrders,
+                        sessionId = "table_${tableNumber}_new_${newOrders.maxOf { it.timestamp }}"
                     )
                 )
-            } else {
-                // في حال كانت جميع طلبات الطاولة مسددة أو ملغية/مرفوضة
-                val paidOrders = tableOrders.filter { it.status == OrderStatus.PAID }
-                if (paidOrders.isNotEmpty()) {
+            }
+
+            // 2. قيد التحضير (PREPARING)
+            if (prepOrders.isNotEmpty()) {
+                sessionsList.add(
+                    TableSession(
+                        tableNumber = tableNumber,
+                        orders = prepOrders.sortedBy { it.timestamp },
+                        stage = OrderStatus.PREPARING,
+                        lastTimestamp = prepOrders.maxOf { it.timestamp },
+                        sessionId = "table_${tableNumber}_prep_${prepOrders.maxOf { it.timestamp }}"
+                    )
+                )
+            }
+
+            // 3. تسديد حساب الطاولة (DELIVERED)
+            if (delivOrders.isNotEmpty()) {
+                sessionsList.add(
+                    TableSession(
+                        tableNumber = tableNumber,
+                        orders = delivOrders.sortedBy { it.timestamp },
+                        stage = OrderStatus.DELIVERED,
+                        lastTimestamp = delivOrders.maxOf { it.timestamp },
+                        sessionId = "table_${tableNumber}_deliv_${delivOrders.maxOf { it.timestamp }}"
+                    )
+                )
+            }
+
+            // 4. الفواتير المسددة (PAID) - تظهر بشكل مستقل في تبويب الفواتير المسددة
+            val paidOrders = tableOrders.filter { it.status == OrderStatus.PAID }
+            if (paidOrders.isNotEmpty()) {
+                val paidGroups = paidOrders.groupBy { it.timestamp / 900000L }
+                paidGroups.forEach { (_, batch) ->
                     sessionsList.add(
                         TableSession(
                             tableNumber = tableNumber,
-                            orders = paidOrders.sortedBy { it.timestamp },
+                            orders = batch.sortedBy { it.timestamp },
                             stage = OrderStatus.PAID,
-                            lastTimestamp = paidOrders.maxOf { it.timestamp }
+                            lastTimestamp = batch.maxOf { it.timestamp },
+                            sessionId = "table_${tableNumber}_paid_${batch.maxOf { it.timestamp }}"
                         )
                     )
                 }
+            }
 
-                val rejectedOrders = tableOrders.filter { it.status == OrderStatus.REJECTED || it.status == OrderStatus.CANCELLED }
-                if (rejectedOrders.isNotEmpty()) {
+            // 5. الطلبات المرفوضة والملغية
+            val rejectedOrders = tableOrders.filter { it.status == OrderStatus.REJECTED || it.status == OrderStatus.CANCELLED }
+            if (rejectedOrders.isNotEmpty()) {
+                val rejGroups = rejectedOrders.groupBy { it.timestamp / 900000L }
+                rejGroups.forEach { (_, batch) ->
                     sessionsList.add(
                         TableSession(
                             tableNumber = tableNumber,
-                            orders = rejectedOrders.sortedBy { it.timestamp },
+                            orders = batch.sortedBy { it.timestamp },
                             stage = OrderStatus.REJECTED,
-                            lastTimestamp = rejectedOrders.maxOf { it.timestamp }
+                            lastTimestamp = batch.maxOf { it.timestamp },
+                            sessionId = "table_${tableNumber}_rej_${batch.maxOf { it.timestamp }}"
                         )
                     )
                 }
@@ -359,7 +394,7 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                             text = when (activeFilter) {
                                 OrderStatus.NEW -> "عندما يطلب الزبون من طاولته، ستظهر هنا مع خياري (رفض) أو (تحضير)، ويمكن دمج طلبات نفس الزبون يدوياً في أي وقت."
                                 OrderStatus.PREPARING -> "عند الضغط على تحضير، تنتقل الجلسة إلى هنا حتى يكتمل تجهيزها، ثم الضغط على (تسديد حساب الطاولة)."
-                                OrderStatus.DELIVERED -> "هنا يتم تسديد حساب الطاولة سواء تسديد فردي لكل شخص على حدى أو تسديد كلي لكامل الطاولة بسعر مقرب."
+                                OrderStatus.DELIVERED -> "هنا يتم تسديد حساب الطاولة سواء تسديد فردي لكل شخص على حدى أو تسديد كلي لكامل الطاولة."
                                 OrderStatus.PAID -> "تظهر هنا جميع الفواتير التي تم تسديدها بالكامل."
                                 else -> "تظهر هنا الطلبات التي تم رفضها قبل التحضير."
                             },
@@ -390,9 +425,10 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                     contentPadding = PaddingValues(top = 4.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    items(filteredSessions, key = { "${it.tableNumber}_${it.stage}_${it.lastTimestamp}" }) { session ->
+                    items(filteredSessions, key = { it.sessionId.ifBlank { "${it.tableNumber}_${it.stage}_${it.lastTimestamp}" } }) { session ->
                         UnifiedTableSessionCard(
                             session = session,
+                            cafeName = cafeName,
                             onAdvanceSession = { nextStatus ->
                                 viewModel.advanceTableSession(session.orders, nextStatus)
                                 Toast.makeText(
@@ -406,6 +442,14 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                                 Toast.makeText(
                                     context,
                                     "تم دمج طلبات الزبون بنجاح 🔗",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            onMergeWithPreparing = { newOrder, preparingOrders ->
+                                viewModel.mergeNewOrderWithPreparing(newOrder, preparingOrders)
+                                Toast.makeText(
+                                    context,
+                                    "تم دمج الطلب مع طلب التحضير بنجاح 🔗",
                                     Toast.LENGTH_SHORT
                                 ).show()
                             },
@@ -512,13 +556,16 @@ fun StatusFilterChip(
 @Composable
 fun UnifiedTableSessionCard(
     session: TableSession,
+    cafeName: String,
     onAdvanceSession: (OrderStatus) -> Unit,
     onMergeCustomerOrders: (List<OrderRecord>) -> Unit,
+    onMergeWithPreparing: (OrderRecord, List<OrderRecord>) -> Unit,
     onRejectSession: () -> Unit,
     onPaySingleOrder: (OrderRecord) -> Unit,
     onPayAllSession: (List<OrderRecord>) -> Unit,
     onDeleteSession: () -> Unit
 ) {
+    val context = LocalContext.current
     val unpaidOrders = session.orders.filter { it.status != OrderStatus.PAID }
     val paidOrders = session.orders.filter { it.status == OrderStatus.PAID }
     val isFullyPaid = unpaidOrders.isEmpty()
@@ -715,13 +762,81 @@ fun UnifiedTableSessionCard(
 
                         Spacer(modifier = Modifier.height(4.dp))
 
-                        // الأصناف
-                        Text(
-                            text = itemsCombined,
-                            fontSize = 12.sp,
-                            color = CafeTextPrimary,
-                            fontWeight = FontWeight.Medium
-                        )
+                        // عرض كل صنف وأمامه كميته وسعره بشكل منسق ومفصل: [اسم الصنف] [عدد X] [السعر X]
+                        val parsedItems = remember(customerOrders) {
+                            com.example.util.OrderSummaryHelper.parseOrderItems(customerOrders.map { it.itemsSummary })
+                        }
+
+                        if (parsedItems.isNotEmpty()) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                parsedItems.forEach { item ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(Color(0xFF031619))
+                                            .border(0.6.dp, CafeCardBorder.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // اسم الصنف
+                                        Text(
+                                            text = item.name,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = CafeTextPrimary,
+                                            modifier = Modifier.weight(1.8f)
+                                        )
+
+                                        // عدد X
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(CafeCyanPrimary.copy(alpha = 0.12f))
+                                                .border(0.8.dp, CafeCyanPrimary.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                                        ) {
+                                            Text(
+                                                text = "عدد  ${item.quantity}",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = CafeCyanPrimary
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.width(10.dp))
+
+                                        // السعر X
+                                        val priceText = if (item.totalPrice > 0.0) {
+                                            "السعر  ${OrderFeeCalculator.formatPrice(item.totalPrice, item.currency)}"
+                                        } else {
+                                            "مجاني"
+                                        }
+                                        Text(
+                                            text = priceText,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = CafeGold,
+                                            textAlign = TextAlign.End,
+                                            modifier = Modifier.weight(1.4f)
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            Text(
+                                text = itemsCombined,
+                                fontSize = 12.sp,
+                                color = CafeTextPrimary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
 
                         if (notesCombined.isNotBlank()) {
                             Text(
@@ -831,7 +946,7 @@ fun UnifiedTableSessionCard(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Button(
@@ -845,7 +960,25 @@ fun UnifiedTableSessionCard(
                             Text("رفض ❌", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
 
-                        Spacer(modifier = Modifier.width(10.dp))
+                        // إذا كان هناك طلب سابق في قسم التحضير لنفس الطاولة: يظهر خيار دمج مع طلب التحضير
+                        if (session.hasPreparingOrder && session.preparingOrders.isNotEmpty()) {
+                            Button(
+                                onClick = {
+                                    val newOrder = session.orders.firstOrNull()
+                                    if (newOrder != null) {
+                                        onMergeWithPreparing(newOrder, session.preparingOrders)
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = CafeGold.copy(alpha = 0.2f),
+                                    contentColor = CafeGold
+                                ),
+                                border = BorderStroke(1.dp, CafeGold),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("دمج مع طلب التحضير 🔗", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
 
                         Button(
                             onClick = { onAdvanceSession(OrderStatus.PREPARING) },
@@ -855,7 +988,8 @@ fun UnifiedTableSessionCard(
                             ),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("تحضير 🍳", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            val btnText = if (session.hasPreparingOrder) "تحضير (موافقة) 🍳" else "تحضير 🍳"
+                            Text(btnText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -882,8 +1016,27 @@ fun UnifiedTableSessionCard(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // خيار دمج الطلبين في قسم التحضير إذا كان هناك أكثر من طلب لنفس الطاولة
+                        if (session.orders.size > 1) {
+                            Button(
+                                onClick = { onMergeCustomerOrders(session.orders) },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = CafeGold.copy(alpha = 0.2f),
+                                    contentColor = CafeGold
+                                ),
+                                border = BorderStroke(1.dp, CafeGold),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("دمج الطلبين في التحضير 🔗", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        } else {
+                            Spacer(modifier = Modifier.width(1.dp))
+                        }
+
+                        // زر تم تسليم الطلب لينتقل إلى مرحلة تسديد حساب الطاولة بعد الضغط عليه
                         Button(
                             onClick = { onAdvanceSession(OrderStatus.DELIVERED) },
                             colors = ButtonDefaults.buttonColors(
@@ -892,7 +1045,7 @@ fun UnifiedTableSessionCard(
                             ),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("تسديد حساب الطاولة 💵", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text("تم تسليم الطلب 🍽️", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -945,7 +1098,7 @@ fun UnifiedTableSessionCard(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text("نسبة الخدمة 1% (بدون تقريب):", fontSize = 11.sp, color = CafeTextSecondary)
+                                    Text("نسبة الخدمة 1%:", fontSize = 11.sp, color = CafeTextSecondary)
                                     Text(OrderFeeCalculator.formatPrice(groupRawFee, groupCurrency), fontSize = 11.sp, color = CafeTextSecondary)
                                 }
 
@@ -953,7 +1106,7 @@ fun UnifiedTableSessionCard(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text("نسبة الخدمة بعد التقريب عند التسديد:", fontSize = 11.sp, color = CafeGold)
+                                    Text("نسبة الخدمة عند التسديد:", fontSize = 11.sp, color = CafeGold)
                                     Text(OrderFeeCalculator.formatPrice(groupSettlementFee, groupCurrency), fontSize = 11.sp, color = CafeGold)
                                 }
 
@@ -964,7 +1117,7 @@ fun UnifiedTableSessionCard(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text("الإجمالي الكلي المطلوب (مقرب):", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = CafeTextPrimary)
+                                    Text("الإجمالي الكلي المطلوب:", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = CafeTextPrimary)
                                     Text(
                                         text = OrderFeeCalculator.formatPrice(groupSettlementTotal, groupCurrency),
                                         fontSize = 16.sp,
@@ -1009,7 +1162,7 @@ fun UnifiedTableSessionCard(
                 }
 
                 OrderStatus.PAID -> {
-                    // تسديد الفاتورة (مكتملة ومسددة بالكامل)
+                    // الفواتير المسددة (مكتملة ومسددة بالكامل وجاهزة للطباعة)
                     val paidTotal = session.orders.sumOf { it.totalPrice }
                     Row(
                         modifier = Modifier
@@ -1040,12 +1193,37 @@ fun UnifiedTableSessionCard(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "تم تسديد الفاتورة بالكامل ✅",
-                            fontSize = 12.sp,
-                            color = OrderStatusPaid,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "تم تسديد الفاتورة بالكامل ✅",
+                                fontSize = 12.sp,
+                                color = OrderStatusPaid,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Spacer(modifier = Modifier.width(10.dp))
+
+                            // زر طباعة الفاتورة
+                            Button(
+                                onClick = {
+                                    com.example.util.ReceiptPrinter.printInvoice(
+                                        context = context,
+                                        tableNumber = session.tableNumber,
+                                        orders = session.orders,
+                                        cafeName = cafeName
+                                    )
+                                    Toast.makeText(context, "جاري إرسال الفاتورة إلى الطابعة 🖨️", Toast.LENGTH_SHORT).show()
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = CafeCyanPrimary,
+                                    contentColor = Color(0xFF032125)
+                                ),
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Text("طباعة الفاتورة 🖨️", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
+                            }
+                        }
 
                         IconButton(
                             onClick = onDeleteSession,

@@ -856,7 +856,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("نسبة الخدمة 1% (بدون تقريب):", fontSize = 11.sp, color = CafeGold)
+                            Text("نسبة الخدمة 1%:", fontSize = 11.sp, color = CafeGold)
                             Text(OrderFeeCalculator.formatPrice(cartFee, cartCurrency), fontSize = 12.sp, color = CafeGold, fontWeight = FontWeight.Bold)
                         }
                         HorizontalDivider(color = CafeCardBorder, modifier = Modifier.padding(vertical = 2.dp))

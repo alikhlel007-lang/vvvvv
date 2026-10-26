@@ -512,8 +512,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun advanceTableSession(orders: List<OrderRecord>, newStatus: OrderStatus) {
         viewModelScope.launch {
+            val tableNumber = orders.firstOrNull()?.tableNumber ?: 0
             if (newStatus == OrderStatus.DELIVERED) {
-                repository.autoMergeCustomerOrdersForTable(orders)
+                repository.autoMergeCustomerOrdersForTable(tableNumber, orders)
             } else {
                 orders.forEach { order ->
                     if (order.status != OrderStatus.PAID) {
@@ -527,6 +528,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun mergeCustomerOrders(ordersToMerge: List<OrderRecord>) {
         viewModelScope.launch {
             repository.mergeOrdersIntoOne(ordersToMerge)
+        }
+    }
+
+    fun mergeNewOrderWithPreparing(newOrder: OrderRecord, preparingOrders: List<OrderRecord>) {
+        viewModelScope.launch {
+            repository.mergeNewOrderIntoPreparing(newOrder, preparingOrders)
         }
     }
 
