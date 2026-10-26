@@ -182,11 +182,11 @@ object ReceiptPrinter {
                         <span>${OrderFeeCalculator.formatPrice(subtotal, currency)}</span>
                     </div>
                     <div class="total-row">
-                        <span>نسبة الخدمة 1%:</span>
+                        <span>رسوم الخدمة 1%:</span>
                         <span>${OrderFeeCalculator.formatPrice(rawFee, currency)}</span>
                     </div>
                     <div class="total-row">
-                        <span>نسبة الخدمة عند التسديد:</span>
+                        <span>رسوم الخدمة عند التسديد:</span>
                         <span>${OrderFeeCalculator.formatPrice(settlementFee, currency)}</span>
                     </div>
                     <div class="total-row grand-total">

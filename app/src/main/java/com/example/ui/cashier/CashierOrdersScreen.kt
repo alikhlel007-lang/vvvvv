@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material.icons.filled.Group
@@ -31,8 +32,10 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -41,10 +44,15 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -94,6 +102,7 @@ data class TableSession(
     val hasPreparingOrder: Boolean = false,
     val hasDeliveredOrder: Boolean = false,
     val preparingOrders: List<OrderRecord> = emptyList(),
+    val otherTableOrders: List<OrderRecord> = emptyList(),
     val sessionId: String = ""
 )
 
@@ -105,6 +114,10 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
 
     // تجميع الطلبات في جلسات موحدة حسب المراحل المستقلة لكل طاولة
     // بعد التسديد تعود الطاولة نظيفة وجاهزة تماماً لاستقبال طلبات جديدة
+    var showActiveTablesDialog by remember { mutableStateOf(false) }
+    var showRevenueDetailsDialog by remember { mutableStateOf(false) }
+
+    // تجميع الطلبات في جلسات ومحطات مستقلة لكل طاولة
     val tableSessions = remember(orders) {
         val byTable = orders.groupBy { it.tableNumber }
         val sessionsList = mutableListOf<TableSession>()
@@ -120,36 +133,43 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
             val prepOrders = activeOrders.filter { it.status == OrderStatus.PREPARING }
             val delivOrders = activeOrders.filter { it.status == OrderStatus.DELIVERED || it.status == OrderStatus.READY }
 
-            // 1. طلبات جديدة (NEW)
-            if (newOrders.isNotEmpty()) {
+            // 1. طلبات جديدة (NEW) - كل طلب جديد يظهر كبطاقة مستقلة مع أزرار (رفض / دمج / أوافق)
+            newOrders.forEach { newOrder ->
+                val otherNew = newOrders.filter { it.id != newOrder.id }
                 sessionsList.add(
                     TableSession(
                         tableNumber = tableNumber,
-                        orders = newOrders.sortedBy { it.timestamp },
+                        orders = listOf(newOrder),
                         stage = OrderStatus.NEW,
-                        lastTimestamp = newOrders.maxOf { it.timestamp },
+                        lastTimestamp = newOrder.timestamp,
                         hasPreparingOrder = prepOrders.isNotEmpty(),
                         hasDeliveredOrder = delivOrders.isNotEmpty(),
                         preparingOrders = prepOrders,
-                        sessionId = "table_${tableNumber}_new_${newOrders.maxOf { it.timestamp }}"
+                        otherTableOrders = (otherNew + prepOrders),
+                        sessionId = "table_${tableNumber}_new_${newOrder.id}"
                     )
                 )
             }
 
-            // 2. قيد التحضير (PREPARING)
-            if (prepOrders.isNotEmpty()) {
+            // 2. قيد التحضير (PREPARING) - يظهر كل طلب تحضير كبطاقة مستقلة لنفس الطاولة لتبدو كأنها لطاولات مختلفة
+            prepOrders.forEach { prepOrder ->
+                val otherPreps = prepOrders.filter { it.id != prepOrder.id }
                 sessionsList.add(
                     TableSession(
                         tableNumber = tableNumber,
-                        orders = prepOrders.sortedBy { it.timestamp },
+                        orders = listOf(prepOrder),
                         stage = OrderStatus.PREPARING,
-                        lastTimestamp = prepOrders.maxOf { it.timestamp },
-                        sessionId = "table_${tableNumber}_prep_${prepOrders.maxOf { it.timestamp }}"
+                        lastTimestamp = prepOrder.timestamp,
+                        hasPreparingOrder = otherPreps.isNotEmpty(),
+                        hasDeliveredOrder = delivOrders.isNotEmpty(),
+                        preparingOrders = otherPreps,
+                        otherTableOrders = otherPreps,
+                        sessionId = "table_${tableNumber}_prep_${prepOrder.id}"
                     )
                 )
             }
 
-            // 3. تسديد حساب الطاولة (DELIVERED)
+            // 3. تسديد حساب الطاولة (DELIVERED) - تجميع كامل طلبات الطاولة المسلمة في فاتورة موحدة
             if (delivOrders.isNotEmpty()) {
                 sessionsList.add(
                     TableSession(
@@ -157,6 +177,10 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                         orders = delivOrders.sortedBy { it.timestamp },
                         stage = OrderStatus.DELIVERED,
                         lastTimestamp = delivOrders.maxOf { it.timestamp },
+                        hasPreparingOrder = prepOrders.isNotEmpty(),
+                        hasDeliveredOrder = true,
+                        preparingOrders = prepOrders,
+                        otherTableOrders = emptyList(),
                         sessionId = "table_${tableNumber}_deliv_${delivOrders.maxOf { it.timestamp }}"
                     )
                 )
@@ -210,22 +234,49 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
     val paidSessionsCount = tableSessions.count { it.stage == OrderStatus.PAID }
     val rejectedSessionsCount = tableSessions.count { it.stage == OrderStatus.REJECTED }
 
-    val activeTablesCount = tableSessions.count {
-        it.stage != OrderStatus.PAID && it.stage != OrderStatus.REJECTED
+    // أرقام الطاولات النشطة فعلياً
+    val activeTableNumbers = remember(orders) {
+        orders.filter {
+            it.status != OrderStatus.PAID &&
+            it.status != OrderStatus.CANCELLED &&
+            it.status != OrderStatus.REJECTED
+        }.map { it.tableNumber }.distinct().sorted()
     }
+    val activeTablesCount = activeTableNumbers.size
 
     val cafeName by viewModel.cafeName.collectAsState()
 
-    // حساب إجمالي الإيرادات المسددة
+    // حساب إجمالي الإيرادات المسددة (الصافي بدون النسبة + النسبة المتراكمة + الكلي مع النسبة)
     val paidOrders = orders.filter { it.status == OrderStatus.PAID }
-    val totalRevenueIqd = paidOrders.filter { it.currency != "$" && it.currency != "USD" }.sumOf { it.totalPrice }
-    val totalRevenueUsd = paidOrders.filter { it.currency == "$" || it.currency == "USD" }.sumOf { it.totalPrice }
+    val paidSubtotalIqd = paidOrders.filter { it.currency != "$" && it.currency != "USD" }.sumOf { it.subtotal }
+    val paidSubtotalUsd = paidOrders.filter { it.currency == "$" || it.currency == "USD" }.sumOf { it.subtotal }
+    val paidFeesIqd = paidOrders.filter { it.currency != "$" && it.currency != "USD" }.sumOf { it.serviceFee }
+    val paidFeesUsd = paidOrders.filter { it.currency == "$" || it.currency == "USD" }.sumOf { it.serviceFee }
+    val paidTotalIqd = paidOrders.filter { it.currency != "$" && it.currency != "USD" }.sumOf { it.totalPrice }
+    val paidTotalUsd = paidOrders.filter { it.currency == "$" || it.currency == "USD" }.sumOf { it.totalPrice }
 
-    val revenueDisplay = when {
-        totalRevenueIqd > 0 && totalRevenueUsd > 0 ->
-            "${OrderFeeCalculator.formatPrice(totalRevenueIqd, "د.ع")} + ${OrderFeeCalculator.formatPrice(totalRevenueUsd, "$")}"
-        totalRevenueUsd > 0 -> OrderFeeCalculator.formatPrice(totalRevenueUsd, "$")
-        else -> OrderFeeCalculator.formatPrice(totalRevenueIqd, "د.ع")
+    // العرض الافتراضي للمبيعات المسددة: السعر بدون النسبة (الصافي)
+    val netRevenueDisplay = when {
+        paidSubtotalIqd > 0 && paidSubtotalUsd > 0 ->
+            "${OrderFeeCalculator.formatPrice(paidSubtotalIqd, "د.ع")} + ${OrderFeeCalculator.formatPrice(paidSubtotalUsd, "$")}"
+        paidSubtotalUsd > 0 -> OrderFeeCalculator.formatPrice(paidSubtotalUsd, "$")
+        else -> OrderFeeCalculator.formatPrice(paidSubtotalIqd, "د.ع")
+    }
+
+    // النسبة المتراكمة للمبيعات
+    val accumulatedFeesDisplay = when {
+        paidFeesIqd > 0 && paidFeesUsd > 0 ->
+            "${OrderFeeCalculator.formatPrice(paidFeesIqd, "د.ع")} + ${OrderFeeCalculator.formatPrice(paidFeesUsd, "$")}"
+        paidFeesUsd > 0 -> OrderFeeCalculator.formatPrice(paidFeesUsd, "$")
+        else -> OrderFeeCalculator.formatPrice(paidFeesIqd, "د.ع")
+    }
+
+    // الحساب الكلي شامل النسبة
+    val totalRevenueDisplay = when {
+        paidTotalIqd > 0 && paidTotalUsd > 0 ->
+            "${OrderFeeCalculator.formatPrice(paidTotalIqd, "د.ع")} + ${OrderFeeCalculator.formatPrice(paidTotalUsd, "$")}"
+        paidTotalUsd > 0 -> OrderFeeCalculator.formatPrice(paidTotalUsd, "$")
+        else -> OrderFeeCalculator.formatPrice(paidTotalIqd, "د.ع")
     }
 
     Box(
@@ -305,19 +356,261 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                     title = "طلبات جديدة",
                     value = "$newSessionsCount",
                     valueColor = if (newSessionsCount > 0) CafeCyanPrimary else CafeTextPrimary,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    onClick = { viewModel.setOrderStatusFilter(OrderStatus.NEW) }
                 )
                 MetricCard(
                     title = "طاولات نشطة",
                     value = "$activeTablesCount",
                     valueColor = CafeGold,
-                    modifier = Modifier.weight(1f)
+                    subtitle = "اضغط للتسديد 👆",
+                    modifier = Modifier.weight(1.1f),
+                    onClick = { showActiveTablesDialog = true }
                 )
                 MetricCard(
                     title = "المبيعات المسددة",
-                    value = revenueDisplay,
+                    value = netRevenueDisplay,
                     valueColor = CafeCyanPrimary,
-                    modifier = Modifier.weight(1.5f)
+                    subtitle = "الصافي (اضغط للتفاصيل 👆)",
+                    modifier = Modifier.weight(1.5f),
+                    onClick = { showRevenueDetailsDialog = true }
+                )
+            }
+
+            // نافذة حوارية: الطاولات النشطة لاختيار رقم الطاولة وتسديد حسابها
+            if (showActiveTablesDialog) {
+                AlertDialog(
+                    onDismissRequest = { showActiveTablesDialog = false },
+                    containerColor = CafeSurface,
+                    shape = RoundedCornerShape(20.dp),
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Restaurant, contentDescription = null, tint = CafeGold, modifier = Modifier.size(22.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("الطاولات النشطة (${activeTableNumbers.size})", color = CafeTextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
+                    },
+                    text = {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Text("اضغط على أي طاولة لتسديد حسابها بالكامل وإعادتها نظيفة:", fontSize = 12.sp, color = CafeTextSecondary)
+
+                            if (activeTableNumbers.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 24.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("لا توجد طاولات نشطة حالياً. جميع الطاولات نظيفة وجاهزة لاستقبال طلبات جديدة.", color = CafeTextSecondary, fontSize = 12.sp, textAlign = TextAlign.Center)
+                                }
+                            } else {
+                                activeTableNumbers.forEach { tableNum ->
+                                    val tableActiveOrders = orders.filter {
+                                        it.tableNumber == tableNum &&
+                                        it.status != OrderStatus.PAID &&
+                                        it.status != OrderStatus.CANCELLED &&
+                                        it.status != OrderStatus.REJECTED
+                                    }
+                                    val tableCurr = tableActiveOrders.firstOrNull()?.currency ?: "د.ع"
+                                    val tableSubtotal = tableActiveOrders.sumOf { it.subtotal }
+                                    val tableSettlementTotal = OrderFeeCalculator.calculateSettlementTotal(tableSubtotal, tableCurr)
+                                    val customers = tableActiveOrders.map { it.customerName }.distinct()
+                                    val hasDelivered = tableActiveOrders.any { it.status == OrderStatus.DELIVERED || it.status == OrderStatus.READY }
+                                    val hasPrep = tableActiveOrders.any { it.status == OrderStatus.PREPARING }
+
+                                    val stageLabel = when {
+                                        hasDelivered -> "جاهز للتسديد 🍽️"
+                                        hasPrep -> "قيد التحضير 🍳"
+                                        else -> "طلب جديد ✨"
+                                    }
+                                    val stageColor = when {
+                                        hasDelivered -> OrderStatusDelivered
+                                        hasPrep -> OrderStatusPreparing
+                                        else -> OrderStatusNew
+                                    }
+
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = CardDefaults.cardColors(containerColor = CafeSurfaceVariant),
+                                        border = BorderStroke(1.dp, stageColor.copy(alpha = 0.5f))
+                                    ) {
+                                        Column(modifier = Modifier.padding(10.dp)) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .clip(RoundedCornerShape(8.dp))
+                                                            .background(CafeCyanPrimary)
+                                                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                                                    ) {
+                                                        Text("طاولة $tableNum", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF032125))
+                                                    }
+                                                    Spacer(modifier = Modifier.width(6.dp))
+                                                    Text("${tableActiveOrders.size} طلبات", fontSize = 11.sp, color = CafeTextSecondary)
+                                                }
+                                                Box(
+                                                    modifier = Modifier
+                                                        .clip(RoundedCornerShape(6.dp))
+                                                        .background(stageColor.copy(alpha = 0.2f))
+                                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                ) {
+                                                    Text(stageLabel, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = stageColor)
+                                                }
+                                            }
+
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text("الزبائن: ${customers.joinToString("، ")}", fontSize = 11.sp, color = CafeTextPrimary)
+
+                                            Spacer(modifier = Modifier.height(6.dp))
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Column {
+                                                    Text("المطلوب للتسديد:", fontSize = 10.sp, color = CafeTextSecondary)
+                                                    Text(OrderFeeCalculator.formatPrice(tableSettlementTotal, tableCurr), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = CafeGold)
+                                                }
+
+                                                Button(
+                                                    onClick = {
+                                                        viewModel.payAllOrdersForTable(tableActiveOrders)
+                                                        showActiveTablesDialog = false
+                                                        Toast.makeText(context, "تم تسديد حساب طاولة $tableNum بنجاح! 💵", Toast.LENGTH_SHORT).show()
+                                                    },
+                                                    colors = ButtonDefaults.buttonColors(
+                                                        containerColor = OrderStatusPaid,
+                                                        contentColor = Color(0xFF032125)
+                                                    ),
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                                                ) {
+                                                    Text("تسديد الحساب 💵", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showActiveTablesDialog = false }) {
+                            Text("إغلاق", color = CafeCyanPrimary, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                )
+            }
+
+            // نافذة حوارية: تفاصيل المبيعات المسددة والنسبة المتراكمة والحساب الكلي
+            if (showRevenueDetailsDialog) {
+                AlertDialog(
+                    onDismissRequest = { showRevenueDetailsDialog = false },
+                    containerColor = CafeSurface,
+                    shape = RoundedCornerShape(20.dp),
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.AttachMoney, contentDescription = null, tint = CafeCyanPrimary, modifier = Modifier.size(24.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("تفاصيل المبيعات ورسوم الخدمة", color = CafeTextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
+                    },
+                    text = {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Text("بيانات الفواتير المسددة والمبالغ ورسوم الخدمة التراكمية:", fontSize = 12.sp, color = CafeTextSecondary)
+
+                            // 1. المبيعات بدون النسبة (الصافي)
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = CafeSurfaceVariant),
+                                border = BorderStroke(1.dp, CafeCyanPrimary.copy(alpha = 0.4f))
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("المبيعات الصافية (بدون النسبة):", fontSize = 12.sp, color = CafeTextSecondary)
+                                        Text(netRevenueDisplay, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = CafeCyanPrimary)
+                                    }
+                                    Spacer(modifier = Modifier.height(3.dp))
+                                    Text("إجمالي قيمة المواد والأصناف المباعة بدون رسوم الخدمة", fontSize = 10.sp, color = CafeTextSecondary.copy(alpha = 0.8f))
+                                }
+                            }
+
+                            // 2. النسبة المتراكمة للمبيعات (رسوم الخدمة)
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF261D04)),
+                                border = BorderStroke(1.dp, CafeGold.copy(alpha = 0.5f))
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("النسبة المتراكمة (رسوم الخدمة):", fontSize = 12.sp, color = CafeGold)
+                                        Text(accumulatedFeesDisplay, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = CafeGold)
+                                    }
+                                    Spacer(modifier = Modifier.height(3.dp))
+                                    Text("مجموع رسوم الخدمة المتراكمة من جميع الفواتير المسددة", fontSize = 10.sp, color = CafeGold.copy(alpha = 0.8f))
+                                }
+                            }
+
+                            // 3. الحساب الكلي مع النسبة
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF031E22)),
+                                border = BorderStroke(1.dp, OrderStatusPaid.copy(alpha = 0.6f))
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("الحساب الكلي شامل النسبة:", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = CafeTextPrimary)
+                                        Text(totalRevenueDisplay, fontSize = 15.sp, fontWeight = FontWeight.Black, color = OrderStatusPaid)
+                                    }
+                                    Spacer(modifier = Modifier.height(3.dp))
+                                    Text("المجموع الإجمالي الكلي المسدد مع رسوم الخدمة", fontSize = 10.sp, color = OrderStatusPaid.copy(alpha = 0.8f))
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("عدد الفواتير المسددة:", fontSize = 11.sp, color = CafeTextSecondary)
+                                Text("${paidOrders.size} فاتورة", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = CafeTextPrimary)
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showRevenueDetailsDialog = false }) {
+                            Text("إغلاق", color = CafeCyanPrimary, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 )
             }
 
@@ -498,10 +791,14 @@ fun MetricCard(
     title: String,
     value: String,
     valueColor: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    onClick: (() -> Unit)? = null
 ) {
     Card(
-        modifier = modifier.height(68.dp),
+        modifier = modifier
+            .height(72.dp)
+            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CafeSurface),
         border = CardDefaults.outlinedCardBorder().copy(
@@ -512,13 +809,17 @@ fun MetricCard(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 6.dp, vertical = 6.dp),
+                .padding(horizontal = 4.dp, vertical = 5.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(text = title, fontSize = 11.sp, color = CafeTextSecondary, maxLines = 1)
             Spacer(modifier = Modifier.height(2.dp))
-            Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = valueColor, maxLines = 1)
+            Text(text = value, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = valueColor, maxLines = 1)
+            if (subtitle != null) {
+                Spacer(modifier = Modifier.height(1.dp))
+                Text(text = subtitle, fontSize = 9.sp, color = CafeTextSecondary.copy(alpha = 0.85f), maxLines = 1)
+            }
         }
     }
 }
@@ -887,8 +1188,8 @@ fun UnifiedTableSessionCard(
                                 color = if (isCustFullyPaid) CafeCyanPrimary else CafeGold
                             )
 
-                            // زر التسديد الفردي لهذا الشخص (متاح في مرحلة تسديد حساب الطاولة أو التحضير)
-                            if ((session.stage == OrderStatus.DELIVERED || session.stage == OrderStatus.PREPARING) && !isCustFullyPaid) {
+                            // زر التسديد الفردي لهذا الشخص (متاح حصراً في مرحلة تسديد حساب الطاولة)
+                            if (session.stage == OrderStatus.DELIVERED && !isCustFullyPaid) {
                                 Button(
                                     onClick = {
                                         val unpaidCustOrders = customerOrders.filter { it.status != OrderStatus.PAID }
@@ -918,7 +1219,8 @@ fun UnifiedTableSessionCard(
             // قسم الحساب الكلي والإجراءات حسب مرحلة الجلسة
             when (session.stage) {
                 OrderStatus.NEW -> {
-                    // طلب جديد: يحتوي على "رفض" و "تحضير"
+                    // طلب جديد: يظهر ثلاثة أزرار بنفس القياس (رفض / دمج / أوافق)
+                    val thisOrder = session.orders.firstOrNull()
                     val allNewOrdersTotal = session.orders.sumOf { it.totalPrice }
                     Row(
                         modifier = Modifier
@@ -930,7 +1232,7 @@ fun UnifiedTableSessionCard(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "إجمالي طلبات الجلسة:",
+                            text = "مبلغ هذا الطلب:",
                             fontSize = 11.sp,
                             color = CafeTextSecondary
                         )
@@ -944,13 +1246,16 @@ fun UnifiedTableSessionCard(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
+                    // ثلاثة أزرار بنفس القياس تماماً (رفض / دمج / أوافق)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // 1. زر رفض
                         Button(
                             onClick = onRejectSession,
+                            modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFFC62828),
                                 contentColor = Color.White
@@ -960,42 +1265,48 @@ fun UnifiedTableSessionCard(
                             Text("رفض ❌", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
 
-                        // إذا كان هناك طلب سابق في قسم التحضير لنفس الطاولة: يظهر خيار دمج مع طلب التحضير
-                        if (session.hasPreparingOrder && session.preparingOrders.isNotEmpty()) {
-                            Button(
-                                onClick = {
-                                    val newOrder = session.orders.firstOrNull()
-                                    if (newOrder != null) {
-                                        onMergeWithPreparing(newOrder, session.preparingOrders)
+                        // 2. زر دمج (بنفس القياس)
+                        val canMerge = session.otherTableOrders.isNotEmpty()
+                        Button(
+                            onClick = {
+                                if (canMerge) {
+                                    if (session.hasPreparingOrder && session.preparingOrders.isNotEmpty() && thisOrder != null) {
+                                        onMergeWithPreparing(thisOrder, session.preparingOrders)
+                                    } else if (session.otherTableOrders.isNotEmpty()) {
+                                        onMergeCustomerOrders(session.orders + session.otherTableOrders)
                                     }
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = CafeGold.copy(alpha = 0.2f),
-                                    contentColor = CafeGold
-                                ),
-                                border = BorderStroke(1.dp, CafeGold),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text("دمج مع طلب التحضير 🔗", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            }
+                                } else {
+                                    Toast.makeText(context, "لا يوجد طلب آخر لنفس الطاولة لدمجه معه", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (canMerge) CafeGold.copy(alpha = 0.2f) else CafeSurfaceVariant,
+                                contentColor = if (canMerge) CafeGold else CafeTextSecondary.copy(alpha = 0.5f)
+                            ),
+                            border = BorderStroke(1.dp, if (canMerge) CafeGold else CafeCardBorder),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("دمج 🔗", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
 
+                        // 3. زر أوافق (بنفس القياس - يرسل الطلب للتحضير دون دمج)
                         Button(
                             onClick = { onAdvanceSession(OrderStatus.PREPARING) },
+                            modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = OrderStatusPreparing,
                                 contentColor = Color(0xFF1E1400)
                             ),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            val btnText = if (session.hasPreparingOrder) "تحضير (موافقة) 🍳" else "تحضير 🍳"
-                            Text(btnText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text("أوافق ✅", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
 
                 OrderStatus.PREPARING -> {
-                    // تحضير: زر الانتقال للمرحلة الثالثة (تسديد حساب الطاولة)
+                    // قيد التحضير: يظهر زر تم تسليم الطلب وبجانبه زر دمج الطلبات لنفس الطاولة دون أي زر لتسديد الحساب
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1006,23 +1317,43 @@ fun UnifiedTableSessionCard(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "يتم الآن تحضير أصناف الطاولة في المطبخ/البار...",
+                            text = "يتم الآن تحضير هذا الطلب في المطبخ/البار...",
                             fontSize = 11.sp,
                             color = OrderStatusPreparing
                         )
+                        if (session.otherTableOrders.isNotEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(CafeGold.copy(alpha = 0.2f))
+                                    .border(0.8.dp, CafeGold, RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "يوجد طلب آخر لنفس الطاولة 🔗",
+                                    fontSize = 10.sp,
+                                    color = CafeGold,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
 
+                    // زران متجاوران: دمج الطلبات بجانب تم تسليم الطلب (تم حذف زر تسديد الحساب نهائياً من التحضير)
+                    val hasOtherOrdersForTable = session.otherTableOrders.isNotEmpty()
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // خيار دمج الطلبين في قسم التحضير إذا كان هناك أكثر من طلب لنفس الطاولة
-                        if (session.orders.size > 1) {
+                        if (hasOtherOrdersForTable) {
                             Button(
-                                onClick = { onMergeCustomerOrders(session.orders) },
+                                onClick = {
+                                    onMergeCustomerOrders(session.orders + session.otherTableOrders)
+                                },
+                                modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = CafeGold.copy(alpha = 0.2f),
                                     contentColor = CafeGold
@@ -1030,15 +1361,14 @@ fun UnifiedTableSessionCard(
                                 border = BorderStroke(1.dp, CafeGold),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
-                                Text("دمج الطلبين في التحضير 🔗", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text("دمج الطلبات 🔗", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
-                        } else {
-                            Spacer(modifier = Modifier.width(1.dp))
                         }
 
                         // زر تم تسليم الطلب لينتقل إلى مرحلة تسديد حساب الطاولة بعد الضغط عليه
                         Button(
                             onClick = { onAdvanceSession(OrderStatus.DELIVERED) },
+                            modifier = if (hasOtherOrdersForTable) Modifier.weight(1f) else Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = OrderStatusDelivered,
                                 contentColor = Color.White
@@ -1098,7 +1428,7 @@ fun UnifiedTableSessionCard(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text("نسبة الخدمة 1%:", fontSize = 11.sp, color = CafeTextSecondary)
+                                    Text("رسوم الخدمة 1%:", fontSize = 11.sp, color = CafeTextSecondary)
                                     Text(OrderFeeCalculator.formatPrice(groupRawFee, groupCurrency), fontSize = 11.sp, color = CafeTextSecondary)
                                 }
 
@@ -1106,7 +1436,7 @@ fun UnifiedTableSessionCard(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text("نسبة الخدمة عند التسديد:", fontSize = 11.sp, color = CafeGold)
+                                    Text("رسوم الخدمة عند التسديد:", fontSize = 11.sp, color = CafeGold)
                                     Text(OrderFeeCalculator.formatPrice(groupSettlementFee, groupCurrency), fontSize = 11.sp, color = CafeGold)
                                 }
 
