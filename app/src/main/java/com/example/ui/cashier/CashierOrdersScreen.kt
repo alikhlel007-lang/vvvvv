@@ -344,7 +344,7 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                             text = when (activeFilter) {
                                 OrderStatus.NEW -> "لا توجد طلبات أو جلسات جديدة حالياً"
                                 OrderStatus.PREPARING -> "لا توجد جلسات قيد التحضير حالياً"
-                                OrderStatus.DELIVERED -> "لا توجد جلسات مسلّمة بانتظار تسديد الفاتورة"
+                                OrderStatus.DELIVERED -> "لا توجد جلسات بانتظار تسديد حساب الطاولة حالياً"
                                 OrderStatus.PAID -> "لا توجد فواتير مسددة حالياً"
                                 OrderStatus.REJECTED -> "قائمة الطلبات المرفوضة فارغة"
                                 else -> "لا توجد بيانات"
@@ -357,9 +357,9 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = when (activeFilter) {
-                                OrderStatus.NEW -> "عندما يطلب الزبون من طاولته، ستظهر الفاتورة هنا مع خياري (رفض) أو (تحضير)، وأي طلب إضافي لنفس الطاولة سينضم لنفس الفاتورة تلقائياً."
-                                OrderStatus.PREPARING -> "عند الضغط على تحضير، تنتقل الجلسة إلى هنا حتى يكتمل تجهيزها ويتم الضغط على (تم التسليم)."
-                                OrderStatus.DELIVERED -> "هنا يتم تسديد الفاتورة سواء تسديد فردي لكل شخص على حدى أو تسديد كلي لكامل الطاولة."
+                                OrderStatus.NEW -> "عندما يطلب الزبون من طاولته، ستظهر هنا مع خياري (رفض) أو (تحضير)، ويمكن دمج طلبات نفس الزبون يدوياً في أي وقت."
+                                OrderStatus.PREPARING -> "عند الضغط على تحضير، تنتقل الجلسة إلى هنا حتى يكتمل تجهيزها، ثم الضغط على (تسديد حساب الطاولة)."
+                                OrderStatus.DELIVERED -> "هنا يتم تسديد حساب الطاولة سواء تسديد فردي لكل شخص على حدى أو تسديد كلي لكامل الطاولة بسعر مقرب."
                                 OrderStatus.PAID -> "تظهر هنا جميع الفواتير التي تم تسديدها بالكامل."
                                 else -> "تظهر هنا الطلبات التي تم رفضها قبل التحضير."
                             },
@@ -398,6 +398,14 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                                 Toast.makeText(
                                     context,
                                     "تم تحويل طاولة ${session.tableNumber} إلى ${nextStatus.titleAr} بنجاح",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            onMergeCustomerOrders = { ordersToMerge ->
+                                viewModel.mergeCustomerOrders(ordersToMerge)
+                                Toast.makeText(
+                                    context,
+                                    "تم دمج طلبات الزبون بنجاح 🔗",
                                     Toast.LENGTH_SHORT
                                 ).show()
                             },
@@ -505,6 +513,7 @@ fun StatusFilterChip(
 fun UnifiedTableSessionCard(
     session: TableSession,
     onAdvanceSession: (OrderStatus) -> Unit,
+    onMergeCustomerOrders: (List<OrderRecord>) -> Unit,
     onRejectSession: () -> Unit,
     onPaySingleOrder: (OrderRecord) -> Unit,
     onPayAllSession: (List<OrderRecord>) -> Unit,
@@ -724,6 +733,32 @@ fun UnifiedTableSessionCard(
 
                         Spacer(modifier = Modifier.height(6.dp))
 
+                        // زر الدمج اليدوي للطلبات المتعددة لنفس الزبون في المرحلتين الأولى والثانية
+                        if ((session.stage == OrderStatus.NEW || session.stage == OrderStatus.PREPARING) && customerOrders.size > 1) {
+                            Button(
+                                onClick = { onMergeCustomerOrders(customerOrders) },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = CafeGold.copy(alpha = 0.15f),
+                                    contentColor = CafeGold
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, CafeGold.copy(alpha = 0.5f)),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 6.dp)
+                            ) {
+                                Text(
+                                    text = "دمج طلبات $customerName (عدد ${customerOrders.size}) 🔗",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        val custSettlementTotal = OrderFeeCalculator.calculateSettlementTotal(custSubtotal, custCurrency)
+                        val custDisplayTotal = if (session.stage == OrderStatus.DELIVERED) custSettlementTotal else custTotal
+
                         // سطر المبلغ والتسديد الفردي
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -731,13 +766,13 @@ fun UnifiedTableSessionCard(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "المبلغ: ${OrderFeeCalculator.formatPrice(custTotal, custCurrency)}",
+                                text = "المبلغ: ${OrderFeeCalculator.formatPrice(custDisplayTotal, custCurrency)}",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = if (isCustFullyPaid) CafeCyanPrimary else CafeGold
                             )
 
-                            // زر التسديد الفردي لهذا الشخص (متاح في مرحلة تم التسليم أو التحضير)
+                            // زر التسديد الفردي لهذا الشخص (متاح في مرحلة تسديد حساب الطاولة أو التحضير)
                             if ((session.stage == OrderStatus.DELIVERED || session.stage == OrderStatus.PREPARING) && !isCustFullyPaid) {
                                 Button(
                                     onClick = {
@@ -826,7 +861,7 @@ fun UnifiedTableSessionCard(
                 }
 
                 OrderStatus.PREPARING -> {
-                    // تحضير: يحتوي على "تم التسليم"
+                    // تحضير: زر الانتقال للمرحلة الثالثة (تسديد حساب الطاولة)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -857,13 +892,17 @@ fun UnifiedTableSessionCard(
                             ),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("تم التسليم 🍽️", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text("تسديد حساب الطاولة 💵", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
 
                 OrderStatus.DELIVERED, OrderStatus.READY -> {
-                    // تم التسليم: يحتوي على تسديد الفاتورة (تسديد كلي أو فردي)
+                    // تسديد حساب الطاولة: يحتوي على تسديد الفاتورة (تسديد كلي أو فردي)
+                    val groupRawFee = OrderFeeCalculator.calculateServiceFee(groupSubtotal, groupCurrency)
+                    val groupSettlementTotal = OrderFeeCalculator.calculateSettlementTotal(groupSubtotal, groupCurrency)
+                    val groupSettlementFee = OrderFeeCalculator.calculateSettlementFee(groupSubtotal, groupCurrency)
+
                     if (!isFullyPaid) {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -885,7 +924,7 @@ fun UnifiedTableSessionCard(
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = "تسديد الفاتورة كمجموعة (عن الطاولة بالكامل):",
+                                        text = "تسديد حساب الطاولة كمجموعة (عن الطاولة بالكامل):",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = CafeGold
@@ -906,8 +945,16 @@ fun UnifiedTableSessionCard(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text("نسبة الخدمة 1% (أقرب 250 د.ع):", fontSize = 11.sp, color = CafeGold)
-                                    Text(OrderFeeCalculator.formatPrice(groupFee, groupCurrency), fontSize = 11.sp, color = CafeGold)
+                                    Text("نسبة الخدمة 1% (بدون تقريب):", fontSize = 11.sp, color = CafeTextSecondary)
+                                    Text(OrderFeeCalculator.formatPrice(groupRawFee, groupCurrency), fontSize = 11.sp, color = CafeTextSecondary)
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("نسبة الخدمة بعد التقريب عند التسديد:", fontSize = 11.sp, color = CafeGold)
+                                    Text(OrderFeeCalculator.formatPrice(groupSettlementFee, groupCurrency), fontSize = 11.sp, color = CafeGold)
                                 }
 
                                 HorizontalDivider(color = CafeCardBorder, modifier = Modifier.padding(vertical = 4.dp))
@@ -917,9 +964,9 @@ fun UnifiedTableSessionCard(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text("الإجمالي الكلي المطلوب:", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = CafeTextPrimary)
+                                    Text("الإجمالي الكلي المطلوب (مقرب):", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = CafeTextPrimary)
                                     Text(
-                                        text = OrderFeeCalculator.formatPrice(groupTotal, groupCurrency),
+                                        text = OrderFeeCalculator.formatPrice(groupSettlementTotal, groupCurrency),
                                         fontSize = 16.sp,
                                         fontWeight = FontWeight.ExtraBold,
                                         color = CafeCyanPrimary

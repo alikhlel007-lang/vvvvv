@@ -677,10 +677,13 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
         cartItems: List<CartItem>,
         notes: String
     ): String {
-        val summary = cartItems.joinToString("، ") { "${it.quantity}x ${it.menuItem.nameAr}" }
+        val currency = cartItems.firstOrNull()?.menuItem?.currency ?: "د.ع"
+        val summary = cartItems.joinToString("، ") {
+            val lineTotal = it.menuItem.price * it.quantity
+            com.example.util.OrderSummaryHelper.formatLineItem(it.menuItem.nameAr, it.quantity, lineTotal, currency)
+        }
         val count = cartItems.sumOf { it.quantity }
         val subtotal = cartItems.sumOf { it.menuItem.price * it.quantity }
-        val currency = cartItems.firstOrNull()?.menuItem?.currency ?: "د.ع"
         val serviceFee = com.example.util.OrderFeeCalculator.calculateServiceFee(subtotal, currency)
         val total = subtotal + serviceFee
         val orderId = "ord_" + System.currentTimeMillis().toString().takeLast(6)
@@ -700,52 +703,7 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
 
         val cleanedCustomerName = customerName.ifEmpty { "طاولة $tableNumber" }
 
-        // إذا كان لنفس الزبون طلب نشط بالفعل ضمن نفس الجلسة، يتم دمج الأصناف في طلبه القديم
-        val existingSameCustomerOrder = activeOrders.firstOrNull {
-            it.customerName.trim().equals(cleanedCustomerName.trim(), ignoreCase = true)
-        }
-
-        if (existingSameCustomerOrder != null) {
-            val updatedSummary = com.example.util.OrderSummaryHelper.combineAndMultiplySummaries(
-                listOf(existingSameCustomerOrder.itemsSummary, summary)
-            )
-            val updatedCount = existingSameCustomerOrder.itemsCount + count
-            val updatedSubtotal = existingSameCustomerOrder.subtotal + subtotal
-            val updatedFee = com.example.util.OrderFeeCalculator.calculateServiceFee(updatedSubtotal, currency)
-            val updatedTotal = updatedSubtotal + updatedFee
-            val updatedNotes = com.example.util.OrderSummaryHelper.combineNotes(
-                listOf(existingSameCustomerOrder.notes, notes)
-            )
-
-            val updatedEntity = existingSameCustomerOrder.copy(
-                itemsSummary = updatedSummary,
-                itemsCount = updatedCount,
-                subtotal = updatedSubtotal,
-                serviceFee = updatedFee,
-                totalPrice = updatedTotal,
-                timestamp = System.currentTimeMillis(),
-                notes = updatedNotes
-            )
-            dao.updateOrder(updatedEntity)
-
-            try {
-                val updateMap = hashMapOf<String, Any>(
-                    "itemsSummary" to updatedSummary,
-                    "itemsCount" to updatedCount,
-                    "subtotal" to updatedSubtotal,
-                    "serviceFee" to updatedFee,
-                    "totalPrice" to updatedTotal,
-                    "timestamp" to System.currentTimeMillis(),
-                    "notes" to updatedNotes
-                )
-                firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")?.document(existingSameCustomerOrder.id)?.update(updateMap)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-
-            return existingSameCustomerOrder.id
-        }
-
+        // إنشاء الطلب كطلب مستقل يمر بالمرحلتين الأولى والثانية مع إتاحة خيار الدمج اليدوي للكاشير
         val entity = OrderEntity(
             id = orderId,
             tableNumber = tableNumber,
@@ -787,12 +745,94 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
         return orderId
     }
 
+    /**
+     * دمج طلبات نفس الزبون يدوياً أو تلقائياً في طلب واحد موحد
+     */
+    suspend fun mergeOrdersIntoOne(orders: List<OrderRecord>) {
+        if (orders.size <= 1) return
+        val targetOrder = orders.first()
+        val otherOrders = orders.drop(1)
+
+        val combinedSummary = com.example.util.OrderSummaryHelper.combineAndMultiplySummaries(orders.map { it.itemsSummary })
+        val combinedCount = orders.sumOf { it.itemsCount }
+        val combinedSubtotal = orders.sumOf { it.subtotal }
+        val currency = targetOrder.currency
+        val combinedFee = com.example.util.OrderFeeCalculator.calculateServiceFee(combinedSubtotal, currency)
+        val combinedTotal = combinedSubtotal + combinedFee
+        val combinedNotes = com.example.util.OrderSummaryHelper.combineNotes(orders.map { it.notes })
+
+        val updatedTarget = targetOrder.copy(
+            itemsSummary = combinedSummary,
+            itemsCount = combinedCount,
+            subtotal = combinedSubtotal,
+            serviceFee = combinedFee,
+            totalPrice = combinedTotal,
+            notes = combinedNotes,
+            timestamp = orders.maxOf { it.timestamp }
+        )
+
+        dao.updateOrder(updatedTarget.toEntity())
+        try {
+            val map = hashMapOf<String, Any>(
+                "itemsSummary" to combinedSummary,
+                "itemsCount" to combinedCount,
+                "subtotal" to combinedSubtotal,
+                "serviceFee" to combinedFee,
+                "totalPrice" to combinedTotal,
+                "notes" to combinedNotes,
+                "timestamp" to updatedTarget.timestamp
+            )
+            firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")?.document(targetOrder.id)?.update(map)
+        } catch (_: Exception) {}
+
+        // حذف الطلبات المكررة التي تم دمجها
+        otherOrders.forEach { other ->
+            dao.deleteOrder(other.toEntity())
+            try {
+                firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")?.document(other.id)?.delete()
+            } catch (_: Exception) {}
+        }
+    }
+
+    /**
+     * الدمج التلقائي عند الانتقال للمرحلة الثالثة (تسديد حساب الطاولة)
+     * في حال وصل إلى المرحلة الثالثة كلا الطلبين ولم يتم الدمج بينهما يدوياً، يتم الدمج تلقائياً
+     */
+    suspend fun autoMergeCustomerOrdersForTable(orders: List<OrderRecord>) {
+        val unpaidOrders = orders.filter { it.status != OrderStatus.PAID }
+        val byCustomer = unpaidOrders.groupBy { it.customerName }
+
+        byCustomer.forEach { (_, custOrders) ->
+            if (custOrders.size > 1) {
+                mergeOrdersIntoOne(custOrders)
+                val target = custOrders.first()
+                updateOrderStatus(target.id, target, OrderStatus.DELIVERED)
+            } else if (custOrders.size == 1) {
+                val single = custOrders.first()
+                updateOrderStatus(single.id, single, OrderStatus.DELIVERED)
+            }
+        }
+    }
+
     suspend fun payOrders(ordersList: List<OrderRecord>) {
         ordersList.forEach { order ->
-            val updated = order.copy(status = OrderStatus.PAID).toEntity()
+            val settledTotal = com.example.util.OrderFeeCalculator.calculateSettlementTotal(order.subtotal, order.currency)
+            val settledFee = com.example.util.OrderFeeCalculator.calculateSettlementFee(order.subtotal, order.currency)
+            val finalTotal = if (settledTotal > 0.0) settledTotal else order.totalPrice
+            val finalFee = if (settledFee > 0.0) settledFee else order.serviceFee
+            val updated = order.copy(
+                status = OrderStatus.PAID,
+                totalPrice = finalTotal,
+                serviceFee = finalFee
+            ).toEntity()
             dao.updateOrder(updated)
             try {
-                firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")?.document(order.id)?.update("status", OrderStatus.PAID.name)
+                val updateMap = hashMapOf<String, Any>(
+                    "status" to OrderStatus.PAID.name,
+                    "totalPrice" to finalTotal,
+                    "serviceFee" to finalFee
+                )
+                firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")?.document(order.id)?.update(updateMap)
             } catch (_: Exception) {}
         }
     }

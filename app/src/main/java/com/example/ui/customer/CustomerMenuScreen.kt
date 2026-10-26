@@ -211,13 +211,15 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                     Spacer(modifier = Modifier.width(1.dp))
                 }
 
-                // In RTL, Second child appears on the LEFT: Table Indicator with Golden Trophy and VIP badge (Read-only)
+                // In RTL, Second child appears on the LEFT: Table Selector Button (Clickable to change table)
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(18.dp))
                         .background(Color(0xFF0F0B02))
                         .border(1.6.dp, CafeGold, RoundedCornerShape(18.dp))
+                        .clickable { showTablePicker = true }
                         .padding(horizontal = 14.dp, vertical = 7.dp)
+                        .testTag("customer_menu_table_btn")
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -241,12 +243,20 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                             )
                         }
 
-                        Text(
-                            text = "طاولة $selectedTableNumber",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color.White
-                        )
+                        Column {
+                            Text(
+                                text = "طاولة $selectedTableNumber",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "تغيير الطاولة ⮛",
+                                fontSize = 9.sp,
+                                color = CafeGold,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
@@ -846,7 +856,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("نسبة الخدمة 1% (أقرب 250 د.ع):", fontSize = 11.sp, color = CafeGold)
+                            Text("نسبة الخدمة 1% (بدون تقريب):", fontSize = 11.sp, color = CafeGold)
                             Text(OrderFeeCalculator.formatPrice(cartFee, cartCurrency), fontSize = 12.sp, color = CafeGold, fontWeight = FontWeight.Bold)
                         }
                         HorizontalDivider(color = CafeCardBorder, modifier = Modifier.padding(vertical = 2.dp))
@@ -890,6 +900,15 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
 
         // TABLE PICKER DIALOG
         if (showTablePicker) {
+            val availableTables = remember(tables) {
+                if (tables.isNotEmpty()) {
+                    tables.map { it.tableNumber }.distinct().sorted()
+                } else {
+                    (1..20).toList()
+                }
+            }
+            var customInput by remember { mutableStateOf("$selectedTableNumber") }
+
             AlertDialog(
                 onDismissRequest = { showTablePicker = false },
                 containerColor = CafeSurface,
@@ -897,27 +916,28 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                 title = { Text("اختر رقم الطاولة", color = CafeTextPrimary, fontWeight = FontWeight.Bold) },
                 text = {
                     Column {
-                        Text("اختر الطاولة لتجربة إرسال الطلب منها:", color = CafeTextSecondary, fontSize = 13.sp)
+                        Text("اختر الطاولة لإرسال الطلب باسمها:", color = CafeTextSecondary, fontSize = 13.sp)
                         Spacer(modifier = Modifier.height(12.dp))
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            items(tables) { table ->
-                                val isCur = table.tableNumber == selectedTableNumber
+                            items(availableTables) { num ->
+                                val isCur = num == selectedTableNumber
                                 Box(
                                     modifier = Modifier
                                         .size(54.dp)
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(if (isCur) accentColor else CafeSurfaceVariant)
                                         .clickable {
-                                            viewModel.setSelectedTableNumber(table.tableNumber)
+                                            viewModel.setSelectedTableNumber(num)
                                             showTablePicker = false
+                                            Toast.makeText(context, "تم تحديد طاولة $num", Toast.LENGTH_SHORT).show()
                                         },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = "${table.tableNumber}",
+                                        text = "$num",
                                         fontSize = 18.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = if (isCur) Color(0xFF032125) else CafeTextPrimary
@@ -925,11 +945,48 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                                 }
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        OutlinedTextField(
+                            value = customInput,
+                            onValueChange = { customInput = it.filter { ch -> ch.isDigit() } },
+                            label = { Text("أو اكتب رقم طاولة يدوي") },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = accentColor,
+                                unfocusedBorderColor = CafeCardBorder,
+                                focusedTextColor = CafeTextPrimary,
+                                unfocusedTextColor = CafeTextPrimary,
+                                focusedLabelColor = accentColor
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 },
                 confirmButton = {
+                    Button(
+                        onClick = {
+                            val num = customInput.toIntOrNull()
+                            if (num != null && num > 0) {
+                                viewModel.setSelectedTableNumber(num)
+                                Toast.makeText(context, "تم تحديد طاولة $num", Toast.LENGTH_SHORT).show()
+                            }
+                            showTablePicker = false
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = accentColor,
+                            contentColor = Color(0xFF032125)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("تأكيد الطاولة", fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
                     TextButton(onClick = { showTablePicker = false }) {
-                        Text("إغلاق", color = accentColor)
+                        Text("إلغاء", color = CafeTextSecondary)
                     }
                 }
             )

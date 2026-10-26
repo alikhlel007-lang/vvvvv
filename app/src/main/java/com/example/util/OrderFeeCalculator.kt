@@ -5,32 +5,42 @@ import kotlin.math.max
 
 object OrderFeeCalculator {
     /**
-     * Iraqi 1% fee calculation rule:
-     * - Adds 1% to the order subtotal.
-     * - Minimum fee is 250 IQD (because the minimum physical denomination in Iraq is 250 IQD).
-     * - Rounded up to the nearest multiple of 250 IQD (e.g. 200 IQD -> 250 IQD, 600 IQD -> 750 IQD, etc.).
-     *
-     * If currency is USD ($), 1% is calculated with minimum $0.25 and rounded to 2 decimal places.
+     * 1% service fee without rounding during initial ordering stages (جديد / تحضير).
      */
     fun calculateServiceFee(subtotal: Double, currency: String = "د.ع"): Double {
         if (subtotal <= 0.0) return 0.0
+        return subtotal * 0.01
+    }
+
+    /**
+     * Raw total before settlement rounding.
+     */
+    fun calculateTotal(subtotal: Double, currency: String = "د.ع"): Double {
+        return subtotal + calculateServiceFee(subtotal, currency)
+    }
+
+    /**
+     * Rounded total applied at payment/settlement stage (تسديد حساب الطاولة).
+     * For IQD: Rounded up to the nearest 250 IQD (standard physical currency increment in Iraq).
+     * For USD: Rounded to 2 decimal places.
+     */
+    fun calculateSettlementTotal(subtotal: Double, currency: String = "د.ع"): Double {
+        if (subtotal <= 0.0) return 0.0
+        val rawTotal = subtotal + (subtotal * 0.01)
         val isDollar = currency == "$" || currency.equals("USD", ignoreCase = true)
         return if (isDollar) {
-            val raw = subtotal * 0.01
-            max(raw, 0.25)
+            kotlin.math.round(rawTotal * 100.0) / 100.0
         } else {
-            val rawOnePercent = subtotal * 0.01
-            val minFee = 250.0
-            val feeToRound = max(rawOnePercent, minFee)
-            ceil(feeToRound / 250.0) * 250.0
+            ceil(rawTotal / 250.0) * 250.0
         }
     }
 
     /**
-     * Total amount including the 1% rounded fee.
+     * Effective service fee at settlement after rounding.
      */
-    fun calculateTotal(subtotal: Double, currency: String = "د.ع"): Double {
-        return subtotal + calculateServiceFee(subtotal, currency)
+    fun calculateSettlementFee(subtotal: Double, currency: String = "د.ع"): Double {
+        val total = calculateSettlementTotal(subtotal, currency)
+        return max(0.0, total - subtotal)
     }
 
     /**

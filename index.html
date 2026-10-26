@@ -1494,7 +1494,9 @@
 
       const totalQty = cart.reduce((sum, c) => sum + c.qty, 0);
       const totalSum = cart.reduce((sum, c) => sum + (c.item.price * c.qty), 0);
-      const summary = cart.map(c => `${c.qty}x ${c.item.nameAr}`).join('، ');
+      const currency = cart[0]?.item.currency || 'د.ع';
+      const summary = cart.map(c => `${c.qty}x ${c.item.nameAr} بسعر ${formatPrice(c.item.price * c.qty, currency)}`).join('، ');
+      const rawFee = totalSum * 0.01;
       const notes = document.getElementById('orderNotes').value.trim();
       const orderId = 'ord_' + Math.floor(100000 + Math.random() * 900000);
 
@@ -1505,10 +1507,10 @@
         customerName: custName,
         itemsSummary: summary,
         itemsCount: totalQty,
-        totalPrice: totalSum,
+        totalPrice: totalSum + rawFee,
         subtotal: totalSum,
-        serviceFee: 0.0,
-        currency: cart[0]?.item.currency || 'د.ع',
+        serviceFee: rawFee,
+        currency: currency,
         status: "NEW",
         timestamp: Date.now(),
         notes: notes,

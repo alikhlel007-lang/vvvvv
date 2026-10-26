@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -127,10 +128,11 @@ fun MenuManagementScreen(viewModel: MainViewModel) {
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // TOP BAR
+            // TOP BAR (العنوان وزر الرجوع)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -139,8 +141,9 @@ fun MenuManagementScreen(viewModel: MainViewModel) {
                         onClick = { viewModel.navigateTo(AppScreen.SETTINGS) },
                         modifier = Modifier
                             .size(38.dp)
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(CircleShape)
                             .background(CafeSurfaceVariant)
+                            .border(1.dp, CafeCardBorder, CircleShape)
                             .testTag("menu_mgmt_back_btn")
                     ) {
                         Icon(
@@ -167,38 +170,66 @@ fun MenuManagementScreen(viewModel: MainViewModel) {
                         )
                     }
                 }
+            }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Button(
-                        onClick = { showAddCategoryDialog = true },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = CafeSurfaceVariant,
-                            contentColor = CafeCyanPrimary
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("قسم جديد", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
+            // ACTION BUTTONS ROW: زر إضافة قسم + زر إضافة صنف (متساويان ومتناسقان كما في الصورة المطلوبة)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // زر إضافة قسم
+                Button(
+                    onClick = { showAddCategoryDialog = true },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(46.dp)
+                        .testTag("open_add_category_dialog_btn"),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = CafeSurfaceVariant,
+                        contentColor = CafeCyanPrimary
+                    ),
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.2.dp, CafeCyanPrimary.copy(alpha = 0.5f))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "إضافة قسم",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
 
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Button(
-                        onClick = { showAddItemDialog = true },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = CafeCyanPrimary,
-                            contentColor = Color(0xFF032125)
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                        modifier = Modifier.testTag("open_add_item_dialog_btn")
-                    ) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("إضافة صنف", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
+                // زر إضافة صنف
+                Button(
+                    onClick = { showAddItemDialog = true },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(46.dp)
+                        .testTag("open_add_item_dialog_btn"),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = CafeCyanPrimary,
+                        contentColor = Color(0xFF032125)
+                    ),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "إضافة صنف",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
 

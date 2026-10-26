@@ -54,9 +54,9 @@ data class CartItem(
 enum class OrderStatus(val titleAr: String, val titleEn: String) {
     NEW("طلب جديد", "New"),
     PREPARING("تحضير", "Preparing"),
-    DELIVERED("تم التسليم", "Delivered"),
-    READY("تم التسليم", "Ready"),
-    PAID("تسديد الفاتورة", "Paid"),
+    DELIVERED("تسديد حساب الطاولة", "Pay Table"),
+    READY("تسديد حساب الطاولة", "Ready"),
+    PAID("الفواتير المسددة", "Paid"),
     REJECTED("الطلبات المرفوضة", "Rejected"),
     CANCELLED("ملغي", "Cancelled")
 }

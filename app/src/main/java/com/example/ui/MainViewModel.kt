@@ -512,11 +512,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun advanceTableSession(orders: List<OrderRecord>, newStatus: OrderStatus) {
         viewModelScope.launch {
-            orders.forEach { order ->
-                if (order.status != OrderStatus.PAID) {
-                    repository.updateOrderStatus(order.id, order, newStatus)
+            if (newStatus == OrderStatus.DELIVERED) {
+                repository.autoMergeCustomerOrdersForTable(orders)
+            } else {
+                orders.forEach { order ->
+                    if (order.status != OrderStatus.PAID) {
+                        repository.updateOrderStatus(order.id, order, newStatus)
+                    }
                 }
             }
+        }
+    }
+
+    fun mergeCustomerOrders(ordersToMerge: List<OrderRecord>) {
+        viewModelScope.launch {
+            repository.mergeOrdersIntoOne(ordersToMerge)
         }
     }
 
