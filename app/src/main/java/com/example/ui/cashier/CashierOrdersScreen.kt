@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Fastfood
@@ -363,21 +364,21 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                     title = "طاولات نشطة",
                     value = "$activeTablesCount",
                     valueColor = CafeGold,
-                    subtitle = "اضغط للتسديد 👆",
-                    modifier = Modifier.weight(1.1f),
+                    hasArrow = true,
+                    modifier = Modifier.weight(1f),
                     onClick = { showActiveTablesDialog = true }
                 )
                 MetricCard(
                     title = "المبيعات المسددة",
                     value = netRevenueDisplay,
                     valueColor = CafeCyanPrimary,
-                    subtitle = "الصافي (اضغط للتفاصيل 👆)",
-                    modifier = Modifier.weight(1.5f),
+                    hasArrow = true,
+                    modifier = Modifier.weight(1.3f),
                     onClick = { showRevenueDetailsDialog = true }
                 )
             }
 
-            // نافذة حوارية: الطاولات النشطة لاختيار رقم الطاولة وتسديد حسابها
+            // نافذة حوارية: الطاولات النشطة لاختيار رقم الطاولة وتسديد حسابها مع تفاصيل كل الطلبات والأسعار
             if (showActiveTablesDialog) {
                 AlertDialog(
                     onDismissRequest = { showActiveTablesDialog = false },
@@ -397,7 +398,7 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                                 .verticalScroll(rememberScrollState()),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Text("اضغط على أي طاولة لتسديد حسابها بالكامل وإعادتها نظيفة:", fontSize = 12.sp, color = CafeTextSecondary)
+                            Text("اختر الطاولة لتسديد حسابها مع تفاصيل المواد والأسعار المطلوبة:", fontSize = 12.sp, color = CafeTextSecondary)
 
                             if (activeTableNumbers.isEmpty()) {
                                 Box(
@@ -419,6 +420,7 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                                     val tableCurr = tableActiveOrders.firstOrNull()?.currency ?: "د.ع"
                                     val tableSubtotal = tableActiveOrders.sumOf { it.subtotal }
                                     val tableSettlementTotal = OrderFeeCalculator.calculateSettlementTotal(tableSubtotal, tableCurr)
+                                    val tableSettlementFee = OrderFeeCalculator.calculateSettlementFee(tableSubtotal, tableCurr)
                                     val customers = tableActiveOrders.map { it.customerName }.distinct()
                                     val hasDelivered = tableActiveOrders.any { it.status == OrderStatus.DELIVERED || it.status == OrderStatus.READY }
                                     val hasPrep = tableActiveOrders.any { it.status == OrderStatus.PREPARING }
@@ -434,13 +436,17 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                                         else -> OrderStatusNew
                                     }
 
+                                    // تفكيك واستخراج جميع المواد والأسعار المطلوبة لهذه الطاولة
+                                    val parsedItems = com.example.util.OrderSummaryHelper.parseOrderItems(tableActiveOrders.map { it.itemsSummary })
+                                    val combinedNotes = com.example.util.OrderSummaryHelper.combineNotes(tableActiveOrders.map { it.notes })
+
                                     Card(
                                         modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(12.dp),
+                                        shape = RoundedCornerShape(14.dp),
                                         colors = CardDefaults.cardColors(containerColor = CafeSurfaceVariant),
-                                        border = BorderStroke(1.dp, stageColor.copy(alpha = 0.5f))
+                                        border = BorderStroke(1.2.dp, stageColor.copy(alpha = 0.6f))
                                     ) {
-                                        Column(modifier = Modifier.padding(10.dp)) {
+                                        Column(modifier = Modifier.padding(12.dp)) {
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
                                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -451,9 +457,9 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                                                         modifier = Modifier
                                                             .clip(RoundedCornerShape(8.dp))
                                                             .background(CafeCyanPrimary)
-                                                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                                                            .padding(horizontal = 9.dp, vertical = 4.dp)
                                                     ) {
-                                                        Text("طاولة $tableNum", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF032125))
+                                                        Text("طاولة $tableNum", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF032125))
                                                     }
                                                     Spacer(modifier = Modifier.width(6.dp))
                                                     Text("${tableActiveOrders.size} طلبات", fontSize = 11.sp, color = CafeTextSecondary)
@@ -462,41 +468,147 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                                                     modifier = Modifier
                                                         .clip(RoundedCornerShape(6.dp))
                                                         .background(stageColor.copy(alpha = 0.2f))
-                                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                        .border(0.8.dp, stageColor, RoundedCornerShape(6.dp))
+                                                        .padding(horizontal = 8.dp, vertical = 3.dp)
                                                 ) {
                                                     Text(stageLabel, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = stageColor)
                                                 }
                                             }
 
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            Text("الزبائن: ${customers.joinToString("، ")}", fontSize = 11.sp, color = CafeTextPrimary)
-
                                             Spacer(modifier = Modifier.height(6.dp))
+                                            Text("الزبائن: ${customers.joinToString("، ")}", fontSize = 11.sp, color = CafeTextPrimary, fontWeight = FontWeight.Medium)
+
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            HorizontalDivider(color = CafeCardBorder.copy(alpha = 0.6f))
+                                            Spacer(modifier = Modifier.height(6.dp))
+
+                                            // تفاصيل المواد المطلوبة مع كمياتها وأسعارها
+                                            Text(
+                                                text = "المواد والطلبات مع الأسعار:",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = CafeGold
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+
+                                            Column(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                                            ) {
+                                                if (parsedItems.isNotEmpty()) {
+                                                    parsedItems.forEach { item ->
+                                                        Row(
+                                                            modifier = Modifier
+                                                                .fillMaxWidth()
+                                                                .clip(RoundedCornerShape(8.dp))
+                                                                .background(Color(0xFF031619))
+                                                                .border(0.6.dp, CafeCardBorder.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                                                .padding(horizontal = 8.dp, vertical = 5.dp),
+                                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            Text(
+                                                                text = item.name,
+                                                                fontSize = 12.sp,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = CafeTextPrimary,
+                                                                modifier = Modifier.weight(1.8f)
+                                                            )
+
+                                                            Box(
+                                                                modifier = Modifier
+                                                                    .clip(RoundedCornerShape(6.dp))
+                                                                    .background(CafeCyanPrimary.copy(alpha = 0.12f))
+                                                                    .border(0.8.dp, CafeCyanPrimary.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                            ) {
+                                                                Text(
+                                                                    text = "عدد  ${item.quantity}",
+                                                                    fontSize = 11.sp,
+                                                                    fontWeight = FontWeight.Bold,
+                                                                    color = CafeCyanPrimary
+                                                                )
+                                                            }
+
+                                                            Spacer(modifier = Modifier.width(8.dp))
+
+                                                            val priceText = if (item.totalPrice > 0.0) {
+                                                                "السعر  ${OrderFeeCalculator.formatPrice(item.totalPrice, item.currency)}"
+                                                            } else {
+                                                                "السعر  0 ${item.currency}"
+                                                            }
+                                                            Text(
+                                                                text = priceText,
+                                                                fontSize = 11.sp,
+                                                                fontWeight = FontWeight.ExtraBold,
+                                                                color = CafeGold,
+                                                                textAlign = TextAlign.End,
+                                                                modifier = Modifier.weight(1.4f)
+                                                            )
+                                                        }
+                                                    }
+                                                } else {
+                                                    tableActiveOrders.forEach { ord ->
+                                                        Text(text = ord.itemsSummary, fontSize = 11.sp, color = CafeTextPrimary)
+                                                    }
+                                                }
+                                            }
+
+                                            if (combinedNotes.isNotBlank()) {
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                Text("ملاحظات: $combinedNotes", fontSize = 10.sp, color = CafeGold)
+                                            }
+
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            HorizontalDivider(color = CafeCardBorder.copy(alpha = 0.6f))
+                                            Spacer(modifier = Modifier.height(6.dp))
+
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text("مجموع الطلبات:", fontSize = 11.sp, color = CafeTextSecondary)
+                                                Text(OrderFeeCalculator.formatPrice(tableSubtotal, tableCurr), fontSize = 11.sp, color = CafeTextPrimary)
+                                            }
+
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text("رسوم الخدمة عند التسديد:", fontSize = 11.sp, color = CafeGold)
+                                                Text(OrderFeeCalculator.formatPrice(tableSettlementFee, tableCurr), fontSize = 11.sp, color = CafeGold)
+                                            }
+
+                                            Spacer(modifier = Modifier.height(4.dp))
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
                                                 horizontalArrangement = Arrangement.SpaceBetween,
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                Column {
-                                                    Text("المطلوب للتسديد:", fontSize = 10.sp, color = CafeTextSecondary)
-                                                    Text(OrderFeeCalculator.formatPrice(tableSettlementTotal, tableCurr), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = CafeGold)
-                                                }
+                                                Text("الإجمالي المطلوب للتسديد:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = CafeTextPrimary)
+                                                Text(
+                                                    text = OrderFeeCalculator.formatPrice(tableSettlementTotal, tableCurr),
+                                                    fontSize = 15.sp,
+                                                    fontWeight = FontWeight.ExtraBold,
+                                                    color = CafeCyanPrimary
+                                                )
+                                            }
 
-                                                Button(
-                                                    onClick = {
-                                                        viewModel.payAllOrdersForTable(tableActiveOrders)
-                                                        showActiveTablesDialog = false
-                                                        Toast.makeText(context, "تم تسديد حساب طاولة $tableNum بنجاح! 💵", Toast.LENGTH_SHORT).show()
-                                                    },
-                                                    colors = ButtonDefaults.buttonColors(
-                                                        containerColor = OrderStatusPaid,
-                                                        contentColor = Color(0xFF032125)
-                                                    ),
-                                                    shape = RoundedCornerShape(8.dp),
-                                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                                                ) {
-                                                    Text("تسديد الحساب 💵", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                                }
+                                            Spacer(modifier = Modifier.height(10.dp))
+                                            Button(
+                                                onClick = {
+                                                    viewModel.payAllOrdersForTable(tableActiveOrders)
+                                                    showActiveTablesDialog = false
+                                                    Toast.makeText(context, "تم تسديد حساب طاولة $tableNum بنجاح! 💵", Toast.LENGTH_SHORT).show()
+                                                },
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = OrderStatusPaid,
+                                                    contentColor = Color(0xFF032125)
+                                                ),
+                                                shape = RoundedCornerShape(10.dp),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Text("تسديد حساب طاولة $tableNum بالكامل 💵", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
                                             }
                                         }
                                     }
@@ -792,12 +904,12 @@ fun MetricCard(
     value: String,
     valueColor: Color,
     modifier: Modifier = Modifier,
-    subtitle: String? = null,
+    hasArrow: Boolean = false,
     onClick: (() -> Unit)? = null
 ) {
     Card(
         modifier = modifier
-            .height(72.dp)
+            .height(68.dp)
             .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CafeSurface),
@@ -809,17 +921,27 @@ fun MetricCard(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 4.dp, vertical = 5.dp),
+                .padding(horizontal = 4.dp, vertical = 6.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = title, fontSize = 11.sp, color = CafeTextSecondary, maxLines = 1)
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(text = value, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = valueColor, maxLines = 1)
-            if (subtitle != null) {
-                Spacer(modifier = Modifier.height(1.dp))
-                Text(text = subtitle, fontSize = 9.sp, color = CafeTextSecondary.copy(alpha = 0.85f), maxLines = 1)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(text = title, fontSize = 11.sp, color = CafeTextSecondary, maxLines = 1)
+                if (hasArrow) {
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = valueColor.copy(alpha = 0.85f),
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
             }
+            Spacer(modifier = Modifier.height(3.dp))
+            Text(text = value, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = valueColor, maxLines = 1)
         }
     }
 }
