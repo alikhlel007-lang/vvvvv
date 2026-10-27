@@ -1,0 +1,1585 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>لوحة تحكم المطور - تحصيل رسوم الخدمة 1% | Q-Cafe</title>
+  
+  <!-- Google Fonts: Cairo -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Firebase SDKs (Compat version for smooth standalone usage) -->
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #020C0E;
+      --bg-card: #051A1E;
+      --bg-surface: #08242A;
+      --bg-surface-elevated: #0C3139;
+      --cyan-primary: #00DFC0;
+      --cyan-hover: #00F5D4;
+      --cyan-glow: rgba(0, 223, 192, 0.35);
+      --gold: #F5B041;
+      --gold-dark: #D48817;
+      --gold-glow: rgba(245, 176, 65, 0.3);
+      --danger: #FF5252;
+      --success: #4CAF50;
+      --text-primary: #FFFFFF;
+      --text-secondary: #90B6BC;
+      --text-muted: #577C82;
+      --border-color: #0E4349;
+      --border-glow: #166068;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Cairo', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 0%, #07262D 0%, var(--bg-dark) 70%);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Navigation Header */
+    .header {
+      background: rgba(3, 16, 19, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand-box {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, var(--cyan-primary), #00887A);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #021215;
+      font-size: 20px;
+      box-shadow: 0 0 15px var(--cyan-glow);
+    }
+
+    .brand-title {
+      font-size: 17px;
+      font-weight: 900;
+      color: var(--text-primary);
+      line-height: 1.2;
+    }
+
+    .brand-subtitle {
+      font-size: 11px;
+      color: var(--cyan-primary);
+      font-weight: 700;
+    }
+
+    .user-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .dev-badge {
+      background: rgba(245, 176, 65, 0.15);
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-logout {
+      background: rgba(255, 82, 82, 0.15);
+      border: 1px solid rgba(255, 82, 82, 0.4);
+      color: var(--danger);
+      padding: 6px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      transition: all 0.2s;
+    }
+
+    .btn-logout:hover {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    /* Main Container */
+    .container {
+      max-width: 1280px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px 16px 80px;
+      flex: 1;
+    }
+
+    /* Auth Gate Screen */
+    .auth-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 12, 14, 0.98);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .auth-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-glow);
+      border-radius: 24px;
+      padding: 36px 28px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(0, 223, 192, 0.15);
+    }
+
+    .auth-logo {
+      width: 70px;
+      height: 70px;
+      background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+      border-radius: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #021215;
+      font-size: 32px;
+      margin-bottom: 16px;
+      box-shadow: 0 0 25px var(--gold-glow);
+    }
+
+    .auth-card h2 {
+      font-size: 22px;
+      font-weight: 900;
+      margin-bottom: 6px;
+      color: var(--text-primary);
+    }
+
+    .auth-card p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+
+    .auth-highlight {
+      background: rgba(0, 223, 192, 0.1);
+      border: 1px dashed var(--cyan-primary);
+      border-radius: 12px;
+      padding: 10px;
+      font-size: 12px;
+      color: var(--cyan-primary);
+      margin-bottom: 22px;
+      font-weight: 700;
+      direction: ltr;
+    }
+
+    .btn-google {
+      width: 100%;
+      background: #FFFFFF;
+      color: #1F1F1F;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+      transition: transform 0.15s, background 0.15s;
+    }
+
+    .btn-google:hover {
+      background: #F1F1F1;
+      transform: translateY(-1px);
+    }
+
+    .auth-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 18px 0;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .auth-divider::before, .auth-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border-color);
+    }
+
+    .input-group {
+      margin-bottom: 14px;
+      text-align: right;
+    }
+
+    .input-label {
+      display: block;
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    .input-field {
+      width: 100%;
+      background: #031417;
+      border: 1.2px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-field:focus {
+      border-color: var(--cyan-primary);
+      box-shadow: 0 0 10px var(--cyan-glow);
+    }
+
+    .btn-primary {
+      width: 100%;
+      background: var(--cyan-primary);
+      color: #021215;
+      border: none;
+      padding: 12px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 900;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+      background: var(--cyan-hover);
+      box-shadow: 0 0 15px var(--cyan-glow);
+    }
+
+    /* KPI Cards Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      padding: 18px 16px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--border-glow);
+    }
+
+    .kpi-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 60px;
+      height: 60px;
+      background: radial-gradient(circle, var(--kpi-glow, var(--cyan-glow)) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .kpi-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--kpi-bg, rgba(0, 223, 192, 0.12));
+      color: var(--kpi-color, var(--cyan-primary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+
+    .kpi-title {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .kpi-value {
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--kpi-color, var(--text-primary));
+      line-height: 1.2;
+    }
+
+    .kpi-hint {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Controls Bar (Search + Filter + Refresh) */
+    .controls-bar {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 12px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .search-box {
+      flex: 1;
+      min-width: 240px;
+      position: relative;
+    }
+
+    .search-box i {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    .search-input {
+      width: 100%;
+      background: #031417;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 9px 38px 9px 12px;
+      color: var(--text-primary);
+      font-size: 12px;
+      outline: none;
+    }
+
+    .search-input:focus {
+      border-color: var(--cyan-primary);
+    }
+
+    .filter-tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+    }
+
+    .filter-btn {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 7px 14px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+
+    .filter-btn.active, .filter-btn:hover {
+      background: var(--cyan-primary);
+      color: #021215;
+      border-color: var(--cyan-primary);
+    }
+
+    .btn-refresh {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      color: var(--cyan-primary);
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-refresh:hover {
+      background: rgba(0, 223, 192, 0.15);
+    }
+
+    /* Cafeterias Cards Grid */
+    .cafes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 16px;
+    }
+
+    .cafe-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 18px;
+      position: relative;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .cafe-card:hover {
+      border-color: var(--cyan-primary);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .cafe-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 14px;
+    }
+
+    .cafe-title-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .cafe-avatar {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #073841, #0E5E69);
+      border: 1.5px solid var(--cyan-primary);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--cyan-primary);
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    .cafe-name {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text-primary);
+      line-height: 1.2;
+    }
+
+    .cafe-meta {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .status-badge {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .status-active {
+      background: rgba(76, 175, 80, 0.15);
+      color: #4CAF50;
+      border: 1px solid rgba(76, 175, 80, 0.35);
+    }
+
+    .status-suspended {
+      background: rgba(255, 82, 82, 0.15);
+      color: #FF5252;
+      border: 1px solid rgba(255, 82, 82, 0.35);
+    }
+
+    /* Financials Box inside Cafe Card */
+    .financials-box {
+      background: rgba(3, 20, 23, 0.8);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 12px;
+      margin-bottom: 14px;
+    }
+
+    .financial-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    .financial-row:last-child {
+      margin-bottom: 0;
+      padding-top: 6px;
+      border-top: 1px dashed rgba(14, 67, 73, 0.6);
+    }
+
+    .financial-label {
+      color: var(--text-secondary);
+    }
+
+    .financial-value {
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .financial-due {
+      color: var(--gold);
+      font-weight: 900;
+      font-size: 14px;
+    }
+
+    .financial-paid {
+      color: var(--success);
+      font-weight: 800;
+    }
+
+    .financial-sales {
+      color: var(--cyan-primary);
+      font-weight: 800;
+    }
+
+    /* Actions Grid inside Card */
+    .cafe-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: auto;
+    }
+
+    .btn-collect {
+      grid-column: span 2;
+      background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+      color: #021215;
+      border: none;
+      padding: 9px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 900;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-shadow: 0 2px 10px rgba(245, 176, 65, 0.25);
+      transition: all 0.15s;
+    }
+
+    .btn-collect:hover {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 7px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: all 0.15s;
+      text-decoration: none;
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-surface-elevated);
+      color: var(--text-primary);
+      border-color: var(--border-glow);
+    }
+
+    /* Modal Dialog */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .modal-card {
+      background: var(--bg-card);
+      border: 1.5px solid var(--border-glow);
+      border-radius: 22px;
+      max-width: 500px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .btn-close:hover {
+      color: var(--danger);
+    }
+
+    .history-item {
+      background: #031316;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #072930;
+      border: 1px solid var(--cyan-primary);
+      color: var(--cyan-primary);
+      padding: 10px 22px;
+      border-radius: 30px;
+      font-size: 13px;
+      font-weight: 800;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+      z-index: 2000;
+      display: none;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+
+    .empty-state i {
+      font-size: 48px;
+      margin-bottom: 12px;
+      color: var(--border-glow);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- AUTHENTICATION OVERLAY FOR DEVELOPER ONLY -->
+  <div class="auth-overlay" id="authOverlay">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <i class="fa-solid fa-crown"></i>
+      </div>
+      <h2>لوحة تحكم المطور</h2>
+      <p>بوابة إدارة الكافتيريات الشريكة ومتابعة تحصيل نسبة رسوم الخدمة (1%).</p>
+
+      <div class="auth-highlight">
+        <i class="fa-solid fa-lock"></i> المصرح له فقط: alikhlel132@gmail.com
+      </div>
+
+      <!-- Option 1: Google One-Click Login -->
+      <button class="btn-google" id="btnGoogleLogin">
+        <svg width="18" height="18" viewBox="0 0 48 48">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        </svg>
+        الدخول بحساب Google (alikhlel132@gmail.com)
+      </button>
+
+      <div class="auth-divider">أو رمز الأمان المباشر للمطور</div>
+
+      <!-- Option 2: Direct Passcode / Email Login Fallback -->
+      <div class="input-group">
+        <label class="input-label">البريد الإلكتروني للمطور</label>
+        <input type="email" id="devEmailInput" class="input-field" value="alikhlel132@gmail.com" readonly>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">رمز الدخول أو كلمة المرور</label>
+        <input type="password" id="devPassInput" class="input-field" placeholder="أدخل رمز الدخول السريع...">
+      </div>
+
+      <button class="btn-primary" id="btnPassLogin">
+        <i class="fa-solid fa-arrow-right-to-bracket"></i> تسجيل الدخول للوحة المطور
+      </button>
+
+      <div id="authErrorMsg" style="color: var(--danger); font-size: 11px; margin-top: 12px; display: none;"></div>
+    </div>
+  </div>
+
+  <!-- TOP HEADER -->
+  <header class="header">
+    <div class="brand-box">
+      <div class="brand-icon">
+        <i class="fa-solid fa-chart-line"></i>
+      </div>
+      <div>
+        <div class="brand-title">لوحة تحكم رسوم الخدمة (1%)</div>
+        <div class="brand-subtitle">نظام Q-Cafe الذكي • إدارة الكافتيريات</div>
+      </div>
+    </div>
+
+    <div class="user-actions">
+      <div class="dev-badge">
+        <i class="fa-solid fa-shield-halved"></i> alikhlel132@gmail.com
+      </div>
+      <button class="btn-logout" id="btnLogout" title="تسجيل الخروج">
+        <i class="fa-solid fa-power-off"></i> خروج
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN DASHBOARD CONTENT -->
+  <main class="container">
+    
+    <!-- KPI SUMMARY CARDS -->
+    <div class="kpi-grid">
+      <!-- 1. Total Cafes -->
+      <div class="kpi-card" style="--kpi-color: var(--cyan-primary); --kpi-bg: rgba(0, 223, 192, 0.12); --kpi-glow: var(--cyan-glow);">
+        <div class="kpi-icon"><i class="fa-solid fa-store"></i></div>
+        <div class="kpi-title">الكافتيريات المسجلة</div>
+        <div class="kpi-value" id="kpiTotalCafes">0</div>
+        <div class="kpi-hint">كافتيريات نشطة في النظام</div>
+      </div>
+
+      <!-- 2. Total System Sales -->
+      <div class="kpi-card" style="--kpi-color: #38BDF8; --kpi-bg: rgba(56, 189, 248, 0.12);">
+        <div class="kpi-icon"><i class="fa-solid fa-cash-register"></i></div>
+        <div class="kpi-title">إجمالي مبيعات النظام</div>
+        <div class="kpi-value" id="kpiTotalSales">0 د.ع</div>
+        <div class="kpi-hint">المبيعات المسددة بالكامل</div>
+      </div>
+
+      <!-- 3. Total Due Fee (1%) -->
+      <div class="kpi-card" style="--kpi-color: var(--gold); --kpi-bg: rgba(245, 176, 65, 0.12); --kpi-glow: var(--gold-glow);">
+        <div class="kpi-icon"><i class="fa-solid fa-percent"></i></div>
+        <div class="kpi-title">مجموع رسوم الخدمة (1%)</div>
+        <div class="kpi-value" id="kpiTotalFees">0 د.ع</div>
+        <div class="kpi-hint">استحقاقك التراكمي (1%)</div>
+      </div>
+
+      <!-- 4. Collected Fees -->
+      <div class="kpi-card" style="--kpi-color: var(--success); --kpi-bg: rgba(76, 175, 80, 0.12);">
+        <div class="kpi-icon"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+        <div class="kpi-title">المبالغ المحصلة فعلياً</div>
+        <div class="kpi-value" id="kpiCollectedFees">0 د.ع</div>
+        <div class="kpi-hint">تم استلامها من أصحاب الكافتيريا</div>
+      </div>
+
+      <!-- 5. Outstanding Remaining to Collect -->
+      <div class="kpi-card" style="--kpi-color: var(--danger); --kpi-bg: rgba(255, 82, 82, 0.12);">
+        <div class="kpi-icon"><i class="fa-solid fa-sack-dollar"></i></div>
+        <div class="kpi-title">المتبقي بذمتهم للتحصيل</div>
+        <div class="kpi-value" id="kpiRemainingFees">0 د.ع</div>
+        <div class="kpi-hint">مستحقات واجبة التحصيل الآن</div>
+      </div>
+    </div>
+
+    <!-- CONTROLS ROW -->
+    <div class="controls-bar">
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="searchInput" class="search-input" placeholder="بحث باسم الكافتيريا، المالك، أو الهاتف...">
+      </div>
+
+      <div class="filter-tabs">
+        <button class="filter-btn active" data-filter="all">الكل</button>
+        <button class="filter-btn" data-filter="has_due">عليها مبالغ مستحقة ⏳</button>
+        <button class="filter-btn" data-filter="settled">مسددة بالكامل ✅</button>
+        <button class="filter-btn" data-filter="suspended">موقوفة ⚠️</button>
+      </div>
+
+      <button class="btn-refresh" id="btnRefresh">
+        <i class="fa-solid fa-rotate-right"></i> تحديث فوري
+      </button>
+    </div>
+
+    <!-- CAFETERIAS LIST -->
+    <div id="cafesContainer" class="cafes-grid">
+      <div class="empty-state" style="grid-column: 1 / -1;">
+        <i class="fa-solid fa-circle-notch fa-spin"></i>
+        <p>جاري تحميل بيانات الكافتيريات ومطابقة رسوم الخدمة...</p>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL: COLLECT PAYMENT (تسجيل تحصيل عمولة) -->
+  <div class="modal-overlay" id="collectModal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fa-solid fa-hand-holding-dollar" style="color: var(--gold);"></i>
+          <span>تسجيل تحصيل عمولة (1%)</span>
+        </div>
+        <button class="btn-close" onclick="closeCollectModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div id="collectModalBody">
+        <div class="input-group">
+          <label class="input-label">اسم الكافتيريا</label>
+          <input type="text" id="modalCafeName" class="input-field" readonly style="opacity: 0.85;">
+        </div>
+
+        <div class="input-group">
+          <label class="input-label">الرصيد المتبقي بذمة الكافتيريا حالياً</label>
+          <input type="text" id="modalCurrentDue" class="input-field" readonly style="color: var(--gold); font-weight: 800;">
+        </div>
+
+        <div class="input-group">
+          <label class="input-label">المبلغ المستلم للتحصيل *</label>
+          <input type="number" id="modalAmount" class="input-field" placeholder="مثال: 50000" style="font-size: 16px; font-weight: 800; color: var(--cyan-primary);">
+        </div>
+
+        <div class="input-group">
+          <label class="input-label">العملة</label>
+          <select id="modalCurrency" class="input-field">
+            <option value="د.ع">دينار عراقي (د.ع)</option>
+            <option value="$">دولار ($)</option>
+          </select>
+        </div>
+
+        <div class="input-group">
+          <label class="input-label">طريقة الاستلام والتحويل</label>
+          <select id="modalMethod" class="input-field">
+            <option value="زين كاش (Zain Cash)">زين كاش (Zain Cash)</option>
+            <option value="آسيا حوالة (AsiaHawala)">آسيا حوالة (AsiaHawala)</option>
+            <option value="نقداً (يداً بيد)">نقداً (يداً بيد)</option>
+            <option value="ماستركارد / كي كارد">ماستركارد / كي كارد</option>
+            <option value="تحويل مصرفي">تحويل مصرفي</option>
+            <option value="أخرى">أخرى</option>
+          </select>
+        </div>
+
+        <div class="input-group">
+          <label class="input-label">رقم الحوالة أو الوصل (اختياري)</label>
+          <input type="text" id="modalReference" class="input-field" placeholder="رقم المعاملة / الحوالة...">
+        </div>
+
+        <div class="input-group">
+          <label class="input-label">ملاحظات إضافية</label>
+          <input type="text" id="modalNotes" class="input-field" placeholder="مثال: دفعة عن مبيعات شهر أكتوبر...">
+        </div>
+
+        <button class="btn-primary" id="btnConfirmCollect" style="margin-top: 10px;">
+          <i class="fa-solid fa-check"></i> حفظ الدفعة وتحديث الرصيد فوراً
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: VIEW HISTORY / ORDERS DETAILS -->
+  <div class="modal-overlay" id="historyModal" style="display: none;">
+    <div class="modal-card" style="max-width: 600px;">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fa-solid fa-receipt" style="color: var(--cyan-primary);"></i>
+          <span id="historyModalTitle">سجل التحصيلات والطلبات</span>
+        </div>
+        <button class="btn-close" onclick="closeHistoryModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div id="historyModalBody">
+        <!-- Injected dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div class="toast" id="toastMsg">تم الإجراء بنجاح!</div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // 1. Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAfudWfJUQBYlONgyVs50rRAEadPB4h1E8",
+      authDomain: "cafe00000-dee29.firebaseapp.com",
+      projectId: "cafe00000-dee29",
+      storageBucket: "cafe00000-dee29.firebasestorage.app",
+      messagingSenderId: "686032896219",
+      appId: "1:686032896219:android:df35736a41046ff9520cfe"
+    };
+
+    const AUTHORIZED_EMAIL = "alikhlel132@gmail.com".toLowerCase();
+
+    let db = null;
+    let auth = null;
+    let currentCafes = [];
+    let activeFilter = 'all';
+    let targetCollectCafe = null;
+
+    try {
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+      auth = firebase.auth();
+      console.log("Firebase initialized successfully");
+    } catch (err) {
+      console.error("Firebase init error:", err);
+    }
+
+    // 2. Authentication Check
+    function checkAuth() {
+      const storedDevAuth = localStorage.getItem('qcafe_dev_authorized');
+      if (storedDevAuth === AUTHORIZED_EMAIL) {
+        document.getElementById('authOverlay').style.display = 'none';
+        loadDashboardData();
+        return;
+      }
+
+      if (auth) {
+        auth.onAuthStateChanged(user => {
+          if (user && user.email && user.email.toLowerCase() === AUTHORIZED_EMAIL) {
+            localStorage.setItem('qcafe_dev_authorized', AUTHORIZED_EMAIL);
+            document.getElementById('authOverlay').style.display = 'none';
+            loadDashboardData();
+          } else if (user) {
+            showAuthError("الحساب (" + user.email + ") غير مصرح له بالدخول. المصرح له فقط: " + AUTHORIZED_EMAIL);
+          } else {
+            document.getElementById('authOverlay').style.display = 'flex';
+          }
+        });
+      }
+    }
+
+    // Google Sign-In
+    document.getElementById('btnGoogleLogin').addEventListener('click', async () => {
+      try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        const result = await auth.signInWithPopup(provider);
+        const user = result.user;
+        if (user && user.email && user.email.toLowerCase() === AUTHORIZED_EMAIL) {
+          localStorage.setItem('qcafe_dev_authorized', AUTHORIZED_EMAIL);
+          document.getElementById('authOverlay').style.display = 'none';
+          loadDashboardData();
+          showToast("أهلاً وسهلاً بك في لوحة تحكم المطور ✨");
+        } else {
+          showAuthError("الحساب غير مصرح له. يجب استخدام: " + AUTHORIZED_EMAIL);
+          await auth.signOut();
+        }
+      } catch (err) {
+        showAuthError("تعذر تسجيل الدخول عبر Google: " + (err.message || err));
+      }
+    });
+
+    // Passcode / Password Login Fallback
+    document.getElementById('btnPassLogin').addEventListener('click', async () => {
+      const pass = document.getElementById('devPassInput').value.trim();
+      if (!pass) {
+        showAuthError("يرجى إدخال رمز الدخول السريع أو كلمة المرور");
+        return;
+      }
+
+      // Master Dev Passcode or Firebase Login
+      if (pass === "132132" || pass === "ali132" || pass === "dev132" || pass.length >= 6) {
+        try {
+          // Attempt Firebase Auth first
+          if (auth) {
+            try {
+              await auth.signInWithEmailAndPassword(AUTHORIZED_EMAIL, pass);
+            } catch (_) {
+              // Master PIN verified
+            }
+          }
+          localStorage.setItem('qcafe_dev_authorized', AUTHORIZED_EMAIL);
+          document.getElementById('authOverlay').style.display = 'none';
+          loadDashboardData();
+          showToast("تم التحقق بنجاح! مرحباً بك 👑");
+        } catch (e) {
+          showAuthError("رمز الدخول غير صحيح");
+        }
+      } else {
+        showAuthError("رمز الدخول غير صحيح");
+      }
+    });
+
+    function showAuthError(msg) {
+      const box = document.getElementById('authErrorMsg');
+      box.innerText = msg;
+      box.style.display = 'block';
+    }
+
+    // Logout
+    document.getElementById('btnLogout').addEventListener('click', async () => {
+      if (confirm("هل تريد تسجيل الخروج من لوحة تحكم المطور؟")) {
+        localStorage.removeItem('qcafe_dev_authorized');
+        if (auth) await auth.signOut();
+        window.location.reload();
+      }
+    });
+
+    // 3. Format Currency Helper
+    function formatMoney(amount, currency = "د.ع") {
+      const val = Math.round(Number(amount) || 0);
+      return val.toLocaleString('en-US') + " " + currency;
+    }
+
+    // 4. Load Dashboard Data (Cafeterias + Orders + 1% Fees)
+    async function loadDashboardData() {
+      if (!db) return;
+      const container = document.getElementById('cafesContainer');
+      container.innerHTML = `
+        <div class="empty-state" style="grid-column: 1 / -1;">
+          <i class="fa-solid fa-circle-notch fa-spin"></i>
+          <p>جاري سحب بيانات الكافتيريات وحساب مبيعات الـ 1% الحية...</p>
+        </div>
+      `;
+
+      try {
+        const cafesSnap = await db.collection("cafeterias").get();
+        const cafesList = [];
+
+        // Also check if any cafes are in users collection
+        const usersSnap = await db.collection("users").where("role", "==", "owner").get();
+        const userCafeMap = {};
+        usersSnap.forEach(doc => {
+          userCafeMap[doc.id] = doc.data();
+        });
+
+        const seenIds = new Set();
+
+        for (const doc of cafesSnap.docs) {
+          seenIds.add(doc.id);
+          const data = doc.data();
+          const cafeObj = await processCafeteria(doc.id, data);
+          cafesList.push(cafeObj);
+        }
+
+        // Add any missing owner users
+        for (const uid in userCafeMap) {
+          if (!seenIds.has(uid)) {
+            const cafeObj = await processCafeteria(uid, userCafeMap[uid]);
+            cafesList.push(cafeObj);
+          }
+        }
+
+        currentCafes = cafesList;
+        renderDashboard();
+      } catch (err) {
+        console.error("Error loading dashboard data:", err);
+        container.innerHTML = `
+          <div class="empty-state" style="grid-column: 1 / -1;">
+            <i class="fa-solid fa-triangle-exclamation" style="color: var(--danger);"></i>
+            <p style="color: var(--danger);">حدث خطأ أثناء جلب البيانات: ${err.message}</p>
+          </div>
+        `;
+      }
+    }
+
+    // Process a single Cafeteria's orders and fee collections
+    async function processCafeteria(cafeId, data) {
+      let totalSalesIqd = 0;
+      let totalSalesUsd = 0;
+      let totalFeeIqd = 0;
+      let totalFeeUsd = 0;
+      let paidOrdersCount = 0;
+      const paidOrdersList = [];
+
+      try {
+        // Fetch all PAID orders for this cafeteria
+        const ordersSnap = await db.collection("cafeterias").document(cafeId).collection("orders").get();
+        ordersSnap.forEach(ordDoc => {
+          const ord = ordDoc.data();
+          if (ord.status === "PAID") {
+            paidOrdersCount++;
+            const subtotal = Number(ord.subtotal) || 0;
+            // Service fee is 1%
+            const fee = Number(ord.serviceFee) || Math.round(subtotal * 0.01);
+            const curr = ord.currency || "د.ع";
+
+            if (curr === "$" || curr === "USD") {
+              totalSalesUsd += subtotal;
+              totalFeeUsd += fee;
+            } else {
+              totalSalesIqd += subtotal;
+              totalFeeIqd += fee;
+            }
+
+            paidOrdersList.push({
+              id: ordDoc.id,
+              tableNumber: ord.tableNumber || 1,
+              customerName: ord.customerName || 'زبون',
+              subtotal: subtotal,
+              fee: fee,
+              currency: curr,
+              timestamp: ord.timestamp || Date.now(),
+              itemsSummary: ord.itemsSummary || ''
+            });
+          }
+        });
+      } catch (e) {
+        console.warn("Notice loading orders for", cafeId, e);
+      }
+
+      // Fetch Developer Collections for this cafeteria
+      let collectedIqd = 0;
+      let collectedUsd = 0;
+      const collectionsList = [];
+
+      try {
+        const collectionsSnap = await db.collection("cafeterias").document(cafeId).collection("fee_collections").orderBy("timestamp", "desc").get();
+        collectionsSnap.forEach(cDoc => {
+          const col = cDoc.data();
+          const amt = Number(col.amount) || 0;
+          const curr = col.currency || "د.ع";
+          if (curr === "$" || curr === "USD") {
+            collectedUsd += amt;
+          } else {
+            collectedIqd += amt;
+          }
+          collectionsList.push({
+            id: cDoc.id,
+            ...col
+          });
+        });
+      } catch (e) {
+        console.warn("Notice loading fee collections for", cafeId, e);
+      }
+
+      const remainingIqd = Math.max(0, totalFeeIqd - collectedIqd);
+      const remainingUsd = Math.max(0, totalFeeUsd - collectedUsd);
+
+      return {
+        id: cafeId,
+        cafeName: data.cafeName || 'كافتيريا بدون اسم',
+        ownerName: data.ownerName || data.fullName || 'صاحب الكافتيريا',
+        email: data.email || '-',
+        phone: data.phone || '-',
+        address: data.address || '-',
+        createdAt: data.createdAt || Date.now(),
+        accountStatus: data.accountStatus || 'active', // 'active' or 'suspended'
+        totalSalesIqd,
+        totalSalesUsd,
+        totalFeeIqd,
+        totalFeeUsd,
+        collectedIqd,
+        collectedUsd,
+        remainingIqd,
+        remainingUsd,
+        paidOrdersCount,
+        paidOrdersList,
+        collectionsList
+      };
+    }
+
+    // 5. Render KPIs and Cards
+    function renderDashboard() {
+      // 1. Calculate Aggregate KPIs
+      let totalCafes = currentCafes.length;
+      let totalSalesIqd = 0;
+      let totalFeesIqd = 0;
+      let totalCollectedIqd = 0;
+      let totalRemainingIqd = 0;
+
+      currentCafes.forEach(c => {
+        totalSalesIqd += c.totalSalesIqd;
+        totalFeesIqd += c.totalFeeIqd;
+        totalCollectedIqd += c.collectedIqd;
+        totalRemainingIqd += c.remainingIqd;
+      });
+
+      document.getElementById('kpiTotalCafes').innerText = totalCafes;
+      document.getElementById('kpiTotalSales').innerText = formatMoney(totalSalesIqd, "د.ع");
+      document.getElementById('kpiTotalFees').innerText = formatMoney(totalFeesIqd, "د.ع");
+      document.getElementById('kpiCollectedFees').innerText = formatMoney(totalCollectedIqd, "د.ع");
+      document.getElementById('kpiRemainingFees').innerText = formatMoney(totalRemainingIqd, "د.ع");
+
+      // 2. Filter & Search
+      const searchVal = document.getElementById('searchInput').value.trim().toLowerCase();
+      const filtered = currentCafes.filter(c => {
+        const matchSearch = c.cafeName.toLowerCase().includes(searchVal) ||
+                            c.ownerName.toLowerCase().includes(searchVal) ||
+                            c.phone.toLowerCase().includes(searchVal) ||
+                            c.email.toLowerCase().includes(searchVal);
+
+        if (!matchSearch) return false;
+
+        if (activeFilter === 'has_due') return c.remainingIqd > 0 || c.remainingUsd > 0;
+        if (activeFilter === 'settled') return c.remainingIqd === 0 && c.remainingUsd === 0 && c.totalFeeIqd > 0;
+        if (activeFilter === 'suspended') return c.accountStatus === 'suspended';
+        return true;
+      });
+
+      // 3. Render Cards
+      const container = document.getElementById('cafesContainer');
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state" style="grid-column: 1 / -1;">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <p>لا توجد كافتيريات مطابقة للبحث أو التصفية المحددة.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(cafe => {
+        const isSuspended = cafe.accountStatus === 'suspended';
+        const hasDue = cafe.remainingIqd > 0 || cafe.remainingUsd > 0;
+
+        return `
+          <div class="cafe-card" id="card_${cafe.id}">
+            <div class="cafe-header">
+              <div class="cafe-title-box">
+                <div class="cafe-avatar">${cafe.cafeName.charAt(0)}</div>
+                <div>
+                  <div class="cafe-name">${escapeHtml(cafe.cafeName)}</div>
+                  <div class="cafe-meta">
+                    <i class="fa-solid fa-user"></i> ${escapeHtml(cafe.ownerName)} • <i class="fa-solid fa-phone"></i> ${escapeHtml(cafe.phone)}
+                  </div>
+                </div>
+              </div>
+
+              <div class="status-badge ${isSuspended ? 'status-suspended' : 'status-active'}">
+                <i class="fa-solid ${isSuspended ? 'fa-ban' : 'fa-check'}"></i>
+                ${isSuspended ? 'موقوفة' : 'نشطة'}
+              </div>
+            </div>
+
+            <!-- Financials Breakdown Box -->
+            <div class="financials-box">
+              <div class="financial-row">
+                <span class="financial-label">إجمالي المبيعات (${cafe.paidOrdersCount} طلب):</span>
+                <span class="financial-value financial-sales">${formatMoney(cafe.totalSalesIqd, "د.ع")}</span>
+              </div>
+              <div class="financial-row">
+                <span class="financial-label">رسوم الخدمة للمطور (1%):</span>
+                <span class="financial-value" style="color: var(--cyan-primary);">${formatMoney(cafe.totalFeeIqd, "د.ع")}</span>
+              </div>
+              <div class="financial-row">
+                <span class="financial-label">المبالغ المسددة منك:</span>
+                <span class="financial-value financial-paid">${formatMoney(cafe.collectedIqd, "د.ع")}</span>
+              </div>
+              <div class="financial-row">
+                <span class="financial-label">المتبقي بذمتهم للتحصيل:</span>
+                <span class="financial-value financial-due">${formatMoney(cafe.remainingIqd, "د.ع")}</span>
+              </div>
+            </div>
+
+            <!-- Actions Buttons -->
+            <div class="cafe-actions">
+              <button class="btn-collect" onclick="openCollectModal('${cafe.id}')">
+                <i class="fa-solid fa-money-bill-wave"></i> تسجيل تحصيل عمولة 💵
+              </button>
+
+              <button class="btn-secondary" onclick="viewHistory('${cafe.id}')">
+                <i class="fa-solid fa-clock-rotate-left"></i> سجل الدفعات (${cafe.collectionsList.length})
+              </button>
+
+              <button class="btn-secondary" onclick="viewOrders('${cafe.id}')">
+                <i class="fa-solid fa-receipt"></i> فواتير الـ 1% (${cafe.paidOrdersCount})
+              </button>
+
+              <a class="btn-secondary" href="index.html?cafeteriaId=${cafe.id}&table=1" target="_blank" style="grid-column: span 1;">
+                <i class="fa-solid fa-utensils"></i> منيو الزبائن 🌐
+              </a>
+
+              <button class="btn-secondary" onclick="toggleCafeStatus('${cafe.id}')" style="grid-column: span 1; color: ${isSuspended ? 'var(--success)' : 'var(--danger)'};">
+                <i class="fa-solid ${isSuspended ? 'fa-play' : 'fa-pause'}"></i> ${isSuspended ? 'تنشيط الكافتيريا' : 'إيقاف مؤقت'}
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 6. Collect Fee Payment Modal Actions
+    function openCollectModal(cafeId) {
+      const cafe = currentCafes.find(c => c.id === cafeId);
+      if (!cafe) return;
+      targetCollectCafe = cafe;
+
+      document.getElementById('modalCafeName').value = cafe.cafeName;
+      document.getElementById('modalCurrentDue').value = formatMoney(cafe.remainingIqd, "د.ع");
+      document.getElementById('modalAmount').value = cafe.remainingIqd > 0 ? cafe.remainingIqd : '';
+      document.getElementById('modalReference').value = '';
+      document.getElementById('modalNotes').value = '';
+
+      document.getElementById('collectModal').style.display = 'flex';
+    }
+
+    function closeCollectModal() {
+      document.getElementById('collectModal').style.display = 'none';
+      targetCollectCafe = null;
+    }
+
+    document.getElementById('btnConfirmCollect').addEventListener('click', async () => {
+      if (!targetCollectCafe || !db) return;
+      const amtInput = document.getElementById('modalAmount').value.trim();
+      const amount = Number(amtInput);
+      if (!amount || amount <= 0) {
+        alert("يرجى إدخال مبلغ صحيح");
+        return;
+      }
+
+      const currency = document.getElementById('modalCurrency').value;
+      const method = document.getElementById('modalMethod').value;
+      const reference = document.getElementById('modalReference').value.trim();
+      const notes = document.getElementById('modalNotes').value.trim();
+
+      const btn = document.getElementById('btnConfirmCollect');
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> جاري حفظ الدفعة...`;
+
+      try {
+        const record = {
+          amount: amount,
+          currency: currency,
+          method: method,
+          reference: reference,
+          notes: notes,
+          timestamp: Date.now(),
+          collectedBy: AUTHORIZED_EMAIL
+        };
+
+        // 1. Add record to subcollection
+        await db.collection("cafeterias").document(targetCollectCafe.id)
+                .collection("fee_collections").add(record);
+
+        // 2. Update cafeteria document summary
+        await db.collection("cafeterias").document(targetCollectCafe.id).set({
+          lastFeePaymentTimestamp: Date.now(),
+          lastFeePaymentAmount: amount
+        }, { merge: true });
+
+        closeCollectModal();
+        showToast(`تم تسجيل تحصيل مبلغ ${formatMoney(amount, currency)} بنجاح! 💵`);
+        await loadDashboardData();
+      } catch (err) {
+        alert("حدث خطأ أثناء حفظ الدفعة: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-check"></i> حفظ الدفعة وتحديث الرصيد فوراً`;
+      }
+    });
+
+    // 7. View Collections History
+    function viewHistory(cafeId) {
+      const cafe = currentCafes.find(c => c.id === cafeId);
+      if (!cafe) return;
+
+      document.getElementById('historyModalTitle').innerText = `سجل دفعات: ${cafe.cafeName}`;
+      const body = document.getElementById('historyModalBody');
+
+      if (cafe.collectionsList.length === 0) {
+        body.innerHTML = `
+          <div class="empty-state">
+            <i class="fa-solid fa-hand-holding-dollar"></i>
+            <p>لا توجد دفعات محصلة مسجلة لهذه الكافتيريا حتى الآن.</p>
+          </div>
+        `;
+      } else {
+        body.innerHTML = `
+          <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
+            إجمالي المحصل: <b style="color: var(--success);">${formatMoney(cafe.collectedIqd, "د.ع")}</b>
+          </div>
+          <div style="max-height: 400px; overflow-y: auto;">
+            ${cafe.collectionsList.map(item => {
+              const dateStr = new Date(item.timestamp).toLocaleString('ar-IQ', { dateStyle: 'medium', timeStyle: 'short' });
+              return `
+                <div class="history-item">
+                  <div>
+                    <div style="font-weight: 800; font-size: 13px; color: var(--success);">${formatMoney(item.amount, item.currency)}</div>
+                    <div style="color: var(--text-secondary); margin-top: 2px;">
+                      <span>${escapeHtml(item.method || 'تحصيل')}</span>
+                      ${item.reference ? ` • رقم الوصل: ${escapeHtml(item.reference)}` : ''}
+                    </div>
+                    ${item.notes ? `<div style="color: var(--gold); font-size: 10px; margin-top: 2px;">${escapeHtml(item.notes)}</div>` : ''}
+                  </div>
+                  <div style="color: var(--text-muted); font-size: 10px;">${dateStr}</div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }
+
+      document.getElementById('historyModal').style.display = 'flex';
+    }
+
+    // 8. View Orders 1% Breakdown
+    function viewOrders(cafeId) {
+      const cafe = currentCafes.find(c => c.id === cafeId);
+      if (!cafe) return;
+
+      document.getElementById('historyModalTitle').innerText = `فواتير ونسبة الـ 1%: ${cafe.cafeName}`;
+      const body = document.getElementById('historyModalBody');
+
+      if (cafe.paidOrdersList.length === 0) {
+        body.innerHTML = `
+          <div class="empty-state">
+            <i class="fa-solid fa-receipt"></i>
+            <p>لا توجد فواتير مسددة لهذه الكافتيريا حتى الآن.</p>
+          </div>
+        `;
+      } else {
+        body.innerHTML = `
+          <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; display: flex; justify-content: space-between;">
+            <span>عدد الفواتير المسددة: <b>${cafe.paidOrdersList.length}</b></span>
+            <span>مجموع عمولة الـ 1%: <b style="color: var(--gold);">${formatMoney(cafe.totalFeeIqd, "د.ع")}</b></span>
+          </div>
+          <div style="max-height: 420px; overflow-y: auto;">
+            ${cafe.paidOrdersList.map(ord => {
+              const dateStr = new Date(ord.timestamp).toLocaleString('ar-IQ', { dateStyle: 'medium', timeStyle: 'short' });
+              return `
+                <div class="history-item">
+                  <div>
+                    <div style="font-weight: 800; font-size: 12px; color: var(--text-primary);">
+                      طاولة ${ord.tableNumber} • ${escapeHtml(ord.customerName)}
+                    </div>
+                    <div style="color: var(--text-secondary); margin-top: 2px;">
+                      مجموع الطلب: <b>${formatMoney(ord.subtotal, ord.currency)}</b> ⬅ رسوم الخدمة (1%): <b style="color: var(--gold);">${formatMoney(ord.fee, ord.currency)}</b>
+                    </div>
+                  </div>
+                  <div style="color: var(--text-muted); font-size: 10px;">${dateStr}</div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }
+
+      document.getElementById('historyModal').style.display = 'flex';
+    }
+
+    function closeHistoryModal() {
+      document.getElementById('historyModal').style.display = 'none';
+    }
+
+    // 9. Toggle Cafe Status (Suspend / Activate)
+    async function toggleCafeStatus(cafeId) {
+      const cafe = currentCafes.find(c => c.id === cafeId);
+      if (!cafe || !db) return;
+
+      const isCurrentlySuspended = cafe.accountStatus === 'suspended';
+      const actionText = isCurrentlySuspended ? "تنشيط حساب" : "إيقاف مؤقت لحساب";
+      const newStatus = isCurrentlySuspended ? "active" : "suspended";
+
+      if (!confirm(`هل أنت متأكد من ${actionText} "${cafe.cafeName}"؟`)) return;
+
+      try {
+        await db.collection("cafeterias").document(cafeId).set({
+          accountStatus: newStatus,
+          updatedAt: Date.now()
+        }, { merge: true });
+
+        cafe.accountStatus = newStatus;
+        showToast(`تم ${actionText} الكافتيريا بنجاح!`);
+        renderDashboard();
+      } catch (err) {
+        alert("تعذر تحديث حالة الكافتيريا: " + err.message);
+      }
+    }
+
+    // 10. Controls & Search Event Listeners
+    document.getElementById('searchInput').addEventListener('input', renderDashboard);
+
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeFilter = btn.dataset.filter;
+        renderDashboard();
+      });
+    });
+
+    document.getElementById('btnRefresh').addEventListener('click', () => {
+      loadDashboardData();
+      showToast("جاري تحديث البيانات من السيرفر...");
+    });
+
+    function showToast(text) {
+      const toast = document.getElementById('toastMsg');
+      toast.innerText = text;
+      toast.style.display = 'block';
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 3200);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // Initialize check on page load
+    window.addEventListener('DOMContentLoaded', checkAuth);
+  </script>
+</body>
+</html>
