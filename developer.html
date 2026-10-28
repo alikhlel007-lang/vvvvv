@@ -797,6 +797,9 @@
       <div class="dev-badge">
         <i class="fa-solid fa-shield-halved"></i> alikhlel132@gmail.com
       </div>
+      <button class="btn-logout" id="btnRefresh" title="تحديث البيانات" style="border-color: var(--cyan-primary); color: var(--cyan-primary);">
+        <i class="fa-solid fa-arrows-rotate"></i> تحديث
+      </button>
       <button class="btn-logout" id="btnLogout" title="تسجيل الخروج">
         <i class="fa-solid fa-power-off"></i> خروج
       </button>
@@ -1087,9 +1090,25 @@
       return val.toLocaleString('en-US') + " " + currency;
     }
 
+    const FIRESTORE_REST_BASE = "https://firestore.googleapis.com/v1/projects/cafe00000-dee29/databases/(default)/documents";
+
+    function parseFirestoreFields(fields) {
+      const res = {};
+      if (!fields) return res;
+      for (const [k, v] of Object.entries(fields)) {
+        if ("stringValue" in v) res[k] = v.stringValue;
+        else if ("integerValue" in v) res[k] = Number(v.integerValue);
+        else if ("doubleValue" in v) res[k] = Number(v.doubleValue);
+        else if ("booleanValue" in v) res[k] = v.booleanValue;
+        else if ("nullValue" in v) res[k] = null;
+        else if ("timestampValue" in v) res[k] = v.timestampValue;
+        else if ("mapValue" in v) res[k] = parseFirestoreFields(v.mapValue?.fields);
+      }
+      return res;
+    }
+
     // 4. Load Dashboard Data (Cafeterias + Orders + 1% Fees)
     async function loadDashboardData() {
-      if (!db) return;
       const container = document.getElementById('cafesContainer');
       container.innerHTML = `
         <div class="empty-state" style="grid-column: 1 / -1;">
@@ -1099,31 +1118,43 @@
       `;
 
       try {
-        const cafesSnap = await db.collection("cafeterias").get();
-        const cafesList = [];
+        let rawCafes = [];
 
-        // Also check if any cafes are in users collection
-        const usersSnap = await db.collection("users").where("role", "==", "owner").get();
-        const userCafeMap = {};
-        usersSnap.forEach(doc => {
-          userCafeMap[doc.id] = doc.data();
-        });
-
-        const seenIds = new Set();
-
-        for (const doc of cafesSnap.docs) {
-          seenIds.add(doc.id);
-          const data = doc.data();
-          const cafeObj = await processCafeteria(doc.id, data);
-          cafesList.push(cafeObj);
+        // 1. Try Firestore SDK first
+        if (db) {
+          try {
+            const cafesSnap = await db.collection("cafeterias").get();
+            if (cafesSnap && !cafesSnap.empty) {
+              cafesSnap.forEach(doc => {
+                rawCafes.push({ id: doc.id, data: doc.data() });
+              });
+            }
+          } catch (sdkErr) {
+            console.warn("Firestore SDK cafeterias fetch note:", sdkErr);
+          }
         }
 
-        // Add any missing owner users
-        for (const uid in userCafeMap) {
-          if (!seenIds.has(uid)) {
-            const cafeObj = await processCafeteria(uid, userCafeMap[uid]);
-            cafesList.push(cafeObj);
+        // 2. If SDK returned 0 cafes or failed, fallback to REST API
+        if (rawCafes.length === 0) {
+          try {
+            const res = await fetch(`${FIRESTORE_REST_BASE}/cafeterias`);
+            if (res.ok) {
+              const json = await res.json();
+              for (const doc of (json.documents || [])) {
+                const id = doc.name.split("/").pop();
+                const data = parseFirestoreFields(doc.fields);
+                rawCafes.push({ id, data });
+              }
+            }
+          } catch (restErr) {
+            console.error("Firestore REST API fallback error:", restErr);
           }
+        }
+
+        const cafesList = [];
+        for (const item of rawCafes) {
+          const cafeObj = await processCafeteria(item.id, item.data);
+          cafesList.push(cafeObj);
         }
 
         currentCafes = cafesList;
@@ -1148,66 +1179,117 @@
       let paidOrdersCount = 0;
       const paidOrdersList = [];
 
-      try {
-        // Fetch all PAID orders for this cafeteria
-        const ordersSnap = await db.collection("cafeterias").document(cafeId).collection("orders").get();
-        ordersSnap.forEach(ordDoc => {
-          const ord = ordDoc.data();
-          if (ord.status === "PAID") {
-            paidOrdersCount++;
-            const subtotal = Number(ord.subtotal) || 0;
-            // Service fee is 1%
-            const fee = Number(ord.serviceFee) || Math.round(subtotal * 0.01);
-            const curr = ord.currency || "د.ع";
+      let rawOrders = [];
 
-            if (curr === "$" || curr === "USD") {
-              totalSalesUsd += subtotal;
-              totalFeeUsd += fee;
-            } else {
-              totalSalesIqd += subtotal;
-              totalFeeIqd += fee;
-            }
-
-            paidOrdersList.push({
-              id: ordDoc.id,
-              tableNumber: ord.tableNumber || 1,
-              customerName: ord.customerName || 'زبون',
-              subtotal: subtotal,
-              fee: fee,
-              currency: curr,
-              timestamp: ord.timestamp || Date.now(),
-              itemsSummary: ord.itemsSummary || ''
+      // 1. Try Firestore SDK for orders (.doc instead of .document)
+      if (db) {
+        try {
+          const ordersSnap = await db.collection("cafeterias").doc(cafeId).collection("orders").get();
+          if (ordersSnap && !ordersSnap.empty) {
+            ordersSnap.forEach(ordDoc => {
+              rawOrders.push({ id: ordDoc.id, data: ordDoc.data() });
             });
           }
-        });
-      } catch (e) {
-        console.warn("Notice loading orders for", cafeId, e);
+        } catch (e) {
+          console.warn("SDK orders note for", cafeId, e);
+        }
       }
 
-      // Fetch Developer Collections for this cafeteria
+      // 2. If empty or failed, fetch orders via REST API
+      if (rawOrders.length === 0) {
+        try {
+          const oRes = await fetch(`${FIRESTORE_REST_BASE}/cafeterias/${cafeId}/orders`);
+          if (oRes.ok) {
+            const oJson = await oRes.json();
+            for (const oDoc of (oJson.documents || [])) {
+              const id = oDoc.name.split("/").pop();
+              const ordData = parseFirestoreFields(oDoc.fields);
+              rawOrders.push({ id, data: ordData });
+            }
+          }
+        } catch (oErr) {
+          console.warn("REST orders note for", cafeId, oErr);
+        }
+      }
+
+      // Process orders
+      rawOrders.forEach(({ id, data: ord }) => {
+        if (ord.status === "PAID") {
+          paidOrdersCount++;
+          const subtotal = Number(ord.subtotal) || 0;
+          const fee = Number(ord.serviceFee) || Math.round(subtotal * 0.01);
+          const curr = ord.currency || "د.ع";
+
+          if (curr === "$" || curr === "USD") {
+            totalSalesUsd += subtotal;
+            totalFeeUsd += fee;
+          } else {
+            totalSalesIqd += subtotal;
+            totalFeeIqd += fee;
+          }
+
+          paidOrdersList.push({
+            id: id,
+            tableNumber: ord.tableNumber || 1,
+            customerName: ord.customerName || 'زبون',
+            subtotal: subtotal,
+            fee: fee,
+            currency: curr,
+            timestamp: ord.timestamp || (ord.createdAt ? Number(ord.createdAt) : Date.now()),
+            itemsSummary: ord.itemsSummary || ''
+          });
+        }
+      });
+
+      // Collections
       let collectedIqd = 0;
       let collectedUsd = 0;
       const collectionsList = [];
 
-      try {
-        const collectionsSnap = await db.collection("cafeterias").document(cafeId).collection("fee_collections").orderBy("timestamp", "desc").get();
-        collectionsSnap.forEach(cDoc => {
-          const col = cDoc.data();
-          const amt = Number(col.amount) || 0;
-          const curr = col.currency || "د.ع";
-          if (curr === "$" || curr === "USD") {
-            collectedUsd += amt;
-          } else {
-            collectedIqd += amt;
+      let rawCollections = [];
+      if (db) {
+        try {
+          const colSnap = await db.collection("cafeterias").doc(cafeId).collection("fee_collections").get();
+          if (colSnap && !colSnap.empty) {
+            colSnap.forEach(cDoc => {
+              rawCollections.push({ id: cDoc.id, data: cDoc.data() });
+            });
           }
-          collectionsList.push({
-            id: cDoc.id,
-            ...col
-          });
-        });
-      } catch (e) {
-        console.warn("Notice loading fee collections for", cafeId, e);
+        } catch (cErr) {
+          console.warn("SDK collections note for", cafeId, cErr);
+        }
       }
+
+      if (rawCollections.length === 0) {
+        try {
+          const colRes = await fetch(`${FIRESTORE_REST_BASE}/cafeterias/${cafeId}/fee_collections`);
+          if (colRes.ok) {
+            const colJson = await colRes.json();
+            for (const cDoc of (colJson.documents || [])) {
+              const id = cDoc.name.split("/").pop();
+              const colData = parseFirestoreFields(cDoc.fields);
+              rawCollections.push({ id, data: colData });
+            }
+          }
+        } catch (_) {}
+      }
+
+      rawCollections.forEach(({ id, data: col }) => {
+        const amt = Number(col.amount) || 0;
+        const curr = col.currency || "د.ع";
+        if (curr === "$" || curr === "USD") {
+          collectedUsd += amt;
+        } else {
+          collectedIqd += amt;
+        }
+        collectionsList.push({
+          id: id,
+          ...col
+        });
+      });
+
+      // Sort collections newest first
+      collectionsList.sort((a, b) => (Number(b.timestamp) || 0) - (Number(a.timestamp) || 0));
 
       const remainingIqd = Math.max(0, totalFeeIqd - collectedIqd);
       const remainingUsd = Math.max(0, totalFeeUsd - collectedUsd);
@@ -1376,7 +1458,7 @@
     }
 
     document.getElementById('btnConfirmCollect').addEventListener('click', async () => {
-      if (!targetCollectCafe || !db) return;
+      if (!targetCollectCafe) return;
       const amtInput = document.getElementById('modalAmount').value.trim();
       const amount = Number(amtInput);
       if (!amount || amount <= 0) {
@@ -1404,15 +1486,42 @@
           collectedBy: AUTHORIZED_EMAIL
         };
 
-        // 1. Add record to subcollection
-        await db.collection("cafeterias").document(targetCollectCafe.id)
-                .collection("fee_collections").add(record);
+        let saved = false;
 
-        // 2. Update cafeteria document summary
-        await db.collection("cafeterias").document(targetCollectCafe.id).set({
-          lastFeePaymentTimestamp: Date.now(),
-          lastFeePaymentAmount: amount
-        }, { merge: true });
+        // 1. Try Firestore SDK (.doc)
+        if (db) {
+          try {
+            await db.collection("cafeterias").doc(targetCollectCafe.id)
+                    .collection("fee_collections").add(record);
+            await db.collection("cafeterias").doc(targetCollectCafe.id).set({
+              lastFeePaymentTimestamp: Date.now(),
+              lastFeePaymentAmount: amount
+            }, { merge: true });
+            saved = true;
+          } catch (sdkErr) {
+            console.warn("SDK payment save failed, attempting REST API fallback:", sdkErr);
+          }
+        }
+
+        // 2. If SDK failed or unauthenticated, save via REST API
+        if (!saved) {
+          const postUrl = `${FIRESTORE_REST_BASE}/cafeterias/${targetCollectCafe.id}/fee_collections`;
+          await fetch(postUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fields: {
+                amount: { doubleValue: amount },
+                currency: { stringValue: currency },
+                method: { stringValue: method },
+                reference: { stringValue: reference },
+                notes: { stringValue: notes },
+                timestamp: { integerValue: String(Date.now()) },
+                collectedBy: { stringValue: AUTHORIZED_EMAIL }
+              }
+            })
+          });
+        }
 
         closeCollectModal();
         showToast(`تم تسجيل تحصيل مبلغ ${formatMoney(amount, currency)} بنجاح! 💵`);
@@ -1521,7 +1630,7 @@
     // 9. Toggle Cafe Status (Suspend / Activate)
     async function toggleCafeStatus(cafeId) {
       const cafe = currentCafes.find(c => c.id === cafeId);
-      if (!cafe || !db) return;
+      if (!cafe) return;
 
       const isCurrentlySuspended = cafe.accountStatus === 'suspended';
       const actionText = isCurrentlySuspended ? "تنشيط حساب" : "إيقاف مؤقت لحساب";
@@ -1530,10 +1639,29 @@
       if (!confirm(`هل أنت متأكد من ${actionText} "${cafe.cafeName}"؟`)) return;
 
       try {
-        await db.collection("cafeterias").document(cafeId).set({
-          accountStatus: newStatus,
-          updatedAt: Date.now()
-        }, { merge: true });
+        let updated = false;
+        if (db) {
+          try {
+            await db.collection("cafeterias").doc(cafeId).set({
+              accountStatus: newStatus,
+              updatedAt: Date.now()
+            }, { merge: true });
+            updated = true;
+          } catch(e) {}
+        }
+        if (!updated) {
+          const patchUrl = `${FIRESTORE_REST_BASE}/cafeterias/${cafeId}?updateMask.fieldPaths=accountStatus&updateMask.fieldPaths=updatedAt`;
+          await fetch(patchUrl, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fields: {
+                accountStatus: { stringValue: newStatus },
+                updatedAt: { integerValue: String(Date.now()) }
+              }
+            })
+          });
+        }
 
         cafe.accountStatus = newStatus;
         showToast(`تم ${actionText} الكافتيريا بنجاح!`);
