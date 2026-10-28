@@ -556,7 +556,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteTableSession(orders: List<OrderRecord>) {
         viewModelScope.launch {
             orders.forEach { order ->
-                repository.deleteOrder(order)
+                if (order.status != OrderStatus.PAID) {
+                    repository.deleteOrder(order)
+                }
             }
         }
     }

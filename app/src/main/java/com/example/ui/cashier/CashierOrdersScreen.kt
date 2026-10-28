@@ -30,10 +30,12 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
@@ -1677,18 +1679,24 @@ fun UnifiedTableSessionCard(
                             }
                         }
 
-                        IconButton(
-                            onClick = onDeleteSession,
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
+                                .clip(RoundedCornerShape(8.dp))
                                 .background(CafeSurfaceVariant)
+                                .padding(horizontal = 8.dp, vertical = 6.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "مسح السجل",
-                                tint = Color(0xFFFF6B6B),
-                                modifier = Modifier.size(18.dp)
+                                imageVector = Icons.Default.Security,
+                                contentDescription = "محفوظة في الأرشيف",
+                                tint = CafeGold,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "محفوظة في الأرشيف 🔒",
+                                fontSize = 10.sp,
+                                color = CafeTextSecondary
                             )
                         }
                     }

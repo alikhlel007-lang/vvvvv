@@ -41,16 +41,27 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.RoundedCorner
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Warning
+import com.example.data.model.OrderStatus
+import com.example.util.OrderFeeCalculator
+import com.example.util.ReceiptPrinter
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -112,6 +123,8 @@ fun SettingsScreen(viewModel: MainViewModel) {
     val tables by viewModel.tables.collectAsState()
     val categories by viewModel.categories.collectAsState()
     val menuItems by viewModel.menuItems.collectAsState()
+    val orders by viewModel.orders.collectAsState()
+    var invoiceSearchQuery by remember { mutableStateOf("") }
 
     // Dynamic Theme Customization States
     val themeAccentHex by viewModel.themeAccentColorHex.collectAsState()
@@ -806,7 +819,279 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 }
 
                 // ==========================================
-                // 5. تسجيل الخروج
+                // 5. أرشيف الفواتير المسددة (سجل دائم ومحمي)
+                // ==========================================
+                item {
+                    val isExpanded = expandedSection == "paid_invoices_archive"
+                    val paidOrders = remember(orders) {
+                        orders.filter { it.status == OrderStatus.PAID }.sortedByDescending { it.timestamp }
+                    }
+                    val filteredPaidOrders = remember(paidOrders, invoiceSearchQuery) {
+                        if (invoiceSearchQuery.isBlank()) {
+                            paidOrders
+                        } else {
+                            val q = invoiceSearchQuery.trim().lowercase()
+                            paidOrders.filter {
+                                "طاولة ${it.tableNumber}".lowercase().contains(q) ||
+                                it.tableNumber.toString().contains(q) ||
+                                it.customerName.lowercase().contains(q) ||
+                                it.itemsSummary.lowercase().contains(q)
+                            }
+                        }
+                    }
+
+                    val totalPaidAmount = remember(paidOrders) { paidOrders.sumOf { it.totalPrice } }
+                    val totalServiceFees = remember(paidOrders) { paidOrders.sumOf { it.serviceFee } }
+                    val mainCurrency = paidOrders.firstOrNull()?.currency ?: "د.ع"
+
+                    SettingsOptionCard(
+                        title = "أرشيف الفواتير المسددة (سجل دائم)",
+                        subtitle = "حفظ محمي لجميع الفواتير المسددة - الحذف من لوحة المطور حصراً",
+                        icon = Icons.Default.Receipt,
+                        accentColor = CafeGold,
+                        isExpanded = isExpanded,
+                        onHeaderClick = {
+                            expandedSection = if (isExpanded) null else "paid_invoices_archive"
+                        }
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                            // 1. إحصائيات سريعة للفواتير المحفوظة
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(CafeInputBg)
+                                    .border(1.dp, CafeInputBorder, RoundedCornerShape(14.dp))
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceAround,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("الفواتير المحفوظة", fontSize = 11.sp, color = CafeTextSecondary)
+                                    Text("${paidOrders.size}", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = CafeCyanPrimary)
+                                }
+                                Box(modifier = Modifier.width(1.dp).height(28.dp).background(CafeInputBorder))
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("المبيعات المسددة", fontSize = 11.sp, color = CafeTextSecondary)
+                                    Text(
+                                        OrderFeeCalculator.formatPrice(totalPaidAmount, mainCurrency),
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color(0xFF4CAF50)
+                                    )
+                                }
+                                Box(modifier = Modifier.width(1.dp).height(28.dp).background(CafeInputBorder))
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("رسوم الخدمة (1%)", fontSize = 11.sp, color = CafeTextSecondary)
+                                    Text(
+                                        OrderFeeCalculator.formatPrice(totalServiceFees, mainCurrency),
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = CafeGold
+                                    )
+                                }
+                            }
+
+                            // 2. تنبيه الحماية والأمان الصارم
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color(0xFF2A2004))
+                                    .border(1.dp, CafeGold.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                                    .padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Security,
+                                    contentDescription = "حماية الحسابات",
+                                    tint = CafeGold,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "تنبيه نظام: يتم حفظ الفواتير المسددة هنا تلقائياً ولا يمكن حذفها من التطبيق. حذف الفواتير وتصفية الحسابات يتم حصراً من لوحة تحكم المطور/الإدارة لضمان نزاهة التدقيق وتتبع رسوم الخدمة (1%).",
+                                    fontSize = 11.sp,
+                                    color = CafeGold,
+                                    lineHeight = 16.sp
+                                )
+                            }
+
+                            // 3. شريط البحث
+                            OutlinedTextField(
+                                value = invoiceSearchQuery,
+                                onValueChange = { invoiceSearchQuery = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                placeholder = { Text("بحث برقم الطاولة أو اسم الزبون أو المادة...", fontSize = 12.sp, color = CafeTextSecondary) },
+                                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = CafeTextSecondary) },
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = CafeGold,
+                                    unfocusedBorderColor = CafeInputBorder,
+                                    focusedContainerColor = CafeInputBg,
+                                    unfocusedContainerColor = CafeInputBg,
+                                    focusedTextColor = CafeTextPrimary,
+                                    unfocusedTextColor = CafeTextPrimary
+                                )
+                            )
+
+                            // 4. قائمة الفواتير
+                            if (filteredPaidOrders.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(CafeInputBg)
+                                        .padding(24.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(
+                                            imageVector = Icons.Default.Receipt,
+                                            contentDescription = null,
+                                            tint = CafeTextSecondary,
+                                            modifier = Modifier.size(36.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = if (paidOrders.isEmpty()) "لا توجد فواتير مسددة محفوظة حتى الآن" else "لا توجد نتائج مطابقة للبحث",
+                                            fontSize = 12.sp,
+                                            color = CafeTextSecondary
+                                        )
+                                    }
+                                }
+                            } else {
+                                val dateFormat = remember { SimpleDateFormat("yyyy/MM/dd • hh:mm a", Locale("ar")) }
+                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    filteredPaidOrders.forEach { invoice ->
+                                        Card(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            shape = RoundedCornerShape(12.dp),
+                                            colors = CardDefaults.cardColors(containerColor = CafeSurfaceVariant),
+                                            border = BorderStroke(1.dp, CafeCardBorder)
+                                        ) {
+                                            Column(modifier = Modifier.padding(12.dp)) {
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .clip(RoundedCornerShape(8.dp))
+                                                                .background(CafeCyanPrimary)
+                                                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                                                        ) {
+                                                            Text(
+                                                                text = "طاولة ${invoice.tableNumber}",
+                                                                fontSize = 11.sp,
+                                                                fontWeight = FontWeight.ExtraBold,
+                                                                color = Color(0xFF032125)
+                                                            )
+                                                        }
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        Text(
+                                                            text = invoice.customerName.ifBlank { "زبون" },
+                                                            fontSize = 12.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = CafeTextPrimary
+                                                        )
+                                                    }
+
+                                                    Text(
+                                                        text = dateFormat.format(Date(invoice.timestamp)),
+                                                        fontSize = 10.sp,
+                                                        color = CafeTextSecondary
+                                                    )
+                                                }
+
+                                                Spacer(modifier = Modifier.height(6.dp))
+                                                Text(
+                                                    text = invoice.itemsSummary.ifBlank { "تفاصيل الطلب المسدد" },
+                                                    fontSize = 11.sp,
+                                                    color = CafeTextSecondary,
+                                                    lineHeight = 15.sp
+                                                )
+
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                HorizontalDivider(color = CafeCardBorder, thickness = 0.5.dp)
+                                                Spacer(modifier = Modifier.height(8.dp))
+
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Column {
+                                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                                            Text("المجموع: ", fontSize = 11.sp, color = CafeTextSecondary)
+                                                            Text(
+                                                                text = OrderFeeCalculator.formatPrice(invoice.totalPrice, invoice.currency),
+                                                                fontSize = 13.sp,
+                                                                fontWeight = FontWeight.ExtraBold,
+                                                                color = Color(0xFF4CAF50)
+                                                            )
+                                                        }
+                                                        Text(
+                                                            text = "رسوم الخدمة (1%): ${OrderFeeCalculator.formatPrice(invoice.serviceFee, invoice.currency)}",
+                                                            fontSize = 10.sp,
+                                                            color = CafeGold
+                                                        )
+                                                    }
+
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        // زر طباعة الفاتورة
+                                                        Button(
+                                                            onClick = {
+                                                                ReceiptPrinter.printInvoice(
+                                                                    context = context,
+                                                                    tableNumber = invoice.tableNumber,
+                                                                    orders = listOf(invoice),
+                                                                    cafeName = cafeName
+                                                                )
+                                                                Toast.makeText(context, "جاري إرسال الفاتورة إلى الطابعة 🖨️", Toast.LENGTH_SHORT).show()
+                                                            },
+                                                            colors = ButtonDefaults.buttonColors(
+                                                                containerColor = CafeCyanPrimary,
+                                                                contentColor = Color(0xFF032125)
+                                                            ),
+                                                            shape = RoundedCornerShape(8.dp),
+                                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 5.dp)
+                                                        ) {
+                                                            Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                            Spacer(modifier = Modifier.width(4.dp))
+                                                            Text("طباعة", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                        }
+
+                                                        Spacer(modifier = Modifier.width(6.dp))
+
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .clip(RoundedCornerShape(6.dp))
+                                                                .background(CafeInputBg)
+                                                                .padding(horizontal = 6.dp, vertical = 4.dp)
+                                                        ) {
+                                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                                Icon(Icons.Default.Lock, contentDescription = null, tint = CafeTextSecondary, modifier = Modifier.size(11.dp))
+                                                                Spacer(modifier = Modifier.width(2.dp))
+                                                                Text("محمية", fontSize = 9.sp, color = CafeTextSecondary)
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ==========================================
+                // 6. تسجيل الخروج
                 // ==========================================
                 item {
                     val isExpanded = expandedSection == "logout"

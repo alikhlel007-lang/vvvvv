@@ -909,6 +909,11 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
     }
 
     suspend fun deleteOrder(order: OrderRecord) {
+        if (order.status == OrderStatus.PAID) {
+            // حماية صارمة: لا يمكن حذف الفواتير المسددة من داخل تطبيق أندرويد
+            // الحذف يتم حصراً من لوحة تحكم المطور/الإدارة لضمان تدقيق الحسابات والرسوم
+            return
+        }
         dao.deleteOrder(order.toEntity())
         try {
             firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")?.document(order.id)?.delete()

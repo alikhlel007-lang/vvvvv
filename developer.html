@@ -1603,16 +1603,25 @@
             ${cafe.paidOrdersList.map(ord => {
               const dateStr = new Date(ord.timestamp).toLocaleString('ar-IQ', { dateStyle: 'medium', timeStyle: 'short' });
               return `
-                <div class="history-item">
-                  <div>
-                    <div style="font-weight: 800; font-size: 12px; color: var(--text-primary);">
-                      طاولة ${ord.tableNumber} • ${escapeHtml(ord.customerName)}
+                <div class="history-item" style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                  <div style="flex: 1;">
+                    <div style="font-weight: 800; font-size: 12px; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                      <span style="background: rgba(0, 223, 192, 0.15); color: var(--cyan-primary); padding: 2px 6px; border-radius: 4px;">طاولة ${ord.tableNumber}</span>
+                      <span>${escapeHtml(ord.customerName)}</span>
+                      <span style="color: var(--text-muted); font-size: 10px; margin-right: auto;">${dateStr}</span>
                     </div>
-                    <div style="color: var(--text-secondary); margin-top: 2px;">
-                      مجموع الطلب: <b>${formatMoney(ord.subtotal, ord.currency)}</b> ⬅ رسوم الخدمة (1%): <b style="color: var(--gold);">${formatMoney(ord.fee, ord.currency)}</b>
+                    <div style="color: var(--text-secondary); margin-top: 4px; font-size: 11px;">
+                      مجموع الطلب: <b>${formatMoney(ord.subtotal, ord.currency)}</b> • رسوم الخدمة (1%): <b style="color: var(--gold);">${formatMoney(ord.fee, ord.currency)}</b>
                     </div>
+                    ${ord.itemsSummary ? `<div style="color: var(--text-muted); font-size: 10px; margin-top: 2px;">${escapeHtml(ord.itemsSummary)}</div>` : ''}
                   </div>
-                  <div style="color: var(--text-muted); font-size: 10px;">${dateStr}</div>
+                  <button onclick="deleteInvoice('${cafe.id}', '${ord.id}', ${ord.subtotal})" 
+                          title="حذف هذه الفاتورة نهائياً من قاعدة البيانات والتطبيق"
+                          style="background: rgba(255, 82, 82, 0.12); border: 1px solid rgba(255, 82, 82, 0.4); color: #FF5252; padding: 6px 10px; border-radius: 8px; cursor: pointer; font-family: 'Cairo', sans-serif; font-size: 11px; font-weight: bold; white-space: nowrap; transition: 0.2s;"
+                          onmouseover="this.style.background='rgba(255, 82, 82, 0.25)'"
+                          onmouseout="this.style.background='rgba(255, 82, 82, 0.12)'">
+                    <i class="fa-solid fa-trash"></i> حذف الفاتورة
+                  </button>
                 </div>
               `;
             }).join('')}
@@ -1621,6 +1630,39 @@
       }
 
       document.getElementById('historyModal').style.display = 'flex';
+    }
+
+    // Delete Invoice strictly from Developer Dashboard
+    async function deleteInvoice(cafeId, orderId, subtotal) {
+      if (!confirm("⚠️ تأكيد الحذف:\nهل أنت متأكد من رغبتك في حذف هذه الفاتورة نهائياً؟\nسيتم حذفها من قاعدة البيانات وتحديث رسوم الـ 1% ومبيعات الكافتيريا، كما سينعكس الحذف فوراً ويختفي من تطبيق الكافتيريا.")) {
+        return;
+      }
+
+      try {
+        let deleted = false;
+        if (db) {
+          try {
+            await db.collection("cafeterias").doc(cafeId).collection("orders").doc(orderId).delete();
+            deleted = true;
+          } catch (e) {
+            console.warn("SDK delete note:", e);
+          }
+        }
+
+        if (!deleted) {
+          const delUrl = `${FIRESTORE_REST_BASE}/cafeterias/${cafeId}/orders/${orderId}`;
+          const res = await fetch(delUrl, { method: "DELETE" });
+          if (!res.ok && res.status !== 404) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+        }
+
+        showToast("تم حذف الفاتورة بنجاح وانعكس التحديث على التطبيق! 🗑️");
+        closeHistoryModal();
+        await loadDashboardData();
+      } catch (err) {
+        alert("تعذر حذف الفاتورة: " + err.message);
+      }
     }
 
     function closeHistoryModal() {
