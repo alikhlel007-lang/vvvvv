@@ -98,6 +98,12 @@ interface CafeDao {
     @Delete
     suspend fun deleteOrder(order: OrderEntity)
 
+    @Query("SELECT * FROM orders WHERE status = 'PAID'")
+    suspend fun getPaidOrdersSync(): List<OrderEntity>
+
+    @Query("DELETE FROM orders WHERE status = 'PAID'")
+    suspend fun deleteAllPaidOrders()
+
     // Users
     @Query("SELECT * FROM users WHERE email = :email LIMIT 1")
     suspend fun getUserByEmail(email: String): UserEntity?

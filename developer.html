@@ -1599,7 +1599,7 @@
       document.getElementById('historyModal').style.display = 'flex';
     }
 
-    // 8. View Orders 1% Breakdown
+    // 8. View Orders 1% Breakdown with WhatsApp Approval Code System
     function viewOrders(cafeId) {
       const cafe = currentCafes.find(c => c.id === cafeId);
       if (!cafe) return;
@@ -1616,33 +1616,74 @@
         `;
       } else {
         body.innerHTML = `
-          <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; display: flex; justify-content: space-between;">
-            <span>عدد الفواتير المسددة: <b>${cafe.paidOrdersList.length}</b></span>
-            <span>مجموع عمولة الـ 1%: <b style="color: var(--gold);">${formatMoney(cafe.totalFeeIqd, "د.ع")}</b></span>
+          <!-- Security Code System Notice -->
+          <div style="background: rgba(0, 223, 192, 0.08); border: 1px solid rgba(0, 223, 192, 0.3); border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; font-size: 11px; line-height: 1.6;">
+            <div style="font-weight: 800; color: var(--cyan-primary); display: flex; align-items: center; gap: 6px; margin-bottom: 3px;">
+              <i class="fa-solid fa-shield-halved"></i> نظام كود الموافقة لحذف الفواتير المسددة (واتساب: 07734524730)
+            </div>
+            <div style="color: var(--text-secondary);">
+              عند رغبة صاحب الكافتيريا بحذف فاتورة، يضغط على «طلب حذف 🔒» في تطبيقه ليراسلك على الواتساب. يمكنك تزويده بـ <b>كود الموافقة المخصص</b> أدناه لكل فاتورة، أو كود الطوارئ الرئيسي (<b style="color: var(--gold);">132132</b>) لإتمام الحذف من التطبيق.
+            </div>
+          </div>
+
+          <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <span>عدد الفواتير المسددة: <b>${cafe.paidOrdersList.length}</b> • عمولة الـ 1%: <b style="color: var(--gold);">${formatMoney(cafe.totalFeeIqd, "د.ع")}</b></span>
+            ${cafe.paidOrdersList.length > 0 ? `
+              <button onclick="deleteAllInvoicesForCafe('${cafe.id}', ${cafe.paidOrdersList.length})"
+                      title="حذف كافة فواتير هذه الكافتيريا وتصفير الأرشيف بالكامل"
+                      style="background: rgba(255, 82, 82, 0.15); border: 1.5px solid #FF5252; color: #FF5252; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-family: 'Cairo', sans-serif; font-size: 11px; font-weight: 800; transition: 0.2s;"
+                      onmouseover="this.style.background='rgba(255, 82, 82, 0.3)'"
+                      onmouseout="this.style.background='rgba(255, 82, 82, 0.15)'">
+                <i class="fa-solid fa-dumpster-fire"></i> حذف كافة فواتير الكافتيريا (${cafe.paidOrdersList.length}) ⚠️
+              </button>
+            ` : ''}
           </div>
           <div style="max-height: 420px; overflow-y: auto;">
             ${cafe.paidOrdersList.map(ord => {
               const dateStr = new Date(ord.timestamp).toLocaleString('ar-IQ', { dateStyle: 'medium', timeStyle: 'short' });
+              const approvalCode = generateInvoiceCode(ord.id);
+              const waShareText = encodeURIComponent(`كود الموافقة لحذف فاتورة طاولة ${ord.tableNumber} (رقم: ${ord.id}) في كافتيريا ${cafe.cafeName} هو: ${approvalCode}`);
               return `
-                <div class="history-item" style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
-                  <div style="flex: 1;">
-                    <div style="font-weight: 800; font-size: 12px; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
-                      <span style="background: rgba(0, 223, 192, 0.15); color: var(--cyan-primary); padding: 2px 6px; border-radius: 4px;">طاولة ${ord.tableNumber}</span>
-                      <span>${escapeHtml(ord.customerName)}</span>
-                      <span style="color: var(--text-muted); font-size: 10px; margin-right: auto;">${dateStr}</span>
+                <div class="history-item" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; background: rgba(3, 20, 23, 0.6); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px;">
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+                    <div style="flex: 1;">
+                      <div style="font-weight: 800; font-size: 13px; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                        <span style="background: rgba(0, 223, 192, 0.15); color: var(--cyan-primary); padding: 2px 7px; border-radius: 6px; font-size: 11px;">طاولة ${ord.tableNumber}</span>
+                        <span>${escapeHtml(ord.customerName)}</span>
+                        <span style="color: var(--text-muted); font-size: 10px; margin-right: auto;">${dateStr}</span>
+                      </div>
+                      <div style="color: var(--text-secondary); margin-top: 4px; font-size: 11px;">
+                        مجموع الطلب: <b>${formatMoney(ord.subtotal, ord.currency)}</b> • عمولة الـ 1%: <b style="color: var(--gold);">${formatMoney(ord.fee, ord.currency)}</b>
+                      </div>
+                      ${ord.itemsSummary ? `<div style="color: var(--text-muted); font-size: 10px; margin-top: 2px;">${escapeHtml(ord.itemsSummary)}</div>` : ''}
                     </div>
-                    <div style="color: var(--text-secondary); margin-top: 4px; font-size: 11px;">
-                      مجموع الطلب: <b>${formatMoney(ord.subtotal, ord.currency)}</b> • رسوم الخدمة (1%): <b style="color: var(--gold);">${formatMoney(ord.fee, ord.currency)}</b>
-                    </div>
-                    ${ord.itemsSummary ? `<div style="color: var(--text-muted); font-size: 10px; margin-top: 2px;">${escapeHtml(ord.itemsSummary)}</div>` : ''}
+                    <button onclick="deleteInvoice('${cafe.id}', '${ord.id}', ${ord.subtotal})" 
+                            title="حذف هذه الفاتورة نهائياً من قاعدة البيانات والتطبيق"
+                            style="background: rgba(255, 82, 82, 0.12); border: 1px solid rgba(255, 82, 82, 0.4); color: #FF5252; padding: 6px 10px; border-radius: 8px; cursor: pointer; font-family: 'Cairo', sans-serif; font-size: 11px; font-weight: bold; white-space: nowrap; transition: 0.2s;"
+                            onmouseover="this.style.background='rgba(255, 82, 82, 0.25)'"
+                            onmouseout="this.style.background='rgba(255, 82, 82, 0.12)'">
+                      <i class="fa-solid fa-trash"></i> حذف من اللوحة
+                    </button>
                   </div>
-                  <button onclick="deleteInvoice('${cafe.id}', '${ord.id}', ${ord.subtotal})" 
-                          title="حذف هذه الفاتورة نهائياً من قاعدة البيانات والتطبيق"
-                          style="background: rgba(255, 82, 82, 0.12); border: 1px solid rgba(255, 82, 82, 0.4); color: #FF5252; padding: 6px 10px; border-radius: 8px; cursor: pointer; font-family: 'Cairo', sans-serif; font-size: 11px; font-weight: bold; white-space: nowrap; transition: 0.2s;"
-                          onmouseover="this.style.background='rgba(255, 82, 82, 0.25)'"
-                          onmouseout="this.style.background='rgba(255, 82, 82, 0.12)'">
-                    <i class="fa-solid fa-trash"></i> حذف الفاتورة
-                  </button>
+
+                  <!-- كود الموافقة المخصص للفاتورة ومشاركته عبر واتساب -->
+                  <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: rgba(3, 14, 16, 0.85); padding: 8px 10px; border-radius: 8px; border: 1px dashed rgba(255, 179, 0, 0.4);">
+                    <span style="font-size: 11px; color: var(--text-secondary);">
+                      <i class="fa-solid fa-key" style="color: var(--gold);"></i> كود الموافقة لحذف الفاتورة:
+                    </span>
+                    <span style="background: rgba(255, 179, 0, 0.15); border: 1px solid var(--gold); color: var(--gold); padding: 2px 10px; border-radius: 6px; font-weight: 900; font-family: monospace; font-size: 14px; letter-spacing: 2px;">${approvalCode}</span>
+                    <button onclick="navigator.clipboard.writeText('${approvalCode}'); showToast('تم نسخ كود الحذف (${approvalCode}) بنجاح 📋');"
+                            title="نسخ الكود"
+                            style="background: rgba(0, 223, 192, 0.15); border: 1px solid var(--cyan-primary); color: var(--cyan-primary); padding: 3px 8px; border-radius: 6px; font-size: 10px; cursor: pointer; font-family: 'Cairo', sans-serif; font-weight: bold;">
+                      <i class="fa-solid fa-copy"></i> نسخ الكود
+                    </button>
+                    <a href="https://wa.me/?text=${waShareText}"
+                       target="_blank"
+                       title="إرسال الكود لصاحب الكافتيريا عبر واتساب"
+                       style="background: rgba(37, 211, 102, 0.15); border: 1px solid #25D366; color: #25D366; padding: 3px 8px; border-radius: 6px; font-size: 10px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; font-family: 'Cairo', sans-serif; font-weight: bold;">
+                      <i class="fa-brands fa-whatsapp"></i> إرسال عبر واتساب
+                    </a>
+                  </div>
                 </div>
               `;
             }).join('')}
@@ -1690,6 +1731,51 @@
         await loadDashboardData();
       } catch (err) {
         alert("تعذر حذف الفاتورة: " + err.message);
+      }
+    }
+
+    // Delete All Invoices for a specific cafeteria (Developer Dashboard)
+    async function deleteAllInvoicesForCafe(cafeId, count) {
+      if (!confirm(`⚠️ تحذير شديد الخطورة:\nهل أنت متأكد من رغبتك في حذف كافة الفواتير المسددة (${count} فاتورة) لهذه الكافتيريا نهائياً؟\nسيتم مسح الفواتير من قاعدة البيانات وتصفير عمولة الـ 1% المتراكمة وينعكس ذلك فوراً على تطبيق الكافتيريا!`)) {
+        return;
+      }
+      if (!confirm(`تأكيد نهائي: هل تود المتابعة ومسح جميع الفواتير؟ لا يمكن التراجع عن هذا الإجراء إطلاقاً.`)) {
+        return;
+      }
+
+      try {
+        const idToken = await ensureFirebaseAuth();
+        const cafe = currentCafes.find(c => c.id === cafeId);
+        if (!cafe || !cafe.paidOrdersList || cafe.paidOrdersList.length === 0) {
+          alert("لا توجد فواتير مسددة لحذفها.");
+          return;
+        }
+
+        showToast("جاري مسح جميع الفواتير من السيرفر...");
+
+        for (const ord of cafe.paidOrdersList) {
+          let deleted = false;
+          if (db && auth && auth.currentUser) {
+            try {
+              await db.collection("cafeterias").doc(cafeId).collection("orders").doc(ord.id).delete();
+              deleted = true;
+            } catch (e) {
+              console.warn("SDK delete note:", e);
+            }
+          }
+          if (!deleted) {
+            const delUrl = `${FIRESTORE_REST_BASE}/cafeterias/${cafeId}/orders/${ord.id}?key=AIzaSyAfudWfJUQBYlONgyVs50rRAEadPB4h1E8`;
+            const headers = {};
+            if (idToken) headers["Authorization"] = `Bearer ${idToken}`;
+            await fetch(delUrl, { method: "DELETE", headers });
+          }
+        }
+
+        showToast("تم حذف جميع الفواتير بنجاح وتصفير الأرشيف بالكامل! 🗑️");
+        closeHistoryModal();
+        await loadDashboardData();
+      } catch (err) {
+        alert("تعذر تصفير الفواتير: " + err.message);
       }
     }
 
@@ -1774,6 +1860,26 @@
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
+    }
+
+    // Invoice Security Approval Code System
+    const DEVELOPER_PHONE = "07734524730";
+    const DEVELOPER_WHATSAPP_INTL = "9647734524730";
+    const MASTER_OVERRIDE_PIN = "132132";
+
+    function stringHashCode(s) {
+      let h = 0;
+      for (let i = 0; i < s.length; i++) {
+        h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+      }
+      return h;
+    }
+
+    function generateInvoiceCode(orderId) {
+      const s = String(orderId) + "_qcafe_security_132";
+      const hash = Math.abs(stringHashCode(s));
+      const codeNum = 100000 + (hash % 900000);
+      return String(codeNum);
     }
 
     // Initialize check on page load

@@ -1,6 +1,7 @@
 package com.example.ui.cashier
 
 import android.widget.Toast
+import com.example.ui.components.InvoiceDeletionDialog
 import com.example.ui.components.MenuCashierSwitcher
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -119,6 +120,7 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
     // بعد التسديد تعود الطاولة نظيفة وجاهزة تماماً لاستقبال طلبات جديدة
     var showActiveTablesDialog by remember { mutableStateOf(false) }
     var showRevenueDetailsDialog by remember { mutableStateOf(false) }
+    var orderForAuthorizedDeletion by remember { mutableStateOf<com.example.data.model.OrderRecord?>(null) }
 
     // تجميع الطلبات في جلسات ومحطات مستقلة لكل طاولة
     val tableSessions = remember(orders) {
@@ -891,11 +893,35 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                                     "تم مسح سجل طاولة ${session.tableNumber}",
                                     Toast.LENGTH_SHORT
                                 ).show()
+                            },
+                            onRequestDeletePaidOrder = { order ->
+                                orderForAuthorizedDeletion = order
                             }
                         )
                     }
                 }
             }
+        }
+
+        // نافذة التحقق من كود الموافقة لحذف فاتورة مسددة
+        val toDelete = orderForAuthorizedDeletion
+        if (toDelete != null) {
+            InvoiceDeletionDialog(
+                order = toDelete,
+                cafeName = cafeName,
+                onDismiss = { orderForAuthorizedDeletion = null },
+                onConfirmDelete = { code, onError ->
+                    viewModel.deleteAuthorizedPaidOrder(
+                        order = toDelete,
+                        code = code,
+                        onSuccess = {
+                            Toast.makeText(context, "تم حذف الفاتورة بنجاح بعد التحقق من كود الموافقة 🗑️", Toast.LENGTH_LONG).show()
+                            orderForAuthorizedDeletion = null
+                        },
+                        onError = onError
+                    )
+                }
+            )
         }
     }
 }
@@ -988,7 +1014,8 @@ fun UnifiedTableSessionCard(
     onRejectSession: () -> Unit,
     onPaySingleOrder: (OrderRecord) -> Unit,
     onPayAllSession: (List<OrderRecord>) -> Unit,
-    onDeleteSession: () -> Unit
+    onDeleteSession: () -> Unit,
+    onRequestDeletePaidOrder: ((com.example.data.model.OrderRecord) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val unpaidOrders = session.orders.filter { it.status != OrderStatus.PAID }
@@ -1681,23 +1708,50 @@ fun UnifiedTableSessionCard(
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(CafeSurfaceVariant)
-                                .padding(horizontal = 8.dp, vertical = 6.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Security,
-                                contentDescription = "محفوظة في الأرشيف",
-                                tint = CafeGold,
-                                modifier = Modifier.size(13.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "محفوظة في الأرشيف 🔒",
-                                fontSize = 10.sp,
-                                color = CafeTextSecondary
-                            )
+                            if (onRequestDeletePaidOrder != null && session.orders.isNotEmpty()) {
+                                Button(
+                                    onClick = {
+                                        val targetPaid = session.orders.firstOrNull { it.status == OrderStatus.PAID } ?: session.orders.firstOrNull()
+                                        if (targetPaid != null) {
+                                            onRequestDeletePaidOrder(targetPaid)
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFFC62828).copy(alpha = 0.2f),
+                                        contentColor = Color(0xFFFF5252)
+                                    ),
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                    border = BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.4f))
+                                ) {
+                                    Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(12.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("طلب حذف 🔒", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(CafeSurfaceVariant)
+                                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Security,
+                                    contentDescription = "محفوظة في الأرشيف",
+                                    tint = CafeGold,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "محفوظة في الأرشيف 🔒",
+                                    fontSize = 10.sp,
+                                    color = CafeTextSecondary
+                                )
+                            }
                         }
                     }
                 }

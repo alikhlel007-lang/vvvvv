@@ -563,6 +563,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun deleteAuthorizedPaidOrder(
+        order: OrderRecord,
+        code: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            val success = repository.deleteAuthorizedPaidOrder(order, code)
+            if (success) {
+                onSuccess()
+            } else {
+                onError("كود الموافقة غير صحيح! يرجى التواصل مع الإدارة عبر الواتساب للحصول على الكود الصحيح.")
+            }
+        }
+    }
+
+    fun deleteAllAuthorizedPaidOrders(
+        code: String,
+        onSuccess: (deletedCount: Int) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            val result = repository.deleteAllAuthorizedPaidOrders(code)
+            result.fold(
+                onSuccess = { count -> onSuccess(count) },
+                onFailure = { err -> onError(err.message ?: "تعذر تصفير الأرشيف، يرجى التأكد من كود الموافقة.") }
+            )
+        }
+    }
+
     // Auth actions
     fun login(email: String, pass: String) {
         if (email.isBlank() || pass.isBlank()) {

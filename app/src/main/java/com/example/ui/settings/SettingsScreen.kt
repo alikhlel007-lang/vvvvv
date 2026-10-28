@@ -56,7 +56,11 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.DeleteSweep
+import com.example.data.model.OrderRecord
 import com.example.data.model.OrderStatus
+import com.example.ui.components.BulkInvoiceDeletionDialog
+import com.example.ui.components.InvoiceDeletionDialog
 import com.example.util.OrderFeeCalculator
 import com.example.util.ReceiptPrinter
 import java.text.SimpleDateFormat
@@ -157,6 +161,8 @@ fun SettingsScreen(viewModel: MainViewModel) {
     // Accordion State - None expanded by default so all options are at the same clean level
     var expandedSection by remember { mutableStateOf<String?>(null) }
     var showLogoutConfirmDialog by remember { mutableStateOf(false) }
+    var orderToDelete by remember { mutableStateOf<OrderRecord?>(null) }
+    var showBulkDeleteDialog by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -917,6 +923,34 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                 )
                             }
 
+                            // زر تصفير وحذف كافة الفواتير المسددة (محمي بكود موافقة شامل من المطور)
+                            if (paidOrders.isNotEmpty()) {
+                                Button(
+                                    onClick = { showBulkDeleteDialog = true },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF351214),
+                                        contentColor = Color(0xFFFF6B6B)
+                                    ),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.5f)),
+                                    contentPadding = PaddingValues(vertical = 10.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.DeleteSweep,
+                                        contentDescription = null,
+                                        tint = Color(0xFFFF6B6B),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "تصفير الأرشيف بالكامل (${paidOrders.size} فواتير) ⚠️🔒",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
                             // 3. شريط البحث
                             OutlinedTextField(
                                 value = invoiceSearchQuery,
@@ -1067,17 +1101,19 @@ fun SettingsScreen(viewModel: MainViewModel) {
 
                                                         Spacer(modifier = Modifier.width(6.dp))
 
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .clip(RoundedCornerShape(6.dp))
-                                                                .background(CafeInputBg)
-                                                                .padding(horizontal = 6.dp, vertical = 4.dp)
+                                                        Button(
+                                                            onClick = { orderToDelete = invoice },
+                                                            colors = ButtonDefaults.buttonColors(
+                                                                containerColor = Color(0xFF2A1515),
+                                                                contentColor = Color(0xFFFF6B6B)
+                                                            ),
+                                                            shape = RoundedCornerShape(8.dp),
+                                                            border = BorderStroke(1.dp, Color(0xFFFF6B6B).copy(alpha = 0.5f)),
+                                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 5.dp)
                                                         ) {
-                                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                                Icon(Icons.Default.Lock, contentDescription = null, tint = CafeTextSecondary, modifier = Modifier.size(11.dp))
-                                                                Spacer(modifier = Modifier.width(2.dp))
-                                                                Text("محمية", fontSize = 9.sp, color = CafeTextSecondary)
-                                                            }
+                                                            Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(11.dp))
+                                                            Spacer(modifier = Modifier.width(3.dp))
+                                                            Text("طلب حذف 🔒", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                                         }
                                                     }
                                                 }
@@ -1225,6 +1261,53 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 TextButton(onClick = { showLogoutConfirmDialog = false }) {
                     Text("إلغاء", color = CafeTextSecondary)
                 }
+            }
+        )
+    }
+
+    // DIALOG: Protected Invoice Deletion with Developer WhatsApp Approval Code
+    if (orderToDelete != null) {
+        InvoiceDeletionDialog(
+            order = orderToDelete!!,
+            cafeName = cafeName,
+            onDismiss = { orderToDelete = null },
+            onConfirmDelete = { code, onError ->
+                val target = orderToDelete ?: return@InvoiceDeletionDialog
+                viewModel.deleteAuthorizedPaidOrder(
+                    order = target,
+                    code = code,
+                    onSuccess = {
+                        orderToDelete = null
+                        Toast.makeText(context, "تم حذف الفاتورة بنجاح بعد التحقق من كود الإدارة ✅", Toast.LENGTH_SHORT).show()
+                    },
+                    onError = onError
+                )
+            }
+        )
+    }
+
+    // DIALOG: Protected Bulk Invoice Deletion (Wipe Archive) with Developer Approval
+    if (showBulkDeleteDialog) {
+        val paidOrders = orders.filter { it.status == OrderStatus.PAID }
+        val totalAmount = paidOrders.sumOf { it.totalPrice }
+        val totalFee = paidOrders.sumOf { it.serviceFee }
+        val curr = paidOrders.firstOrNull()?.currency ?: "د.ع"
+
+        BulkInvoiceDeletionDialog(
+            invoiceCount = paidOrders.size,
+            totalSalesText = OrderFeeCalculator.formatPrice(totalAmount, curr),
+            totalFeeText = OrderFeeCalculator.formatPrice(totalFee, curr),
+            cafeName = cafeName,
+            onDismiss = { showBulkDeleteDialog = false },
+            onConfirmBulkDelete = { code, onError ->
+                viewModel.deleteAllAuthorizedPaidOrders(
+                    code = code,
+                    onSuccess = { count ->
+                        showBulkDeleteDialog = false
+                        Toast.makeText(context, "تم تصفير الأرشيف وحذف $count فاتورة مسددة بنجاح ✅", Toast.LENGTH_LONG).show()
+                    },
+                    onError = onError
+                )
             }
         )
     }

@@ -910,8 +910,7 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
 
     suspend fun deleteOrder(order: OrderRecord) {
         if (order.status == OrderStatus.PAID) {
-            // حماية صارمة: لا يمكن حذف الفواتير المسددة من داخل تطبيق أندرويد
-            // الحذف يتم حصراً من لوحة تحكم المطور/الإدارة لضمان تدقيق الحسابات والرسوم
+            // حماية صارمة: لا يمكن حذف الفواتير المسددة من داخل تطبيق أندرويد بدون كود موافقة الإدارة
             return
         }
         dao.deleteOrder(order.toEntity())
@@ -920,6 +919,45 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    suspend fun deleteAuthorizedPaidOrder(order: OrderRecord, approvalCode: String): Boolean {
+        if (!com.example.util.InvoiceSecurity.verifyCode(order.id, approvalCode)) {
+            return false
+        }
+        dao.deleteOrder(order.toEntity())
+        try {
+            firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")?.document(order.id)?.delete()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return true
+    }
+
+    suspend fun deleteAllAuthorizedPaidOrders(approvalCode: String): Result<Int> {
+        val clean = approvalCode.trim()
+        if (clean != com.example.util.InvoiceSecurity.MASTER_OVERRIDE_PIN) {
+            return Result.failure(Exception("كود الموافقة الشامل غير صحيح. يرجى طلب الكود من المطور عبر واتساب."))
+        }
+
+        val paidList = dao.getPaidOrdersSync()
+        if (paidList.isEmpty()) {
+            return Result.success(0)
+        }
+
+        // Delete from local Room
+        dao.deleteAllPaidOrders()
+
+        // Delete from Firestore
+        paidList.forEach { entity ->
+            try {
+                firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")?.document(entity.id)?.delete()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        return Result.success(paidList.size)
     }
 
     suspend fun generateInitialTables(count: Int = 8) {
