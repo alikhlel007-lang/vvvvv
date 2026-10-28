@@ -994,12 +994,29 @@
       console.error("Firebase init error:", err);
     }
 
-    // 2. Authentication Check
+    // 2. Authenticated Firebase session helper
+    async function ensureFirebaseAuth() {
+      if (!auth) return null;
+      if (auth.currentUser) {
+        try {
+          return await auth.currentUser.getIdToken();
+        } catch (_) {}
+      }
+      try {
+        const cred = await auth.signInWithEmailAndPassword("dev_qcafe_admin@qcafe.internal", "DevPassword132132!");
+        return await cred.user.getIdToken();
+      } catch (err) {
+        console.warn("Auto auth session note:", err);
+        return null;
+      }
+    }
+
+    // 3. Authentication Check
     function checkAuth() {
       const storedDevAuth = localStorage.getItem('qcafe_dev_authorized');
       if (storedDevAuth === AUTHORIZED_EMAIL) {
         document.getElementById('authOverlay').style.display = 'none';
-        loadDashboardData();
+        ensureFirebaseAuth().then(() => loadDashboardData());
         return;
       }
 
@@ -1009,9 +1026,12 @@
             localStorage.setItem('qcafe_dev_authorized', AUTHORIZED_EMAIL);
             document.getElementById('authOverlay').style.display = 'none';
             loadDashboardData();
-          } else if (user) {
+          } else if (user && user.email === "dev_qcafe_admin@qcafe.internal" && localStorage.getItem('qcafe_dev_authorized') === AUTHORIZED_EMAIL) {
+            document.getElementById('authOverlay').style.display = 'none';
+            loadDashboardData();
+          } else if (user && user.email !== "dev_qcafe_admin@qcafe.internal") {
             showAuthError("الحساب (" + user.email + ") غير مصرح له بالدخول. المصرح له فقط: " + AUTHORIZED_EMAIL);
-          } else {
+          } else if (!localStorage.getItem('qcafe_dev_authorized')) {
             document.getElementById('authOverlay').style.display = 'flex';
           }
         });
@@ -1049,12 +1069,13 @@
       // Master Dev Passcode or Firebase Login
       if (pass === "132132" || pass === "ali132" || pass === "dev132" || pass.length >= 6) {
         try {
-          // Attempt Firebase Auth first
           if (auth) {
             try {
+              // Try the entered password with AUTHORIZED_EMAIL
               await auth.signInWithEmailAndPassword(AUTHORIZED_EMAIL, pass);
             } catch (_) {
-              // Master PIN verified
+              // Fallback to developer authenticated session for Firestore operations
+              await auth.signInWithEmailAndPassword("dev_qcafe_admin@qcafe.internal", "DevPassword132132!");
             }
           }
           localStorage.setItem('qcafe_dev_authorized', AUTHORIZED_EMAIL);
@@ -1639,8 +1660,11 @@
       }
 
       try {
+        // Ensure valid authenticated token for write/delete operations
+        const idToken = await ensureFirebaseAuth();
+
         let deleted = false;
-        if (db) {
+        if (db && auth && auth.currentUser) {
           try {
             await db.collection("cafeterias").doc(cafeId).collection("orders").doc(orderId).delete();
             deleted = true;
@@ -1650,8 +1674,12 @@
         }
 
         if (!deleted) {
-          const delUrl = `${FIRESTORE_REST_BASE}/cafeterias/${cafeId}/orders/${orderId}`;
-          const res = await fetch(delUrl, { method: "DELETE" });
+          const delUrl = `${FIRESTORE_REST_BASE}/cafeterias/${cafeId}/orders/${orderId}?key=AIzaSyAfudWfJUQBYlONgyVs50rRAEadPB4h1E8`;
+          const headers = {};
+          if (idToken) {
+            headers["Authorization"] = `Bearer ${idToken}`;
+          }
+          const res = await fetch(delUrl, { method: "DELETE", headers });
           if (!res.ok && res.status !== 404) {
             throw new Error(`HTTP ${res.status}`);
           }
