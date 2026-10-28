@@ -167,8 +167,10 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
         }
 
         try {
+            val numId = com.example.util.InvoiceSecurity.generateCafeNumericId(cafeId)
             val profileMap = hashMapOf<String, Any?>(
                 "cafeteriaId" to cafeId,
+                "numericId" to numId,
                 "cafeName" to cafeName,
                 "phone" to phone,
                 "ownerName" to ownerName,
@@ -200,6 +202,7 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
             p.getString("cafe_menu_url_$cafeId", null)?.let { map["menuUrl"] = it }
             p.getString("cafe_theme_color_$cafeId", null)?.let { map["themeColor"] = it }
         }
+        map["numericId"] = com.example.util.InvoiceSecurity.generateCafeNumericId(cafeId)
         return map
     }
 
@@ -1086,8 +1089,10 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
             firebaseUser.sendEmailVerification().awaitTask()
 
             val uid = firebaseUser.uid
+            val numericId = com.example.util.InvoiceSecurity.generateCafeNumericId(uid)
             val userProfile = hashMapOf(
                 "id" to uid,
+                "numericId" to numericId,
                 "fullName" to cleanFullName,
                 "email" to cleanEmail,
                 "cafeName" to cleanCafeName,

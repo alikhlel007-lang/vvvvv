@@ -106,4 +106,13 @@ object InvoiceSecurity {
             } catch (_: Exception) {}
         }
     }
+
+    /**
+     * توليد رقم تعريفي فريد وثابت مكون من 5 أرقام لكل كافتيريا
+     */
+    fun generateCafeNumericId(cafeId: String): String {
+        val hash = abs(stringHashCode(cafeId + "_qcafe_tenant_pin_hash"))
+        val num = 10000 + (hash % 90000)
+        return num.toString()
+    }
 }

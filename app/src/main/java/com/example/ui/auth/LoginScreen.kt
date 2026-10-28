@@ -53,10 +53,15 @@ import com.example.ui.theme.CafeSurface
 import com.example.ui.theme.CafeTextPrimary
 import com.example.ui.theme.CafeTextSecondary
 
+import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
+import com.example.DeveloperAdminActivity
+import com.example.ui.theme.CafeGold
 
 @Composable
 fun LoginScreen(viewModel: MainViewModel) {
@@ -325,6 +330,36 @@ fun LoginScreen(viewModel: MainViewModel) {
                     fontSize = 13.sp,
                     color = CafeCyanPrimary,
                     fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Link to Developer App
+            val context = LocalContext.current
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        val intent = Intent(context, DeveloperAdminActivity::class.java)
+                        context.startActivity(intent)
+                    }
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.AdminPanelSettings,
+                    contentDescription = "لوحة المطور",
+                    tint = CafeGold,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "فتح تطبيق المطور (لوحة التحكم 1%) 🛡️",
+                    fontSize = 12.sp,
+                    color = CafeGold,
+                    fontWeight = FontWeight.Medium
                 )
             }
         }

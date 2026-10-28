@@ -273,6 +273,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
+    fun getCafeNumericId(): String {
+        val cafeId = _currentUser.value?.id ?: repository.currentCafeteriaId
+        return com.example.util.InvoiceSecurity.generateCafeNumericId(cafeId)
+    }
+
     fun navigateTo(screen: AppScreen) {
         _currentScreen.value = screen
         _authError.value = null

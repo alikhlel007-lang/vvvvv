@@ -57,6 +57,10 @@ import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.ContentCopy
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import com.example.data.model.OrderRecord
 import com.example.data.model.OrderStatus
 import com.example.ui.components.BulkInvoiceDeletionDialog
@@ -211,11 +215,44 @@ fun SettingsScreen(viewModel: MainViewModel) {
                             fontWeight = FontWeight.Bold,
                             color = CafeTextPrimary
                         )
-                        Text(
-                            text = cafeName,
-                            fontSize = 12.sp,
-                            color = accentColor
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = cafeName,
+                                fontSize = 12.sp,
+                                color = accentColor
+                            )
+                            val cafeNumericId = remember { viewModel.getCafeNumericId() }
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color(0xFF07242A))
+                                    .clickable {
+                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                        clipboard.setPrimaryClip(ClipData.newPlainText("Cafe ID", "#$cafeNumericId"))
+                                        Toast.makeText(context, "تم نسخ الرقم التعريفي للكافتيريا: #$cafeNumericId", Toast.LENGTH_SHORT).show()
+                                    }
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "معرّف: #$cafeNumericId",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = CafeGold
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        Icons.Default.ContentCopy,
+                                        contentDescription = "نسخ",
+                                        tint = CafeGold,
+                                        modifier = Modifier.size(10.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -259,6 +296,57 @@ fun SettingsScreen(viewModel: MainViewModel) {
                         }
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            // Cafeteria Numeric ID Banner
+                            val cafeNumericId = remember { viewModel.getCafeNumericId() }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color(0xFF041B20))
+                                    .border(1.dp, Color(0xFF0F4750), RoundedCornerShape(12.dp))
+                                    .padding(12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "الرقم التعريفي للكافتيريا في النظام",
+                                            fontSize = 11.sp,
+                                            color = CafeTextSecondary
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = "#$cafeNumericId",
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = CafeGold
+                                        )
+                                        Text(
+                                            text = "استخدم هذا المعرّف عند التواصل مع المطور أو للبحث في تطبيق المطور",
+                                            fontSize = 10.sp,
+                                            color = accentColor
+                                        )
+                                    }
+                                    Button(
+                                        onClick = {
+                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                            clipboard.setPrimaryClip(ClipData.newPlainText("Cafe ID", "#$cafeNumericId"))
+                                            Toast.makeText(context, "تم نسخ الرقم التعريفي: #$cafeNumericId", Toast.LENGTH_SHORT).show()
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0A333B)),
+                                        shape = RoundedCornerShape(8.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                    ) {
+                                        Icon(Icons.Default.ContentCopy, contentDescription = null, tint = CafeGold, modifier = Modifier.size(14.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("نسخ", color = CafeGold, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+
                             // Logo Upload and Preview
                             Row(
                                 modifier = Modifier
