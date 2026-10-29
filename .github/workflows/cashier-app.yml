@@ -1,4 +1,4 @@
-name: Q-Cafe Auto Build & Release
+name: تطبيق الكاشير (صاحب الكفترية)
 
 on:
   push:
@@ -11,8 +11,8 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build Q-Cafe APK
+  build-cashier:
+    name: بناء تطبيق الكاشير (صاحب الكفترية)
     runs-on: ubuntu-latest
 
     steps:
@@ -47,38 +47,34 @@ jobs:
       - name: Grant Execute Permission for Gradlew
         run: chmod +x gradlew
 
-      - name: Build Debug APK
+      - name: Build Cashier Debug APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: Copy & Rename APK for Easy Download
+      - name: Copy & Rename Cashier APK
         run: |
           mkdir -p output_apks
           for f in app/build/outputs/apk/debug/*.apk; do
-            [ -f "$f" ] && cp "$f" output_apks/Q-Cafe-debug.apk
+            [ -f "$f" ] && cp "$f" output_apks/Q-Cafe-Cashier.apk
           done
 
-      - name: Upload APK Artifact
+      - name: Upload Cashier APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Q-Cafe-Debug-APK
-          path: |
-            app/build/outputs/apk/debug/*.apk
-            output_apks/*.apk
+          name: Q-Cafe-Cashier-APK
+          path: output_apks/Q-Cafe-Cashier.apk
           retention-days: 30
 
-      - name: Create or Update GitHub Release
+      - name: Create or Update GitHub Release for Cashier
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
           tag_name: "v1.0"
-          name: "Q-Cafe APK (جاهز للتثبيت)"
+          name: "Q-Cafe APKs (تطبيق الكاشير وتطبيق المطور)"
           body: |
-            ### ☕ تطبيق Q-Cafe - المنيو الإلكتروني والكاشير
-            تم بناء التطبيق وتجهيز حزمة التثبيت (APK) تلقائياً بنجاح بواسطة GitHub Actions.
-
-            - **طريقة التثبيت:** قم بتحميل ملف `Q-Cafe-debug.apk` المرفق بالأسفل وتثبيته مباشرة على هاتفك الأندرويد.
+            ### ☕ تطبيقات Q-Cafe المحدثة
+            - **تطبيق الكاشير (`Q-Cafe-Cashier.apk`):** مخصص لأصحاب الكافتيريات فقط (إدارة الطلبات، المنيو، الطاولات والفواتير).
+            - **تطبيق المطور (`Q-Cafe-Developer.apk`):** مخصص للمطور لمتابعة رسوم الـ 1% والتحصيل وحذف الفواتير.
           files: |
-            output_apks/Q-Cafe-debug.apk
-            app/build/outputs/apk/debug/*.apk
+            output_apks/Q-Cafe-Cashier.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

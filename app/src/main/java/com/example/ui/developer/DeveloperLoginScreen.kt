@@ -58,7 +58,7 @@ import com.example.ui.theme.CafeTextSecondary
 @Composable
 fun DeveloperLoginScreen(
     viewModel: DeveloperViewModel,
-    onOpenCashierApp: () -> Unit
+    onOpenCashierApp: (() -> Unit)? = null
 ) {
     var emailOrPin by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -235,18 +235,19 @@ fun DeveloperLoginScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Switch to Cashier App button
-            OutlinedButton(
-                onClick = onOpenCashierApp,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = CafeTextSecondary),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.ArrowBack, contentDescription = null, tint = CafeTextSecondary)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("الانتقال إلى تطبيق الكاشير (الكافتيريات)", fontSize = 14.sp)
+            // Switch to Cashier App button (only if integrated)
+            if (onOpenCashierApp != null) {
+                Spacer(modifier = Modifier.height(24.dp))
+                OutlinedButton(
+                    onClick = onOpenCashierApp,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = CafeTextSecondary),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = null, tint = CafeTextSecondary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("الانتقال إلى تطبيق الكاشير (الكافتيريات)", fontSize = 14.sp)
+                }
             }
         }
     }

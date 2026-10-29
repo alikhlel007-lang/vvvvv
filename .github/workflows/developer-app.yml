@@ -1,0 +1,84 @@
+name: تطبيق المطور (لوحة التحكم)
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-developer:
+    name: بناء تطبيق المطور (لوحة التحكم 1%)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Prepare Environment & Secrets
+        run: |
+          if [ -f .env.example ]; then
+            cp .env.example .env
+          else
+            touch .env
+          fi
+
+          if [ -f debug.keystore.base64 ]; then
+            base64 -d debug.keystore.base64 > debug.keystore
+          fi
+
+          if [ ! -f debug.keystore ]; then
+            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      - name: Switch Manifest to Developer Admin
+        run: |
+          cp app/src/main/AndroidManifest-developer.xml app/src/main/AndroidManifest.xml
+
+      - name: Grant Execute Permission for Gradlew
+        run: chmod +x gradlew
+
+      - name: Build Developer Debug APK
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Copy & Rename Developer APK
+        run: |
+          mkdir -p output_apks
+          for f in app/build/outputs/apk/debug/*.apk; do
+            [ -f "$f" ] && cp "$f" output_apks/Q-Cafe-Developer.apk
+          done
+
+      - name: Upload Developer APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Q-Cafe-Developer-APK
+          path: output_apks/Q-Cafe-Developer.apk
+          retention-days: 30
+
+      - name: Create or Update GitHub Release for Developer
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        with:
+          tag_name: "v1.0"
+          name: "Q-Cafe APKs (تطبيق الكاشير وتطبيق المطور)"
+          body: |
+            ### ☕ تطبيقات Q-Cafe المحدثة
+            - **تطبيق الكاشير (`Q-Cafe-Cashier.apk`):** مخصص لأصحاب الكافتيريات فقط (إدارة الطلبات، المنيو، الطاولات والفواتير).
+            - **تطبيق المطور (`Q-Cafe-Developer.apk`):** مخصص للمطور لمتابعة رسوم الـ 1% والتحصيل وحذف الفواتير.
+          files: |
+            output_apks/Q-Cafe-Developer.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

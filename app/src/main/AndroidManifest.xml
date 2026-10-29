@@ -28,15 +28,9 @@
 
         <activity
             android:name=".DeveloperAdminActivity"
-            android:exported="true"
+            android:exported="false"
             android:label="@string/developer_app_name"
-            android:theme="@style/Theme.MyApplication">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:theme="@style/Theme.MyApplication" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

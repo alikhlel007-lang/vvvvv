@@ -45,13 +45,7 @@ class DeveloperAdminActivity : ComponentActivity() {
                         color = Color(0xFF020C0E)
                     ) {
                         DeveloperAppNavHost(
-                            viewModel = devViewModel,
-                            onOpenCashierApp = {
-                                val intent = Intent(context, MainActivity::class.java).apply {
-                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                                }
-                                context.startActivity(intent)
-                            }
+                            viewModel = devViewModel
                         )
                     }
                 }
@@ -63,12 +57,16 @@ class DeveloperAdminActivity : ComponentActivity() {
 @Composable
 fun DeveloperAppNavHost(
     viewModel: DeveloperViewModel,
-    onOpenCashierApp: () -> Unit
+    onOpenCashierApp: (() -> Unit)? = null
 ) {
     val currentScreen by viewModel.currentScreen.collectAsState()
+    val activity = LocalContext.current as? ComponentActivity
 
     when (currentScreen) {
         DeveloperScreen.LOGIN -> {
+            BackHandler {
+                activity?.finish()
+            }
             DeveloperLoginScreen(
                 viewModel = viewModel,
                 onOpenCashierApp = onOpenCashierApp
@@ -77,7 +75,7 @@ fun DeveloperAppNavHost(
 
         DeveloperScreen.DASHBOARD -> {
             BackHandler {
-                onOpenCashierApp()
+                activity?.finish()
             }
             DeveloperDashboardScreen(
                 viewModel = viewModel,

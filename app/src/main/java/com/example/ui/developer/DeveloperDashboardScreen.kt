@@ -76,7 +76,7 @@ import com.example.util.OrderFeeCalculator
 @Composable
 fun DeveloperDashboardScreen(
     viewModel: DeveloperViewModel,
-    onOpenCashierApp: () -> Unit
+    onOpenCashierApp: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val isLoading by viewModel.isLoading.collectAsState()
@@ -163,8 +163,10 @@ fun DeveloperDashboardScreen(
                         IconButton(onClick = { viewModel.refreshDashboard() }) {
                             Icon(Icons.Default.Refresh, contentDescription = "تحديث", tint = CafeCyanPrimary)
                         }
-                        IconButton(onClick = onOpenCashierApp) {
-                            Icon(Icons.Default.Storefront, contentDescription = "تطبيق الكاشير", tint = CafeGold)
+                        if (onOpenCashierApp != null) {
+                            IconButton(onClick = onOpenCashierApp) {
+                                Icon(Icons.Default.Storefront, contentDescription = "تطبيق الكاشير", tint = CafeGold)
+                            }
                         }
                         IconButton(onClick = { viewModel.logout() }) {
                             Icon(Icons.Default.ExitToApp, contentDescription = "خروج", tint = Color(0xFFFF5252))
