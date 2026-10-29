@@ -43,9 +43,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Air
+import androidx.compose.material.icons.filled.BakeryDining
 import androidx.compose.material.icons.filled.Cake
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Casino
+import androidx.compose.material.icons.filled.OutdoorGrill
+import androidx.compose.material.icons.filled.SetMeal
+import androidx.compose.material.icons.filled.SportsBaseball
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Fastfood
@@ -2300,12 +2305,20 @@ fun MenuItemCard(
 
 fun getCategoryIcon(type: String): ImageVector {
     return when (type.lowercase()) {
+        "shisha", "hookah", "arghila", "argila" -> Icons.Default.Air
+        "billiards", "billiard", "pool" -> Icons.Default.SportsBaseball
+        "gaming", "games", "playstation", "ps" -> Icons.Default.SportsEsports
+        "cards", "dice", "boardgames" -> Icons.Default.Casino
+        "grill", "bbq", "meat" -> Icons.Default.OutdoorGrill
+        "breakfast", "bakery" -> Icons.Default.BakeryDining
+        "seafood", "fish" -> Icons.Default.SetMeal
         "burger", "burgers" -> Icons.Default.Fastfood
         "fries", "appetizers" -> Icons.Default.Fastfood
         "drink", "drinks" -> Icons.Default.LocalDrink
         "meals", "meal" -> Icons.Default.Restaurant
         "sweets", "dessert", "cake" -> Icons.Default.Cake
         "pizza" -> Icons.Default.LocalPizza
+        "cafe", "coffee" -> Icons.Default.LocalCafe
         else -> Icons.Default.LocalCafe
     }
 }

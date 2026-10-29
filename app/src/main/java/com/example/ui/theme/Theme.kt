@@ -12,7 +12,7 @@ fun CafeTheme(
 ) {
   val dynamicScheme = darkColorScheme(
     primary = accentColor,
-    onPrimary = Color(0xFF032125),
+    onPrimary = Color(0xFF160E04),
     primaryContainer = CafeSurfaceVariant,
     onPrimaryContainer = accentColor,
     secondary = CafeGold,

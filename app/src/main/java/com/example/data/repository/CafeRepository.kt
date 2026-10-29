@@ -149,7 +149,8 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
         logoType: String,
         customLogoUri: String?,
         menuUrl: String,
-        themeColor: String
+        themeColor: String,
+        headerBannerUrl: String = ""
     ) {
         val prefs = context?.getSharedPreferences("cafe_profile_prefs", android.content.Context.MODE_PRIVATE)
         prefs?.edit()?.apply {
@@ -163,6 +164,7 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
             putString("cafe_logo_uri_$cafeId", customLogoUri ?: "")
             putString("cafe_menu_url_$cafeId", menuUrl)
             putString("cafe_theme_color_$cafeId", themeColor)
+            putString("cafe_header_banner_$cafeId", headerBannerUrl)
             apply()
         }
 
@@ -181,6 +183,7 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
                 "customLogoUri" to (customLogoUri ?: ""),
                 "menuUrl" to menuUrl,
                 "themeColor" to themeColor,
+                "headerBannerUrl" to headerBannerUrl,
                 "updatedAt" to System.currentTimeMillis()
             )
             firestore?.collection("cafeterias")?.document(cafeId)?.set(profileMap, com.google.firebase.firestore.SetOptions.merge())
@@ -201,6 +204,7 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
             p.getString("cafe_logo_uri_$cafeId", null)?.let { map["customLogoUri"] = it }
             p.getString("cafe_menu_url_$cafeId", null)?.let { map["menuUrl"] = it }
             p.getString("cafe_theme_color_$cafeId", null)?.let { map["themeColor"] = it }
+            p.getString("cafe_header_banner_$cafeId", null)?.let { map["headerBannerUrl"] = it }
         }
         map["numericId"] = com.example.util.InvoiceSecurity.generateCafeNumericId(cafeId)
         return map
@@ -220,6 +224,7 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
                 val logoUri = snap.getString("customLogoUri") ?: ""
                 val menuUrl = snap.getString("menuUrl") ?: ""
                 val theme = snap.getString("themeColor") ?: ""
+                val bannerUrl = snap.getString("headerBannerUrl") ?: snap.getString("bannerUrl") ?: ""
 
                 if (name.isNotBlank()) {
                     saveCafeProfile(
@@ -233,7 +238,8 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
                         logoType = logoType,
                         customLogoUri = logoUri.ifBlank { null },
                         menuUrl = menuUrl.ifBlank { baseWebMenuUrl },
-                        themeColor = theme.ifBlank { "#00DFC0" }
+                        themeColor = theme.ifBlank { "#F7A038" },
+                        headerBannerUrl = bannerUrl
                     )
                 }
                 loadCafeProfile(cafeId)
@@ -629,6 +635,25 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
         list.map { it.toDomain() }
     }
 
+    suspend fun syncTableToFirestore(table: CafeTable) {
+        if (currentCafeteriaId.isBlank() || currentCafeteriaId == "u_default") return
+        try {
+            val tableMap = hashMapOf<String, Any?>(
+                "tableNumber" to table.tableNumber,
+                "label" to table.label,
+                "capacity" to table.capacity,
+                "securityToken" to table.securityToken,
+                "qrPayload" to table.qrPayload,
+                "updatedAt" to System.currentTimeMillis()
+            )
+            firestore?.collection("cafeterias")
+                ?.document(currentCafeteriaId)
+                ?.collection("tables")
+                ?.document("table_${table.tableNumber}")
+                ?.set(tableMap, com.google.firebase.firestore.SetOptions.merge())
+        } catch (_: Exception) {}
+    }
+
     suspend fun addTable(number: Int, label: String, capacity: Int, cafeName: String, customBaseUrl: String? = null) {
         val baseUrl = customBaseUrl ?: baseWebMenuUrl
         val secToken = "SEC" + UUID.randomUUID().toString().take(6).uppercase()
@@ -642,6 +667,7 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
             securityToken = secToken
         )
         dao.insertTable(entity)
+        syncTableToFirestore(entity.toDomain())
     }
 
     suspend fun regenerateTableQr(table: CafeTable, customBaseUrl: String? = null) {
@@ -650,6 +676,7 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
         val newPayload = buildTableQrUrl(baseUrl, table.tableNumber, newSec)
         val updated = table.copy(qrPayload = newPayload, securityToken = newSec)
         dao.updateTable(updated.toEntity())
+        syncTableToFirestore(updated)
     }
 
     suspend fun regenerateAllTablesQr(tables: List<CafeTable>, customBaseUrl: String? = null) {
@@ -657,7 +684,9 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
         tables.forEach { table ->
             val newSec = "SEC" + UUID.randomUUID().toString().take(6).uppercase()
             val newPayload = buildTableQrUrl(baseUrl, table.tableNumber, newSec)
-            dao.updateTable(table.copy(qrPayload = newPayload, securityToken = newSec).toEntity())
+            val updated = table.copy(qrPayload = newPayload, securityToken = newSec)
+            dao.updateTable(updated.toEntity())
+            syncTableToFirestore(updated)
         }
     }
 
@@ -667,6 +696,15 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
 
     suspend fun deleteTable(table: CafeTable) {
         dao.deleteTable(table.toEntity())
+        if (currentCafeteriaId.isNotBlank() && currentCafeteriaId != "u_default") {
+            try {
+                firestore?.collection("cafeterias")
+                    ?.document(currentCafeteriaId)
+                    ?.collection("tables")
+                    ?.document("table_${table.tableNumber}")
+                    ?.delete()
+            } catch (_: Exception) {}
+        }
     }
 
     // Orders

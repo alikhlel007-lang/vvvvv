@@ -12,7 +12,7 @@ data class MenuCategory(
     val id: String,
     val nameAr: String,
     val nameEn: String,
-    val iconType: String, // burger, fries, drink, meals, sweets, pizza
+    val iconType: String, // burger, fries, drink, cafe, meals, sweets, pizza, shisha, billiards, gaming, cards, grill, breakfast, seafood
     val sortOrder: Int = 0,
     val customImageUri: String? = null
 )

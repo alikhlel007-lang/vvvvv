@@ -45,8 +45,15 @@ import androidx.compose.material.icons.filled.LocalDrink
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.LocalPizza
 import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.Air
+import androidx.compose.material.icons.filled.BakeryDining
+import androidx.compose.material.icons.filled.Casino
+import androidx.compose.material.icons.filled.OutdoorGrill
 import androidx.compose.material.icons.filled.RestaurantMenu
+import androidx.compose.material.icons.filled.SetMeal
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SportsBaseball
+import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -1985,32 +1992,54 @@ fun CategoryFormDialog(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     val icons = listOf(
-                        "burger" to Icons.Default.Fastfood,
-                        "fries" to Icons.Default.Fastfood,
-                        "drink" to Icons.Default.LocalDrink,
-                        "meals" to Icons.Default.Restaurant,
-                        "sweets" to Icons.Default.Cake,
-                        "pizza" to Icons.Default.LocalPizza,
-                        "cafe" to Icons.Default.LocalCafe
+                        Triple("shisha", Icons.Default.Air, "أراكيل"),
+                        Triple("billiards", Icons.Default.SportsBaseball, "بليارد"),
+                        Triple("gaming", Icons.Default.SportsEsports, "ألعاب"),
+                        Triple("cards", Icons.Default.Casino, "طاولة/ورق"),
+                        Triple("cafe", Icons.Default.LocalCafe, "قهوة"),
+                        Triple("drink", Icons.Default.LocalDrink, "مشروبات"),
+                        Triple("burger", Icons.Default.Fastfood, "برجر"),
+                        Triple("pizza", Icons.Default.LocalPizza, "بيتزا"),
+                        Triple("grill", Icons.Default.OutdoorGrill, "مشاوي"),
+                        Triple("breakfast", Icons.Default.BakeryDining, "فطور"),
+                        Triple("seafood", Icons.Default.SetMeal, "أسماك"),
+                        Triple("fries", Icons.Default.Fastfood, "مقبلات"),
+                        Triple("sweets", Icons.Default.Cake, "حلويات"),
+                        Triple("meals", Icons.Default.Restaurant, "وجبات")
                     )
 
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(icons) { (type, iconVector) ->
+                        items(icons) { (type, iconVector, label) ->
                             val isSel = iconType == type
-                            Box(
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier
-                                    .size(42.dp)
                                     .clip(RoundedCornerShape(10.dp))
-                                    .background(if (isSel) CafeCyanPrimary else CafeSurfaceVariant)
+                                    .background(if (isSel) CafeCyanPrimary.copy(alpha = 0.2f) else CafeSurfaceVariant)
                                     .border(1.dp, if (isSel) CafeCyanPrimary else CafeInputBorder, RoundedCornerShape(10.dp))
-                                    .clickable { iconType = type },
-                                contentAlignment = Alignment.Center
+                                    .clickable { iconType = type }
+                                    .padding(horizontal = 8.dp, vertical = 6.dp)
                             ) {
-                                Icon(
-                                    imageVector = iconVector,
-                                    contentDescription = type,
-                                    tint = if (isSel) Color(0xFF032125) else CafeTextPrimary,
-                                    modifier = Modifier.size(20.dp)
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSel) CafeCyanPrimary else CafeInputBg),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = iconVector,
+                                        contentDescription = label,
+                                        tint = if (isSel) Color(0xFF160E04) else CafeTextPrimary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = label,
+                                    fontSize = 10.sp,
+                                    fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSel) CafeCyanPrimary else CafeTextSecondary
                                 )
                             }
                         }

@@ -92,6 +92,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             repository.baseWebMenuUrl = it
                         }
                     }
+                    cachedProfile["headerBannerUrl"]?.let { _cafeHeaderBannerUrl.value = it }
 
                     repository.currentCafeteriaId = uid
                     repository.updateExistingTablesCafeteriaId()
@@ -115,6 +116,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                     repository.baseWebMenuUrl = it
                                 }
                             }
+                            remote["headerBannerUrl"]?.let { _cafeHeaderBannerUrl.value = it }
                         }
                     }
                 }
@@ -218,11 +220,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _cafeCustomLogoUri = MutableStateFlow<String?>(null)
     val cafeCustomLogoUri: StateFlow<String?> = _cafeCustomLogoUri.asStateFlow()
 
+    private val _cafeHeaderBannerUrl = MutableStateFlow("")
+    val cafeHeaderBannerUrl: StateFlow<String> = _cafeHeaderBannerUrl.asStateFlow()
+
     private val _webMenuUrl = MutableStateFlow(repository.baseWebMenuUrl)
     val webMenuUrl: StateFlow<String> = _webMenuUrl.asStateFlow()
 
     fun setCustomLogoUri(uri: String?) {
         _cafeCustomLogoUri.value = uri
+    }
+
+    fun setHeaderBannerUrl(url: String) {
+        _cafeHeaderBannerUrl.value = url
     }
 
     fun updateCafeProfile(
@@ -234,13 +243,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         menuUrl: String = _webMenuUrl.value,
         ownerName: String = _cafeOwnerName.value,
         email: String = _cafeEmail.value,
-        customLogoUri: String? = _cafeCustomLogoUri.value
+        customLogoUri: String? = _cafeCustomLogoUri.value,
+        headerBannerUrl: String = _cafeHeaderBannerUrl.value
     ) {
         _cafeName.value = name.ifBlank { "Q-Cafe" }
         _cafePhone.value = phone
         _cafeOwnerName.value = ownerName.ifBlank { "صاحب الكافتيريا" }
         _cafeEmail.value = email.ifBlank { "cafe.owner@gmail.com" }
         _cafeCustomLogoUri.value = customLogoUri
+        _cafeHeaderBannerUrl.value = headerBannerUrl
         _cafeAddress.value = address
         _cafeWelcomeNote.value = welcomeNote
         _cafeLogoType.value = logoType
@@ -269,7 +280,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             logoType = _cafeLogoType.value,
             customLogoUri = _cafeCustomLogoUri.value,
             menuUrl = _webMenuUrl.value,
-            themeColor = _themeAccentColorHex.value
+            themeColor = _themeAccentColorHex.value,
+            headerBannerUrl = _cafeHeaderBannerUrl.value
         )
     }
 

@@ -148,17 +148,27 @@ fun SettingsScreen(viewModel: MainViewModel) {
     }
 
     // Editable profile fields
+    val cafeHeaderBannerUrl by viewModel.cafeHeaderBannerUrl.collectAsState()
     var editCafeName by remember(cafeName) { mutableStateOf(cafeName) }
     var editOwnerName by remember(cafeOwnerName) { mutableStateOf(cafeOwnerName) }
     var editPhone by remember(cafePhone) { mutableStateOf(cafePhone) }
     var editEmail by remember(cafeEmail) { mutableStateOf(cafeEmail) }
     var editLogoUri by remember(customLogoUri) { mutableStateOf(customLogoUri) }
+    var editBannerUrl by remember(cafeHeaderBannerUrl) { mutableStateOf(cafeHeaderBannerUrl) }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         if (uri != null) {
             editLogoUri = uri.toString()
+        }
+    }
+
+    val bannerPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            editBannerUrl = uri.toString()
         }
     }
 
@@ -513,6 +523,70 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                 singleLine = true
                             )
 
+                            // 1.5 Cafe Header Banner (Full width ribbon in customer web menu)
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(CafeInputBg)
+                                    .border(1.dp, CafeInputBorder, RoundedCornerShape(12.dp))
+                                    .padding(12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "شريط غلاف الكافتيريا (بانر عريض)",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = CafeTextPrimary
+                                        )
+                                        Text(
+                                            text = "يمتد على كامل عرض صفحة الزبائن بأعلى المنيو ويظهر فيه اسم وشعار الكافيه",
+                                            fontSize = 10.sp,
+                                            color = CafeTextSecondary
+                                        )
+                                    }
+                                    OutlinedButton(
+                                        onClick = {
+                                            bannerPickerLauncher.launch(
+                                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                            )
+                                        },
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                            containerColor = CafeSurfaceVariant,
+                                            contentColor = accentColor
+                                        ),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Text("اختيار صورة", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                OutlinedTextField(
+                                    value = editBannerUrl,
+                                    onValueChange = { editBannerUrl = it },
+                                    label = { Text("أو أدخل رابط صورة البانر (URL)", fontSize = 11.sp) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedContainerColor = CafeSurfaceVariant,
+                                        unfocusedContainerColor = CafeSurfaceVariant,
+                                        focusedBorderColor = accentColor,
+                                        unfocusedBorderColor = CafeInputBorder,
+                                        focusedTextColor = CafeTextPrimary,
+                                        unfocusedTextColor = CafeTextPrimary
+                                    ),
+                                    singleLine = true
+                                )
+                            }
+
                             // Save Button
                             Button(
                                 onClick = {
@@ -521,9 +595,10 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                         phone = editPhone,
                                         ownerName = editOwnerName,
                                         email = editEmail,
-                                        customLogoUri = editLogoUri
+                                        customLogoUri = editLogoUri,
+                                        headerBannerUrl = editBannerUrl
                                     )
-                                    Toast.makeText(context, "تم حفظ بيانات وشعار الكافتيريا بنجاح!", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "تم حفظ بيانات وشعار وغلاف الكافتيريا بنجاح!", Toast.LENGTH_SHORT).show()
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -531,7 +606,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                     .testTag("settings_save_profile_btn"),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = accentColor,
-                                    contentColor = Color(0xFF032125)
+                                    contentColor = Color(0xFF160E04)
                                 ),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
