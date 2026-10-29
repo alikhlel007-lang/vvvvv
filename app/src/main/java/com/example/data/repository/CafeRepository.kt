@@ -483,13 +483,14 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
 
     suspend fun addCategory(nameAr: String, nameEn: String, iconType: String, customImageUri: String? = null) {
         val catId = "cat_" + UUID.randomUUID().toString().take(8)
+        val compressedImg = com.example.util.ImageCompressor.uriToCompressedBase64(context, customImageUri)
         val entity = CategoryEntity(
             id = catId,
             nameAr = nameAr,
             nameEn = nameEn,
             iconType = iconType,
             sortOrder = 99,
-            customImageUri = customImageUri
+            customImageUri = compressedImg
         )
         dao.insertCategory(entity)
         try {
@@ -500,14 +501,16 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
                 "nameEn" to nameEn,
                 "iconType" to iconType,
                 "sortOrder" to 99,
-                "customImageUri" to (customImageUri ?: "")
+                "customImageUri" to (compressedImg ?: "")
             )
             firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("categories")?.document(catId)?.set(map)
         } catch (_: Exception) {}
     }
 
     suspend fun updateCategory(category: MenuCategory) {
-        dao.updateCategory(category.toEntity())
+        val compressedImg = com.example.util.ImageCompressor.uriToCompressedBase64(context, category.customImageUri)
+        val updated = category.copy(customImageUri = compressedImg)
+        dao.updateCategory(updated.toEntity())
         try {
             val map = hashMapOf(
                 "id" to category.id,
@@ -516,7 +519,7 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
                 "nameEn" to category.nameEn,
                 "iconType" to category.iconType,
                 "sortOrder" to category.sortOrder,
-                "customImageUri" to (category.customImageUri ?: "")
+                "customImageUri" to (compressedImg ?: "")
             )
             firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("categories")?.document(category.id)?.set(map)
         } catch (_: Exception) {}
@@ -554,6 +557,8 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
         offerTag: String = "عرض خاص"
     ) {
         val itemId = "item_" + UUID.randomUUID().toString().take(8)
+        val compressedImage = com.example.util.ImageCompressor.uriToCompressedBase64(context, imageUri)
+        val compressedBg = com.example.util.ImageCompressor.uriToCompressedBase64(context, bgImageUri)
         val entity = MenuItemEntity(
             id = itemId,
             categoryId = categoryId,
@@ -565,8 +570,8 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
             currency = currency,
             imageType = imageType,
             isAvailable = true,
-            imageUri = imageUri,
-            bgImageUri = bgImageUri,
+            imageUri = compressedImage,
+            bgImageUri = compressedBg,
             galleryImagesStr = galleryImages.joinToString("|||"),
             isOffer = isOffer,
             offerDiscountPercent = offerDiscountPercent,
@@ -586,8 +591,8 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
                 "currency" to currency,
                 "imageType" to imageType,
                 "isAvailable" to true,
-                "imageUri" to (imageUri ?: ""),
-                "bgImageUri" to (bgImageUri ?: ""),
+                "imageUri" to (compressedImage ?: ""),
+                "bgImageUri" to (compressedBg ?: ""),
                 "galleryImages" to galleryImages,
                 "isOffer" to isOffer,
                 "offerDiscountPercent" to offerDiscountPercent,
@@ -598,7 +603,10 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
     }
 
     suspend fun updateMenuItem(item: MenuItem) {
-        dao.updateMenuItem(item.toEntity())
+        val compressedImage = com.example.util.ImageCompressor.uriToCompressedBase64(context, item.imageUri)
+        val compressedBg = com.example.util.ImageCompressor.uriToCompressedBase64(context, item.bgImageUri)
+        val updated = item.copy(imageUri = compressedImage, bgImageUri = compressedBg)
+        dao.updateMenuItem(updated.toEntity())
         try {
             val itemMap = hashMapOf(
                 "id" to item.id,
@@ -612,8 +620,8 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
                 "currency" to item.currency,
                 "imageType" to item.imageType,
                 "isAvailable" to item.isAvailable,
-                "imageUri" to (item.imageUri ?: ""),
-                "bgImageUri" to (item.bgImageUri ?: ""),
+                "imageUri" to (compressedImage ?: ""),
+                "bgImageUri" to (compressedBg ?: ""),
                 "galleryImages" to item.galleryImages,
                 "isOffer" to item.isOffer,
                 "offerDiscountPercent" to item.offerDiscountPercent,

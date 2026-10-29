@@ -68,7 +68,7 @@
 
     .header-banner-container {
       width: 100%;
-      height: 165px;
+      height: 80px;
       position: relative;
       background: #0D0B0A;
       overflow: hidden;
@@ -79,7 +79,7 @@
 
     @media (min-width: 600px) {
       .header-banner-container {
-        height: 230px;
+        height: 110px;
       }
     }
 
@@ -155,171 +155,348 @@
       font-size: 30px;
     }
 
-    /* 3 Hero Cards Section (Framed in Cyan Glowing Border) */
-    .hero-container {
-      margin: 14px 14px 10px;
-      padding: 8px;
-      border-radius: 24px;
-      background: #021013;
-      border: 1.8px solid var(--cyan-primary);
-      box-shadow: 0 0 20px rgba(0, 223, 192, 0.2);
+    /* 3 Compact Rectangular Cards Side-by-Side */
+    .quick-nav-container {
+      margin: 12px 14px 6px;
+      padding: 0;
     }
 
-    .hero-grid {
-      display: flex;
-      gap: 10px;
-      height: 175px;
+    .quick-nav-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
     }
 
-    /* Left Tall Card: "قائمة الطلب" */
-    .hero-card-left {
-      flex: 1;
-      height: 100%;
-      background: linear-gradient(160deg, #181206 0%, #0c0802 60%, #1c1404 100%);
-      border: 1.6px solid var(--gold);
-      border-radius: 18px;
+    .quick-nav-card {
+      background: linear-gradient(145deg, #1C1714 0%, #120E0C 100%);
+      border: 1.4px solid rgba(247, 160, 56, 0.45);
+      border-radius: 14px;
+      padding: 8px 4px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 14px 8px;
       cursor: pointer;
-      box-shadow: 0 4px 15px rgba(245, 176, 65, 0.15);
-      transition: transform 0.2s ease;
+      text-align: center;
       position: relative;
+      min-height: 58px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+      transition: all 0.2s ease;
     }
 
-    .hero-card-left:active {
-      transform: scale(0.97);
+    .quick-nav-card:active {
+      transform: scale(0.96);
+      border-color: var(--cyan-primary);
+      box-shadow: 0 0 16px rgba(247, 160, 56, 0.35);
     }
 
-    .hero-order-circle {
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      border: 2.5px solid var(--gold);
-      background: rgba(245, 176, 65, 0.1);
+    .quick-nav-icon {
+      font-size: 18px;
+      color: var(--cyan-primary);
+      margin-bottom: 3px;
+    }
+
+    .quick-nav-title {
+      font-size: 11.5px;
+      font-weight: 800;
+      color: #FFFFFF;
+      white-space: nowrap;
+    }
+
+    .quick-nav-sub {
+      font-size: 8.5px;
+      color: var(--text-secondary);
+      margin-top: 1px;
+    }
+
+    .quick-nav-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: #EF4444;
+      color: #FFF;
+      font-size: 9px;
+      font-weight: 900;
+      padding: 1px 5px;
+      border-radius: 8px;
+    }
+
+    /* Scorecard & Games Modal Styles */
+    .game-tabs-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+      background: #120E0C;
+      padding: 4px;
+      border-radius: 14px;
+      border: 1px solid var(--card-border);
+    }
+
+    .game-tab-btn {
+      flex: 1;
+      padding: 8px 4px;
+      background: transparent;
+      border: none;
+      border-radius: 10px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
+      gap: 5px;
+      transition: all 0.2s ease;
+    }
+
+    .game-tab-btn.active {
+      background: var(--cyan-primary);
+      color: #140C04;
+      font-weight: 900;
+      box-shadow: 0 2px 10px rgba(247, 160, 56, 0.35);
+    }
+
+    .scorecard-panel {
+      text-align: right;
+    }
+
+    .scorecard-players-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       margin-bottom: 12px;
-      box-shadow: 0 0 16px rgba(245, 176, 65, 0.3);
     }
 
-    .hero-order-circle i {
-      color: var(--gold);
-      font-size: 26px;
+    .player-input-box {
+      flex: 1;
     }
 
-    .hero-order-title {
-      color: #FFFFFF;
-      font-size: 16px;
+    .player-input-box label {
+      display: block;
+      font-size: 10px;
+      color: var(--cyan-primary);
       font-weight: 800;
+      margin-bottom: 3px;
+    }
+
+    .player-input-box input {
+      width: 100%;
+      background: #140F0D;
+      border: 1px solid var(--card-border);
+      color: #FFFFFF;
+      padding: 7px 10px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+      outline: none;
+    }
+
+    .player-input-box input:focus {
+      border-color: var(--cyan-primary);
+    }
+
+    .vs-badge {
+      font-size: 11px;
+      font-weight: 900;
+      color: var(--gold);
+      padding: 4px 6px;
+      background: rgba(245, 158, 11, 0.12);
+      border-radius: 8px;
+      margin-top: 14px;
+    }
+
+    .round-entry-box {
+      background: #16110F;
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 10px;
+      margin-bottom: 12px;
+    }
+
+    .round-entry-title {
+      font-size: 11px;
+      font-weight: 800;
+      color: #FFFFFF;
+      margin-bottom: 8px;
+    }
+
+    .winner-selector-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .btn-select-winner {
+      flex: 1;
+      padding: 7px 6px;
+      border-radius: 10px;
+      border: 1px solid var(--card-border);
+      background: #1A1412;
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-select-winner.selected {
+      background: rgba(247, 160, 56, 0.2);
+      border-color: var(--cyan-primary);
+      color: #FFFFFF;
+      font-weight: 800;
+    }
+
+    .badge-xx {
+      background: #10B981;
+      color: #FFFFFF;
+      font-size: 9px;
+      font-weight: 900;
+      padding: 1px 5px;
+      border-radius: 6px;
+    }
+
+    .loser-score-input-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .loser-score-input-row label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    .loser-score-input-row input {
+      flex: 1;
+      background: #140F0D;
+      border: 1px solid var(--card-border);
+      color: #FFFFFF;
+      padding: 7px 8px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+      outline: none;
+    }
+
+    .btn-add-round {
+      background: var(--cyan-primary);
+      color: #140C04;
+      border: none;
+      border-radius: 8px;
+      padding: 7px 12px;
+      font-size: 11px;
+      font-weight: 900;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .score-table-wrap {
+      max-height: 160px;
+      overflow-y: auto;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      margin-bottom: 12px;
+      background: #120E0C;
+    }
+
+    .score-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
       text-align: center;
     }
 
-    .hero-order-badge {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      background: var(--cyan-primary);
-      color: #021215;
+    .score-table th {
+      background: #1C1613;
+      color: var(--cyan-primary);
+      padding: 6px 4px;
+      font-weight: 800;
+      border-bottom: 1px solid var(--card-border);
       font-size: 11px;
+    }
+
+    .score-table td {
+      padding: 6px 4px;
+      border-bottom: 1px solid rgba(56, 47, 42, 0.4);
+      color: #FFFFFF;
+    }
+
+    .score-xx {
+      display: inline-block;
+      background: rgba(16, 185, 129, 0.18);
+      color: #34D399;
       font-weight: 900;
       padding: 2px 7px;
-      border-radius: 10px;
-      display: none;
-    }
-
-    /* Right Stacked Column (العروض والجديد + ألعاب وترفيه) */
-    .hero-col-right {
-      flex: 1.25;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      height: 100%;
-    }
-
-    /* Top Right: "العروض والجديد" */
-    .hero-card-offers {
-      flex: 1;
-      background: linear-gradient(135deg, var(--hero-purple-bg) 0%, #0B0117 100%);
-      border: 1.4px solid rgba(124, 77, 255, 0.7);
-      border-radius: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 12px;
-      cursor: pointer;
-      position: relative;
-      overflow: hidden;
-      transition: transform 0.2s ease;
-    }
-
-    .hero-card-offers:active {
-      transform: scale(0.97);
-    }
-
-    .tag-new {
-      background: var(--hero-purple);
-      color: #FFFFFF;
-      font-size: 10px;
-      font-weight: 900;
-      padding: 4px 6px;
-      border-radius: 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(16, 185, 129, 0.4);
       letter-spacing: 0.5px;
     }
 
-    .offers-title-box {
-      text-align: right;
-    }
-
-    .offers-main-title {
-      font-size: 15px;
+    .score-num {
+      display: inline-block;
+      background: rgba(239, 68, 68, 0.15);
+      color: #F87171;
       font-weight: 800;
-      color: #FFFFFF;
-      line-height: 1.2;
+      padding: 2px 6px;
+      border-radius: 6px;
+      border: 1px solid rgba(239, 68, 68, 0.3);
     }
 
-    .hero-card-offers i.fa-fire {
-      color: #FF9100;
-      font-size: 26px;
-      filter: drop-shadow(0 0 8px rgba(255, 145, 0, 0.6));
-    }
-
-    /* Bottom Right: "ألعاب وترفيه" */
-    .hero-card-games {
-      flex: 1;
-      background: linear-gradient(135deg, var(--hero-blue-bg) 0%, #030C16 100%);
-      border: 1.4px solid rgba(41, 121, 255, 0.65);
-      border-radius: 16px;
+    .score-totals-row {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 12px;
-      cursor: pointer;
-      transition: transform 0.2s ease;
+      gap: 8px;
+      margin-bottom: 10px;
     }
 
-    .hero-card-games:active {
-      transform: scale(0.97);
+    .total-col {
+      flex: 1;
+      background: #16110F;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 8px;
+      text-align: center;
     }
 
-    .games-title-box {
-      text-align: right;
-    }
-
-    .games-main-title {
-      font-size: 15px;
+    .total-player-name {
+      font-size: 11px;
       font-weight: 800;
       color: #FFFFFF;
-      line-height: 1.2;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .hero-card-games i.fa-gamepad {
-      color: #FFFFFF;
-      font-size: 26px;
-      filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.4));
+    .total-wins-xx {
+      font-size: 13px;
+      font-weight: 900;
+      color: #34D399;
+      margin-bottom: 2px;
+    }
+
+    .total-points {
+      font-size: 10px;
+      color: var(--text-secondary);
+    }
+
+    .btn-score-reset {
+      width: 100%;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: #F87171;
+      border-radius: 10px;
+      padding: 6px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
     }
 
     /* Categories Horizontal Bar */
@@ -363,16 +540,16 @@
       color: var(--text-primary);
     }
 
-    /* Active category: Bright Cyan pill matching the screenshot */
+    /* Active category: Warm Amber Gold matching brand */
     .cat-btn.active {
       background: var(--cyan-primary);
       border-color: var(--cyan-primary);
-      box-shadow: 0 4px 16px rgba(0, 223, 192, 0.45);
+      box-shadow: 0 4px 16px rgba(247, 160, 56, 0.45);
       transform: translateY(-2px);
     }
 
     .cat-btn.active i, .cat-btn.active span {
-      color: #021215;
+      color: #140C04;
       font-weight: 900;
     }
 
@@ -434,10 +611,10 @@
       width: 104px;
       height: 104px;
       border-radius: 18px;
-      background: #031316;
+      background: #140E0B;
       overflow: hidden;
       flex-shrink: 0;
-      border: 1px solid rgba(0, 223, 192, 0.2);
+      border: 1px solid rgba(247, 160, 56, 0.25);
     }
 
     .item-image-wrapper img {
@@ -529,13 +706,13 @@
       align-items: center;
       gap: 4px;
       cursor: pointer;
-      box-shadow: 0 2px 10px rgba(0, 223, 192, 0.3);
+      box-shadow: 0 2px 10px rgba(247, 160, 56, 0.35);
       transition: transform 0.15s ease, background 0.15s ease;
     }
 
     .btn-add-order:active {
       transform: scale(0.95);
-      background: #00BF9E;
+      background: #D97706;
     }
 
     /* Floating Cart Bar (Bottom) */
@@ -545,7 +722,7 @@
       left: 14px;
       right: 14px;
       height: 60px;
-      background: linear-gradient(90deg, #051A1D 0%, #07262B 100%);
+      background: linear-gradient(90deg, #1C140E 0%, #291C12 100%);
       border: 1.8px solid var(--cyan-primary);
       border-radius: 30px;
       display: none;
@@ -553,7 +730,7 @@
       justify-content: space-between;
       padding: 0 16px;
       z-index: 100;
-      box-shadow: 0 6px 25px rgba(0, 223, 192, 0.4);
+      box-shadow: 0 6px 25px rgba(247, 160, 56, 0.35);
       animation: slideUp 0.3s ease-out;
     }
 
@@ -626,7 +803,7 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      box-shadow: 0 2px 10px rgba(0, 223, 192, 0.35);
+      box-shadow: 0 2px 10px rgba(247, 160, 56, 0.35);
     }
 
     /* Modals & Overlays */
@@ -761,7 +938,7 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
-      box-shadow: 0 4px 18px rgba(0, 223, 192, 0.4);
+      box-shadow: 0 4px 18px rgba(247, 160, 56, 0.4);
     }
 
     /* Gallery / Details Modal */
@@ -783,7 +960,7 @@
       margin: 12px 0;
     }
 
-    .status-new { background: rgba(0, 223, 192, 0.2); color: var(--cyan-primary); border: 1.5px solid var(--cyan-primary); }
+    .status-new { background: rgba(247, 160, 56, 0.2); color: var(--cyan-primary); border: 1.5px solid var(--cyan-primary); }
     .status-prep { background: rgba(245, 176, 65, 0.2); color: var(--gold); border: 1.5px solid var(--gold); }
     .status-ready { background: rgba(76, 175, 80, 0.2); color: #4CAF50; border: 1.5px solid #4CAF50; }
     .status-paid { background: rgba(33, 150, 243, 0.2); color: #2196F3; border: 1.5px solid #2196F3; }
@@ -844,36 +1021,29 @@
     </div>
   </div>
 
-  <!-- 3 Hero Cards Section (Matching Screenshot) -->
-  <section class="hero-container">
-    <div class="hero-grid">
-      <!-- Left Tall Card: "قائمة الطلب" -->
-      <div class="hero-card-left" onclick="openCartModal()">
-        <span class="hero-order-badge" id="heroCartBadge">0</span>
-        <div class="hero-order-circle">
-          <i class="fa-solid fa-utensils"></i>
-        </div>
-        <div class="hero-order-title">قائمة الطلب</div>
+  <!-- 3 Side-by-Side Compact Rectangles Section -->
+  <section class="quick-nav-container">
+    <div class="quick-nav-grid">
+      <!-- 1. تصفح المنيو / قائمة الأصناف (لا تفتح السلة) -->
+      <div class="quick-nav-card" onclick="scrollToMenu()">
+        <i class="fa-solid fa-book-open quick-nav-icon"></i>
+        <div class="quick-nav-title">قائمة المنيو</div>
+        <div class="quick-nav-sub">تصفح الأصناف</div>
       </div>
 
-      <!-- Right Stacked Column (العروض والجديد + ألعاب وترفيه) -->
-      <div class="hero-col-right">
-        <!-- Top Right: "العروض والجديد" -->
-        <div class="hero-card-offers" onclick="filterOffersOnly()">
-          <span class="tag-new">New</span>
-          <div class="offers-title-box">
-            <div class="offers-main-title">العروض<br>والجديد</div>
-          </div>
-          <i class="fa-solid fa-fire"></i>
-        </div>
+      <!-- 2. العروض والجديد -->
+      <div class="quick-nav-card" onclick="filterOffersOnly()">
+        <span class="quick-nav-badge">جديد</span>
+        <i class="fa-solid fa-fire quick-nav-icon" style="color: #F59E0B;"></i>
+        <div class="quick-nav-title">العروض والجديد</div>
+        <div class="quick-nav-sub">أفضل الخصومات</div>
+      </div>
 
-        <!-- Bottom Right: "ألعاب وترفيه" -->
-        <div class="hero-card-games" onclick="openGamesModal()">
-          <div class="games-title-box">
-            <div class="games-main-title">ألعاب<br>وترفيه</div>
-          </div>
-          <i class="fa-solid fa-gamepad"></i>
-        </div>
+      <!-- 3. ألعاب وترفيه (تسجيل نتائج الورق والدومينو وعجلة الحظ) -->
+      <div class="quick-nav-card" onclick="openGamesModal()">
+        <i class="fa-solid fa-dice quick-nav-icon" style="color: #60A5FA;"></i>
+        <div class="quick-nav-title">ألعاب وترفيه</div>
+        <div class="quick-nav-sub">تسجيل النتائج</div>
       </div>
     </div>
   </section>
@@ -984,23 +1154,120 @@
 
   <!-- Games & Entertainment Modal ("ألعاب وترفيه") -->
   <div class="modal-backdrop" id="gamesModal">
-    <div class="modal-sheet" style="text-align: center;">
+    <div class="modal-sheet" style="text-align: right; max-height: 88vh; overflow-y: auto;">
       <div class="modal-header">
         <div class="modal-title">
-          <i class="fa-solid fa-gamepad" style="color: #2979FF;"></i>
+          <i class="fa-solid fa-gamepad" style="color: var(--cyan-primary);"></i>
           <span>ألعاب وتسلية الطاولة</span>
         </div>
         <button class="modal-close-btn" onclick="closeGamesModal()">&times;</button>
       </div>
 
-      <div class="game-card-box">
+      <!-- Game Type Switcher Tabs -->
+      <div class="game-tabs-row">
+        <button type="button" class="game-tab-btn active" data-game="cards" onclick="switchGameTab('cards')">
+          <i class="fa-solid fa-clone"></i>
+          <span>ورق اللعب</span>
+        </button>
+        <button type="button" class="game-tab-btn" data-game="domino" onclick="switchGameTab('domino')">
+          <i class="fa-solid fa-dice-d6"></i>
+          <span>الدومينو</span>
+        </button>
+        <button type="button" class="game-tab-btn" data-game="wheel" onclick="switchGameTab('wheel')">
+          <i class="fa-solid fa-dharmachakra"></i>
+          <span>عجلة الحظ</span>
+        </button>
+      </div>
+
+      <!-- Scorecard Panel for Cards & Domino -->
+      <div id="scorecardPanel" class="scorecard-panel">
+        <!-- Competitor Names Header -->
+        <div class="scorecard-players-row">
+          <div class="player-input-box">
+            <label><i class="fa-solid fa-user"></i> اسم الخصم الأول:</label>
+            <input type="text" id="gameP1Name" value="الخصم الأول" onchange="updatePlayerNames()" placeholder="الخصم 1">
+          </div>
+          <div class="vs-badge">VS</div>
+          <div class="player-input-box">
+            <label><i class="fa-solid fa-user"></i> اسم الخصم الثاني:</label>
+            <input type="text" id="gameP2Name" value="الخصم الثاني" onchange="updatePlayerNames()" placeholder="الخصم 2">
+          </div>
+        </div>
+
+        <!-- Round Entry Box -->
+        <div class="round-entry-box">
+          <div class="round-entry-title">
+            <i class="fa-solid fa-trophy" style="color: var(--gold);"></i>
+            <span>تسجيل جولة: اختر الفائز (XX) وأدخل نقاط الخاسر</span>
+          </div>
+
+          <!-- Winner Selector -->
+          <div class="winner-selector-row">
+            <button type="button" class="btn-select-winner selected" id="btnWinnerP1" onclick="selectRoundWinner(1)">
+              <span class="badge-xx">XX</span>
+              <span id="winnerP1Label">الخصم 1 فاز (XX)</span>
+            </button>
+            <button type="button" class="btn-select-winner" id="btnWinnerP2" onclick="selectRoundWinner(2)">
+              <span class="badge-xx">XX</span>
+              <span id="winnerP2Label">الخصم 2 فاز (XX)</span>
+            </button>
+          </div>
+
+          <!-- Loser Score Input + Add Round Button -->
+          <div class="loser-score-input-row">
+            <label><i class="fa-solid fa-hashtag"></i> نقاط الخاسر:</label>
+            <input type="number" id="loserScoreInput" placeholder="أدخل رقم النقاط (مثال: 50)" min="0" max="9999">
+            <button type="button" class="btn-add-round" onclick="addGameRound()">
+              <i class="fa-solid fa-plus"></i> إضافة الجولة
+            </button>
+          </div>
+        </div>
+
+        <!-- Scores History Table -->
+        <div class="score-table-wrap">
+          <table class="score-table">
+            <thead>
+              <tr>
+                <th style="width: 18%;">الجولة</th>
+                <th id="thScoreP1" style="width: 36%;">الخصم الأول</th>
+                <th id="thScoreP2" style="width: 36%;">الخصم الثاني</th>
+                <th style="width: 10%;">حذف</th>
+              </tr>
+            </thead>
+            <tbody id="scoreTableBody">
+              <!-- Dynamically populated via JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Total Wins (XX) & Loser Points Summary -->
+        <div class="score-totals-row">
+          <div class="total-col">
+            <div class="total-player-name" id="totalP1Name">الخصم الأول</div>
+            <div class="total-wins-xx" id="totalP1Wins">0 فوز (XX)</div>
+            <div class="total-points" id="totalP1Points">0 نقطة خسارة</div>
+          </div>
+          <div class="total-col">
+            <div class="total-player-name" id="totalP2Name">الخصم الثاني</div>
+            <div class="total-wins-xx" id="totalP2Wins">0 فوز (XX)</div>
+            <div class="total-points" id="totalP2Points">0 نقطة خسارة</div>
+          </div>
+        </div>
+
+        <button type="button" class="btn-score-reset" onclick="resetGameScore()">
+          <i class="fa-solid fa-rotate-left"></i> تصفير النتيجة وبدء مباراة جديدة
+        </button>
+      </div>
+
+      <!-- Wheel of Fortune Panel -->
+      <div id="wheelPanel" class="game-card-box" style="display: none; text-align: center; margin-top: 10px;">
         <h4 style="font-size: 16px; font-weight: 800; color: #FFFFFF; margin-bottom: 6px;">🎡 عجلة الحظ للطاولة</h4>
-        <p style="font-size: 12px; color: var(--text-secondary);">لف العجلة واحصل على عبارة حظ أو مفاجأة خاصة بطاولتك!</p>
-        <div class="wheel-spinner" id="wheelSpinner">
+        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">لف العجلة واحصل على عبارة حظ أو مفاجأة خاصة بطاولتك!</p>
+        <div class="wheel-spinner" id="wheelSpinner" style="margin: 0 auto 14px;">
           <i class="fa-solid fa-gift"></i>
         </div>
-        <button class="btn-add-order" style="margin: 0 auto;" onclick="spinWheel()">اضغط للف العجلة 🎯</button>
-        <div id="wheelResultText" style="margin-top: 10px; font-size: 13px; font-weight: 700; color: var(--gold);"></div>
+        <button type="button" class="btn-add-order" style="margin: 0 auto;" onclick="spinWheel()">اضغط للف العجلة 🎯</button>
+        <div id="wheelResultText" style="margin-top: 12px; font-size: 13px; font-weight: 700; color: var(--gold);"></div>
       </div>
     </div>
   </div>
@@ -1008,7 +1275,7 @@
   <!-- Live Order Tracking Modal -->
   <div class="modal-backdrop" id="trackingModal">
     <div class="modal-sheet" style="text-align: center;">
-      <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(0,223,192,0.15); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+      <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(247, 160, 56, 0.18); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
         <i class="fa-solid fa-check" style="font-size: 26px; color: var(--cyan-primary);"></i>
       </div>
       <h3 style="font-size: 19px; font-weight: 800; margin-bottom: 6px;">تم إرسال طلبك بنجاح!</h3>
@@ -1174,10 +1441,22 @@
       }
     }
 
+    function scrollToMenu() {
+      const bar = document.getElementById('categoriesBar');
+      if (bar) {
+        bar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    function formatPrice(amount, curr) {
+      return Number(amount || 0).toLocaleString() + ' ' + (curr || 'د.ع');
+    }
+
     function getItemImageUrl(item) {
       if (!item) return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500&q=80';
-      if (item.imageUri && (item.imageUri.startsWith('http://') || item.imageUri.startsWith('https://') || item.imageUri.startsWith('data:image'))) {
-        return item.imageUri;
+      const rawUri = item.imageUri || item.customImageUri || (item.galleryImages && item.galleryImages[0]) || '';
+      if (rawUri && (rawUri.startsWith('http://') || rawUri.startsWith('https://') || rawUri.startsWith('data:image'))) {
+        return rawUri;
       }
       const type = (item.imageType || '').toLowerCase();
       const name = (item.nameAr || '').toLowerCase();
@@ -1232,7 +1511,8 @@
             const bannerImg = document.getElementById('headerBannerImg');
             if (bannerImg) bannerImg.src = data.headerBannerUrl || data.bannerUrl;
           }
-          if (data.themeColor) {
+          // Guard against old cyan themeColor overriding gold palette
+          if (data.themeColor && data.themeColor.toUpperCase() !== '#00DFC0') {
             document.documentElement.style.setProperty('--cyan-primary', data.themeColor);
           }
         }
@@ -1245,10 +1525,8 @@
           const data = doc.data();
           const activeSec = (data.securityToken || '').trim();
           const modal = document.getElementById('barcodeExpiredModal');
+          // If cafeteria renewed barcodes and a stale token is used, deactivate
           if (activeSec && secToken && activeSec !== secToken.trim()) {
-            isTableBarcodeValid = false;
-            if (modal) modal.style.display = 'flex';
-          } else if (activeSec && !secToken) {
             isTableBarcodeValid = false;
             if (modal) modal.style.display = 'flex';
           } else {
@@ -1576,11 +1854,17 @@
         db.collection('cafeterias').doc(cafeteriaId).collection('orders').doc(orderId).set(orderData)
           .then(() => {
             console.log("Order saved to cafeteria subcollection successfully!");
+            try { db.collection('orders').doc(orderId).set(orderData).catch(() => {}); } catch (_) {}
             finishOrder();
           })
           .catch(err => {
-            console.error("Firestore error:", err);
-            finishOrder();
+            console.error("Firestore subcollection error, attempting root collection fallback:", err);
+            db.collection('orders').doc(orderId).set(orderData)
+              .then(() => finishOrder())
+              .catch(e => {
+                console.error("Root order fallback failed:", e);
+                finishOrder();
+              });
           });
       } else {
         setTimeout(finishOrder, 700);
@@ -1655,13 +1939,197 @@
       document.getElementById('detailsModal').style.display = 'none';
     }
 
-    // 11. Interactive Games & Entertainment Modal
+    // 11. Interactive Games & Entertainment Modal with Cards & Domino Scorecards
+    let currentGameType = 'cards'; // 'cards' | 'domino' | 'wheel'
+    let selectedWinner = 1; // 1 or 2
+
+    const gameScores = {
+      cards: {
+        p1Name: 'الخصم الأول',
+        p2Name: 'الخصم الثاني',
+        rounds: []
+      },
+      domino: {
+        p1Name: 'الخصم الأول',
+        p2Name: 'الخصم الثاني',
+        rounds: []
+      }
+    };
+
     function openGamesModal() {
+      loadGameScores();
+      renderScorecard();
       document.getElementById('gamesModal').style.display = 'flex';
     }
 
     function closeGamesModal() {
       document.getElementById('gamesModal').style.display = 'none';
+    }
+
+    function switchGameTab(type) {
+      currentGameType = type;
+      document.querySelectorAll('.game-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-game') === type);
+      });
+
+      if (type === 'wheel') {
+        document.getElementById('scorecardPanel').style.display = 'none';
+        document.getElementById('wheelPanel').style.display = 'block';
+      } else {
+        document.getElementById('scorecardPanel').style.display = 'block';
+        document.getElementById('wheelPanel').style.display = 'none';
+        renderScorecard();
+      }
+    }
+
+    function selectRoundWinner(playerNum) {
+      selectedWinner = playerNum;
+      const b1 = document.getElementById('btnWinnerP1');
+      const b2 = document.getElementById('btnWinnerP2');
+      if (b1) b1.classList.toggle('selected', playerNum === 1);
+      if (b2) b2.classList.toggle('selected', playerNum === 2);
+    }
+
+    function updatePlayerNames() {
+      const g = gameScores[currentGameType];
+      if (!g) return;
+      const p1Input = document.getElementById('gameP1Name');
+      const p2Input = document.getElementById('gameP2Name');
+      if (p1Input && p1Input.value.trim()) g.p1Name = p1Input.value.trim();
+      if (p2Input && p2Input.value.trim()) g.p2Name = p2Input.value.trim();
+      saveGameScores();
+      renderScorecard();
+    }
+
+    function addGameRound() {
+      const g = gameScores[currentGameType];
+      if (!g) return;
+
+      const p1Input = document.getElementById('gameP1Name');
+      const p2Input = document.getElementById('gameP2Name');
+      if (p1Input && p1Input.value.trim()) g.p1Name = p1Input.value.trim();
+      if (p2Input && p2Input.value.trim()) g.p2Name = p2Input.value.trim();
+
+      const loserInput = document.getElementById('loserScoreInput');
+      const loserScore = parseInt(loserInput?.value || '0', 10);
+
+      const roundNum = g.rounds.length + 1;
+      const newRound = {
+        round: roundNum,
+        winner: selectedWinner,
+        p1Score: (selectedWinner === 1) ? 'XX' : loserScore,
+        p2Score: (selectedWinner === 2) ? 'XX' : loserScore
+      };
+
+      g.rounds.push(newRound);
+      saveGameScores();
+      if (loserInput) loserInput.value = '';
+      renderScorecard();
+    }
+
+    function deleteGameRound(index) {
+      const g = gameScores[currentGameType];
+      if (!g) return;
+      g.rounds.splice(index, 1);
+      g.rounds.forEach((r, idx) => r.round = idx + 1);
+      saveGameScores();
+      renderScorecard();
+    }
+
+    function resetGameScore() {
+      if (!confirm('هل أنت متأكد من تصفير نتائج الجولات وبدء مباراة جديدة؟')) return;
+      const g = gameScores[currentGameType];
+      if (!g) return;
+      g.rounds = [];
+      saveGameScores();
+      renderScorecard();
+    }
+
+    function renderScorecard() {
+      const g = gameScores[currentGameType];
+      if (!g) return;
+
+      const p1Input = document.getElementById('gameP1Name');
+      const p2Input = document.getElementById('gameP2Name');
+      if (p1Input && document.activeElement !== p1Input) p1Input.value = g.p1Name;
+      if (p2Input && document.activeElement !== p2Input) p2Input.value = g.p2Name;
+
+      const p1Lbl = document.getElementById('winnerP1Label');
+      const p2Lbl = document.getElementById('winnerP2Label');
+      if (p1Lbl) p1Lbl.innerText = g.p1Name + ' فاز (XX)';
+      if (p2Lbl) p2Lbl.innerText = g.p2Name + ' فاز (XX)';
+
+      const th1 = document.getElementById('thScoreP1');
+      const th2 = document.getElementById('thScoreP2');
+      if (th1) th1.innerText = g.p1Name;
+      if (th2) th2.innerText = g.p2Name;
+
+      const tbody = document.getElementById('scoreTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      if (g.rounds.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color: var(--text-muted); padding: 14px 6px;">لا توجد جولات مسجلة بعد. حدد الفائز وأدخل نقاط الخاسر واضغط (+ إضافة).</td></tr>`;
+      } else {
+        g.rounds.forEach((r, idx) => {
+          const p1Disp = (r.p1Score === 'XX')
+            ? '<span class="score-xx">XX</span>'
+            : `<span class="score-num">${r.p1Score}</span>`;
+          const p2Disp = (r.p2Score === 'XX')
+            ? '<span class="score-xx">XX</span>'
+            : `<span class="score-num">${r.p2Score}</span>`;
+
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="font-weight: 800; color: var(--text-secondary);">${r.round}</td>
+            <td>${p1Disp}</td>
+            <td>${p2Disp}</td>
+            <td>
+              <button type="button" onclick="deleteGameRound(${idx})" style="background: none; border: none; color: #EF4444; cursor: pointer; padding: 2px 4px; font-size: 13px;">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      const p1WinsXX = g.rounds.filter(r => r.winner === 1).length;
+      const p2WinsXX = g.rounds.filter(r => r.winner === 2).length;
+      const p1LossPoints = g.rounds.filter(r => r.winner === 2).reduce((sum, r) => sum + (Number(r.p1Score) || 0), 0);
+      const p2LossPoints = g.rounds.filter(r => r.winner === 1).reduce((sum, r) => sum + (Number(r.p2Score) || 0), 0);
+
+      const totP1Name = document.getElementById('totalP1Name');
+      const totP2Name = document.getElementById('totalP2Name');
+      if (totP1Name) totP1Name.innerText = g.p1Name;
+      if (totP2Name) totP2Name.innerText = g.p2Name;
+
+      const totP1Wins = document.getElementById('totalP1Wins');
+      const totP2Wins = document.getElementById('totalP2Wins');
+      if (totP1Wins) totP1Wins.innerText = `${p1WinsXX} فوز (XX)`;
+      if (totP2Wins) totP2Wins.innerText = `${p2WinsXX} فوز (XX)`;
+
+      const totP1Pts = document.getElementById('totalP1Points');
+      const totP2Pts = document.getElementById('totalP2Points');
+      if (totP1Pts) totP1Pts.innerText = `${p1LossPoints} نقطة خسارة`;
+      if (totP2Pts) totP2Pts.innerText = `${p2LossPoints} نقطة خسارة`;
+    }
+
+    function saveGameScores() {
+      try {
+        localStorage.setItem('cafe_game_scores', JSON.stringify(gameScores));
+      } catch (_) {}
+    }
+
+    function loadGameScores() {
+      try {
+        const raw = localStorage.getItem('cafe_game_scores');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.cards) gameScores.cards = parsed.cards;
+          if (parsed.domino) gameScores.domino = parsed.domino;
+        }
+      } catch (_) {}
     }
 
     function spinWheel() {
@@ -1683,6 +2151,7 @@
     }
 
     // Initialize Multi-Tenant Firestore Sync
+    loadGameScores();
     initFirebaseMultiTenantSync();
   </script>
 </body>
