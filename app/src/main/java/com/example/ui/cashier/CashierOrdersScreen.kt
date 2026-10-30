@@ -835,69 +835,79 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     items(filteredSessions, key = { it.sessionId.ifBlank { "${it.tableNumber}_${it.stage}_${it.lastTimestamp}" } }) { session ->
-                        UnifiedTableSessionCard(
-                            session = session,
-                            cafeName = cafeName,
-                            onAdvanceSession = { nextStatus ->
-                                viewModel.advanceTableSession(session.orders, nextStatus)
-                                Toast.makeText(
-                                    context,
-                                    "تم تحويل طاولة ${session.tableNumber} إلى ${nextStatus.titleAr} بنجاح",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            },
-                            onMergeCustomerOrders = { ordersToMerge ->
-                                viewModel.mergeCustomerOrders(ordersToMerge)
-                                Toast.makeText(
-                                    context,
-                                    "تم دمج طلبات الزبون بنجاح 🔗",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            },
-                            onMergeWithPreparing = { newOrder, preparingOrders ->
-                                viewModel.mergeNewOrderWithPreparing(newOrder, preparingOrders)
-                                Toast.makeText(
-                                    context,
-                                    "تم دمج الطلب مع طلب التحضير بنجاح 🔗",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            },
-                            onRejectSession = {
-                                viewModel.rejectTableSession(session.orders)
-                                Toast.makeText(
-                                    context,
-                                    "تم رفض طلبات طاولة ${session.tableNumber} بنجاح ❌",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            },
-                            onPaySingleOrder = { order ->
-                                viewModel.payOrders(listOf(order))
-                                Toast.makeText(
-                                    context,
-                                    "تم تسديد حساب الزبون (${order.customerName}) بنجاح! ✅",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            },
-                            onPayAllSession = { unpaidOrders ->
-                                viewModel.payAllOrdersForTable(unpaidOrders)
-                                Toast.makeText(
-                                    context,
-                                    "تم تسديد فاتورة طاولة ${session.tableNumber} بالكامل بنجاح! 💵",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            },
-                            onDeleteSession = {
-                                viewModel.deleteTableSession(session.orders)
-                                Toast.makeText(
-                                    context,
-                                    "تم مسح سجل طاولة ${session.tableNumber}",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            },
-                            onRequestDeletePaidOrder = { order ->
-                                orderForAuthorizedDeletion = order
-                            }
-                        )
+                        if (session.stage == OrderStatus.PAID) {
+                            CompactPaidInvoiceCard(
+                                session = session,
+                                cafeName = cafeName,
+                                onRequestDeletePaidOrder = { order ->
+                                    orderForAuthorizedDeletion = order
+                                }
+                            )
+                        } else {
+                            UnifiedTableSessionCard(
+                                session = session,
+                                cafeName = cafeName,
+                                onAdvanceSession = { nextStatus ->
+                                    viewModel.advanceTableSession(session.orders, nextStatus)
+                                    Toast.makeText(
+                                        context,
+                                        "تم تحويل طاولة ${session.tableNumber} إلى ${nextStatus.titleAr} بنجاح",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                },
+                                onMergeCustomerOrders = { ordersToMerge ->
+                                    viewModel.mergeCustomerOrders(ordersToMerge)
+                                    Toast.makeText(
+                                        context,
+                                        "تم دمج طلبات الزبون بنجاح 🔗",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                },
+                                onMergeWithPreparing = { newOrder, preparingOrders ->
+                                    viewModel.mergeNewOrderWithPreparing(newOrder, preparingOrders)
+                                    Toast.makeText(
+                                        context,
+                                        "تم دمج الطلب مع طلب التحضير بنجاح 🔗",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                },
+                                onRejectSession = {
+                                    viewModel.rejectTableSession(session.orders)
+                                    Toast.makeText(
+                                        context,
+                                        "تم رفض طلبات طاولة ${session.tableNumber} بنجاح ❌",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                },
+                                onPaySingleOrder = { order ->
+                                    viewModel.payOrders(listOf(order))
+                                    Toast.makeText(
+                                        context,
+                                        "تم تسديد حساب الزبون (${order.customerName}) بنجاح! ✅",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                },
+                                onPayAllSession = { unpaidOrders ->
+                                    viewModel.payAllOrdersForTable(unpaidOrders)
+                                    Toast.makeText(
+                                        context,
+                                        "تم تسديد فاتورة طاولة ${session.tableNumber} بالكامل بنجاح! 💵",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                },
+                                onDeleteSession = {
+                                    viewModel.deleteTableSession(session.orders)
+                                    Toast.makeText(
+                                        context,
+                                        "تم مسح سجل طاولة ${session.tableNumber}",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                },
+                                onRequestDeletePaidOrder = { order ->
+                                    orderForAuthorizedDeletion = order
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -996,6 +1006,252 @@ fun StatusFilterChip(
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
             color = if (selected) color else CafeTextSecondary
         )
+    }
+}
+
+/**
+ * بطاقة الفاتورة المسددة المدمجة والأنيقة:
+ * تعرض الفاتورة كإيصال مسدد مدمج ومرتب دون أي مساحات فارغة زائدة.
+ */
+@Composable
+fun CompactPaidInvoiceCard(
+    session: TableSession,
+    cafeName: String,
+    onRequestDeletePaidOrder: ((OrderRecord) -> Unit)? = null
+) {
+    val context = LocalContext.current
+    val paidTotal = remember(session.orders) { session.orders.sumOf { it.totalPrice } }
+    val currency = remember(session.orders) { session.orders.firstOrNull()?.currency ?: "د.ع" }
+    val timeFormatted = remember(session.lastTimestamp) {
+        val sdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
+        sdf.format(Date(session.lastTimestamp))
+    }
+
+    val customerNames = remember(session.orders) {
+        session.orders.map { it.customerName }.filter { it.isNotBlank() }.distinct()
+    }
+
+    val parsedItems = remember(session.orders) {
+        com.example.util.OrderSummaryHelper.parseOrderItems(session.orders.map { it.itemsSummary })
+    }
+
+    val combinedNotes = remember(session.orders) {
+        com.example.util.OrderSummaryHelper.combineNotes(session.orders.map { it.notes })
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("compact_paid_invoice_${session.tableNumber}_${session.lastTimestamp}"),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = CafeSurface),
+        border = BorderStroke(1.dp, OrderStatusPaid.copy(alpha = 0.5f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            // Header Row: طاولة + توقيت التسديد + شارة مسددة
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(CafeCyanPrimary)
+                            .padding(horizontal = 9.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "طاولة ${session.tableNumber}",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFF032125)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "سُددت: $timeFormatted",
+                        fontSize = 11.sp,
+                        color = CafeTextSecondary
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(OrderStatusPaid.copy(alpha = 0.18f))
+                        .border(0.8.dp, OrderStatusPaid, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = "تم التسديد بالكامل ✅",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = OrderStatusPaid
+                    )
+                }
+            }
+
+            if (customerNames.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = CafeGold,
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "الزبون: ${customerNames.joinToString("، ")}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = CafeTextPrimary
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // عرض المواد المطلوبة بأسطر خفيفة ومدمجة
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF031619))
+                    .border(0.6.dp, CafeCardBorder.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                if (parsedItems.isNotEmpty()) {
+                    parsedItems.forEach { item ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${item.name} × ${item.quantity}",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CafeTextPrimary,
+                                modifier = Modifier.weight(1.8f)
+                            )
+                            val priceStr = if (item.totalPrice > 0.0) {
+                                OrderFeeCalculator.formatPrice(item.totalPrice, item.currency)
+                            } else {
+                                "0 ${item.currency}"
+                            }
+                            Text(
+                                text = priceStr,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CafeGold
+                            )
+                        }
+                    }
+                } else {
+                    session.orders.forEach { ord ->
+                        Text(
+                            text = ord.itemsSummary,
+                            fontSize = 11.sp,
+                            color = CafeTextPrimary
+                        )
+                    }
+                }
+            }
+
+            if (combinedNotes.isNotBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "ملاحظات: $combinedNotes",
+                    fontSize = 10.sp,
+                    color = CafeGold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            HorizontalDivider(color = CafeCardBorder.copy(alpha = 0.5f))
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // سطر المجموع المسدد وأزرار الإجراءات في سطر واحد منظم ومدمج
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // المبلغ المسدد
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "المبلغ المسدد: ",
+                        fontSize = 11.sp,
+                        color = CafeTextSecondary
+                    )
+                    Text(
+                        text = OrderFeeCalculator.formatPrice(paidTotal, currency),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Black,
+                        color = OrderStatusPaid
+                    )
+                }
+
+                // الأزرار
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    // طباعة
+                    Button(
+                        onClick = {
+                            com.example.util.ReceiptPrinter.printInvoice(
+                                context = context,
+                                tableNumber = session.tableNumber,
+                                orders = session.orders,
+                                cafeName = cafeName
+                            )
+                            Toast.makeText(context, "جاري إرسال الفاتورة إلى الطابعة 🖨️", Toast.LENGTH_SHORT).show()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = CafeCyanPrimary,
+                            contentColor = Color(0xFF032125)
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 9.dp, vertical = 4.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Text("طباعة 🖨️", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
+                    }
+
+                    // طلب حذف
+                    if (onRequestDeletePaidOrder != null && session.orders.isNotEmpty()) {
+                        Button(
+                            onClick = {
+                                val targetPaid = session.orders.firstOrNull { it.status == OrderStatus.PAID } ?: session.orders.firstOrNull()
+                                if (targetPaid != null) {
+                                    onRequestDeletePaidOrder(targetPaid)
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFC62828).copy(alpha = 0.2f),
+                                contentColor = Color(0xFFFF5252)
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                            border = BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.4f)),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(11.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text("طلب حذف 🔒", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

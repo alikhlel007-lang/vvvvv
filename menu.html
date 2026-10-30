@@ -61,60 +61,31 @@
       margin: 0;
       padding: 0;
       overflow: hidden;
-      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.75);
-      border-bottom: 2px solid rgba(247, 160, 56, 0.35);
-      background: #000000;
+      background: transparent;
     }
 
-    .header-banner-container {
+    .top-table-header {
       width: 100%;
-      height: 80px;
-      position: relative;
-      background: #0D0B0A;
-      overflow: hidden;
+      padding: 14px 16px 8px;
       display: flex;
       align-items: center;
       justify-content: center;
+      background: transparent;
     }
 
-    @media (min-width: 600px) {
-      .header-banner-container {
-        height: 110px;
-      }
-    }
-
-    .header-banner-img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      object-position: center;
-      display: block;
-      transition: opacity 0.3s ease;
-    }
-
-    .header-banner-overlay {
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(13,11,10,0.2) 60%, rgba(13,11,10,0.85) 100%);
-      pointer-events: none;
-    }
-
-    .header-banner-badge {
-      position: absolute;
-      bottom: 12px;
-      left: 14px;
-      background: rgba(13, 11, 10, 0.88);
-      backdrop-filter: blur(8px);
-      border: 1px solid var(--cyan-primary);
-      border-radius: 14px;
-      padding: 4px 12px;
-      font-size: 11px;
-      font-weight: 800;
+    .table-number-pill {
+      background: #1C140E;
+      border: 1.8px solid var(--cyan-primary);
+      border-radius: 24px;
+      padding: 7px 24px;
+      font-size: 15px;
+      font-weight: 900;
       color: var(--cyan-primary);
       display: flex;
       align-items: center;
-      gap: 6px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      gap: 10px;
+      box-shadow: 0 4px 18px rgba(247, 160, 56, 0.35);
+      letter-spacing: 0.5px;
     }
 
     /* Barcode Expired / Invalidation Modal */
@@ -267,166 +238,126 @@
       margin-bottom: 12px;
     }
 
-    .player-input-box {
+    /* Unified T-Chart Game Scorecard (Classic Vertical & Horizontal Lines) */
+    .tchart-container {
+      background: #140E0B;
+      border: 1.5px solid var(--card-border);
+      border-radius: 16px;
+      padding: 12px;
+      margin-top: 6px;
+    }
+
+    .tchart-header {
+      display: flex;
+      align-items: stretch;
+      justify-content: space-between;
+      border-bottom: 2px solid var(--cyan-primary);
+      padding-bottom: 12px;
+      margin-bottom: 8px;
+    }
+
+    .tchart-player-col {
       flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 0 6px;
     }
 
-    .player-input-box label {
-      display: block;
-      font-size: 10px;
-      color: var(--cyan-primary);
-      font-weight: 800;
-      margin-bottom: 3px;
+    .tchart-divider-v {
+      width: 2px;
+      background: var(--card-border);
+      align-self: stretch;
+      margin: 0 4px;
     }
 
-    .player-input-box input {
+    .tchart-name-input {
       width: 100%;
-      background: #140F0D;
+      background: #1E1612;
       border: 1px solid var(--card-border);
       color: #FFFFFF;
-      padding: 7px 10px;
-      border-radius: 10px;
-      font-size: 12px;
-      font-weight: 700;
+      font-size: 13px;
+      font-weight: 800;
       text-align: center;
+      padding: 6px 8px;
+      border-radius: 8px;
       outline: none;
     }
 
-    .player-input-box input:focus {
+    .tchart-name-input:focus {
       border-color: var(--cyan-primary);
     }
 
-    .vs-badge {
-      font-size: 11px;
-      font-weight: 900;
-      color: var(--gold);
-      padding: 4px 6px;
-      background: rgba(245, 158, 11, 0.12);
-      border-radius: 8px;
-      margin-top: 14px;
+    .tchart-entry-row {
+      display: flex;
+      width: 100%;
+      gap: 4px;
     }
 
-    .round-entry-box {
-      background: #16110F;
+    .tchart-score-input {
+      flex: 1;
+      width: 50px;
+      background: #120D0A;
       border: 1px solid var(--card-border);
-      border-radius: 14px;
-      padding: 10px;
+      color: #F59E0B;
+      font-size: 13px;
+      font-weight: 800;
+      text-align: center;
+      padding: 6px 4px;
+      border-radius: 6px;
+      outline: none;
+    }
+
+    .tchart-score-input:focus {
+      border-color: var(--gold);
+    }
+
+    .btn-tchart-add {
+      background: var(--cyan-primary);
+      color: #140C04;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 900;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: transform 0.15s ease;
+    }
+
+    .btn-tchart-add:active {
+      transform: scale(0.95);
+    }
+
+    .tchart-table-wrap {
+      max-height: 220px;
+      overflow-y: auto;
+      border-bottom: 2px solid var(--cyan-primary);
       margin-bottom: 12px;
     }
 
-    .round-entry-title {
-      font-size: 11px;
+    .tchart-grid {
+      display: grid;
+      grid-template-columns: 1fr 2px 1fr;
+      width: 100%;
+    }
+
+    .tchart-grid-vdiv {
+      background: var(--card-border);
+      width: 2px;
+    }
+
+    .tchart-row-cell {
+      padding: 8px 6px;
+      text-align: center;
+      font-size: 14px;
       font-weight: 800;
-      color: #FFFFFF;
-      margin-bottom: 8px;
-    }
-
-    .winner-selector-row {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-
-    .btn-select-winner {
-      flex: 1;
-      padding: 7px 6px;
-      border-radius: 10px;
-      border: 1px solid var(--card-border);
-      background: #1A1412;
-      color: var(--text-secondary);
-      font-size: 11px;
-      font-weight: 700;
-      cursor: pointer;
+      border-bottom: 1px solid rgba(56, 47, 42, 0.4);
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
-      transition: all 0.2s;
-    }
-
-    .btn-select-winner.selected {
-      background: rgba(247, 160, 56, 0.2);
-      border-color: var(--cyan-primary);
-      color: #FFFFFF;
-      font-weight: 800;
-    }
-
-    .badge-xx {
-      background: #10B981;
-      color: #FFFFFF;
-      font-size: 9px;
-      font-weight: 900;
-      padding: 1px 5px;
-      border-radius: 6px;
-    }
-
-    .loser-score-input-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .loser-score-input-row label {
-      font-size: 11px;
-      color: var(--text-secondary);
-      white-space: nowrap;
-    }
-
-    .loser-score-input-row input {
-      flex: 1;
-      background: #140F0D;
-      border: 1px solid var(--card-border);
-      color: #FFFFFF;
-      padding: 7px 8px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 700;
-      text-align: center;
-      outline: none;
-    }
-
-    .btn-add-round {
-      background: var(--cyan-primary);
-      color: #140C04;
-      border: none;
-      border-radius: 8px;
-      padding: 7px 12px;
-      font-size: 11px;
-      font-weight: 900;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: all 0.2s;
-    }
-
-    .score-table-wrap {
-      max-height: 160px;
-      overflow-y: auto;
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      margin-bottom: 12px;
-      background: #120E0C;
-    }
-
-    .score-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
-      text-align: center;
-    }
-
-    .score-table th {
-      background: #1C1613;
-      color: var(--cyan-primary);
-      padding: 6px 4px;
-      font-weight: 800;
-      border-bottom: 1px solid var(--card-border);
-      font-size: 11px;
-    }
-
-    .score-table td {
-      padding: 6px 4px;
-      border-bottom: 1px solid rgba(56, 47, 42, 0.4);
-      color: #FFFFFF;
     }
 
     .score-xx {
@@ -434,7 +365,7 @@
       background: rgba(16, 185, 129, 0.18);
       color: #34D399;
       font-weight: 900;
-      padding: 2px 7px;
+      padding: 2px 8px;
       border-radius: 6px;
       border: 1px solid rgba(16, 185, 129, 0.4);
       letter-spacing: 0.5px;
@@ -445,9 +376,31 @@
       background: rgba(239, 68, 68, 0.15);
       color: #F87171;
       font-weight: 800;
-      padding: 2px 6px;
+      padding: 2px 7px;
       border-radius: 6px;
       border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .tchart-diff-banner {
+      background: rgba(247, 160, 56, 0.14);
+      border: 1.5px solid var(--cyan-primary);
+      border-radius: 12px;
+      padding: 10px;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .tchart-diff-title {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-bottom: 2px;
+      font-weight: 700;
+    }
+
+    .tchart-diff-value {
+      font-size: 15px;
+      font-weight: 900;
+      color: var(--cyan-primary);
     }
 
     .score-totals-row {
@@ -493,10 +446,11 @@
       border: 1px solid rgba(239, 68, 68, 0.35);
       color: #F87171;
       border-radius: 10px;
-      padding: 6px;
+      padding: 7px;
       font-size: 11px;
       font-weight: 800;
       cursor: pointer;
+      transition: all 0.2s;
     }
 
     /* Categories Horizontal Bar */
@@ -993,14 +947,11 @@
 <body>
 
   <!-- Top Full-Width Ribbon Header Banner (Replaces old table/cafe text bar) -->
-  <header class="header-banner-wrapper">
-    <div class="header-banner-container">
-      <img id="headerBannerImg" class="header-banner-img" src="public/cafe_logo.png" alt="غلاف وشعار الكافتيريا">
-      <div class="header-banner-overlay"></div>
-      <div class="header-banner-badge" id="headerTableBadge">
-        <i class="fa-solid fa-chair"></i>
-        <span id="bannerTableText">طاولة 1</span>
-      </div>
+  <!-- Top Prominent Table Number Header (No banners or logos) -->
+  <header class="top-table-header">
+    <div class="table-number-pill" id="headerTableBadge">
+      <i class="fa-solid fa-chair"></i>
+      <span id="bannerTableText">طاولة 1</span>
     </div>
   </header>
 
@@ -1039,11 +990,11 @@
         <div class="quick-nav-sub">أفضل الخصومات</div>
       </div>
 
-      <!-- 3. ألعاب وترفيه (تسجيل نتائج الورق والدومينو وعجلة الحظ) -->
+      <!-- 3. تسجيل نتائج الألعاب (دومينو وورق) -->
       <div class="quick-nav-card" onclick="openGamesModal()">
         <i class="fa-solid fa-dice quick-nav-icon" style="color: #60A5FA;"></i>
-        <div class="quick-nav-title">ألعاب وترفيه</div>
-        <div class="quick-nav-sub">تسجيل النتائج</div>
+        <div class="quick-nav-title">تسجيل نتائج الألعاب</div>
+        <div class="quick-nav-sub">دومينو وورق اللعب</div>
       </div>
     </div>
   </section>
@@ -1152,122 +1103,73 @@
     </div>
   </div>
 
-  <!-- Games & Entertainment Modal ("ألعاب وترفيه") -->
+  <!-- Unified Game Scorecard Modal ("تسجيل نتائج الألعاب") -->
   <div class="modal-backdrop" id="gamesModal">
     <div class="modal-sheet" style="text-align: right; max-height: 88vh; overflow-y: auto;">
       <div class="modal-header">
         <div class="modal-title">
           <i class="fa-solid fa-gamepad" style="color: var(--cyan-primary);"></i>
-          <span>ألعاب وتسلية الطاولة</span>
+          <span>تسجيل نتائج الألعاب</span>
         </div>
         <button class="modal-close-btn" onclick="closeGamesModal()">&times;</button>
       </div>
 
-      <!-- Game Type Switcher Tabs -->
-      <div class="game-tabs-row">
-        <button type="button" class="game-tab-btn active" data-game="cards" onclick="switchGameTab('cards')">
-          <i class="fa-solid fa-clone"></i>
-          <span>ورق اللعب</span>
-        </button>
-        <button type="button" class="game-tab-btn" data-game="domino" onclick="switchGameTab('domino')">
-          <i class="fa-solid fa-dice-d6"></i>
-          <span>الدومينو</span>
-        </button>
-        <button type="button" class="game-tab-btn" data-game="wheel" onclick="switchGameTab('wheel')">
-          <i class="fa-solid fa-dharmachakra"></i>
-          <span>عجلة الحظ</span>
-        </button>
-      </div>
-
-      <!-- Scorecard Panel for Cards & Domino -->
-      <div id="scorecardPanel" class="scorecard-panel">
-        <!-- Competitor Names Header -->
-        <div class="scorecard-players-row">
-          <div class="player-input-box">
-            <label><i class="fa-solid fa-user"></i> اسم الخصم الأول:</label>
-            <input type="text" id="gameP1Name" value="الخصم الأول" onchange="updatePlayerNames()" placeholder="الخصم 1">
+      <!-- T-Chart Scorecard Container (Horizontal Header + Vertical Divider) -->
+      <div class="tchart-container">
+        <!-- Player Names & Points Entry Row (Horizontal Line Below) -->
+        <div class="tchart-header">
+          <!-- Player 1 Column -->
+          <div class="tchart-player-col">
+            <input type="text" id="tchartP1Name" class="tchart-name-input" value="اللاعب الأول" onchange="updateTChartNames()" placeholder="اللاعب 1">
+            <div class="tchart-entry-row">
+              <input type="number" id="tchartP1Input" class="tchart-score-input" placeholder="نقاط" min="0">
+              <button type="button" class="btn-tchart-add" onclick="addTChartRound(1)">تسجيل</button>
+            </div>
           </div>
-          <div class="vs-badge">VS</div>
-          <div class="player-input-box">
-            <label><i class="fa-solid fa-user"></i> اسم الخصم الثاني:</label>
-            <input type="text" id="gameP2Name" value="الخصم الثاني" onchange="updatePlayerNames()" placeholder="الخصم 2">
+
+          <!-- Vertical Divider Line Between Both Players -->
+          <div class="tchart-divider-v"></div>
+
+          <!-- Player 2 Column -->
+          <div class="tchart-player-col">
+            <input type="text" id="tchartP2Name" class="tchart-name-input" value="اللاعب الثاني" onchange="updateTChartNames()" placeholder="اللاعب 2">
+            <div class="tchart-entry-row">
+              <input type="number" id="tchartP2Input" class="tchart-score-input" placeholder="نقاط" min="0">
+              <button type="button" class="btn-tchart-add" onclick="addTChartRound(2)">تسجيل</button>
+            </div>
           </div>
         </div>
 
-        <!-- Round Entry Box -->
-        <div class="round-entry-box">
-          <div class="round-entry-title">
-            <i class="fa-solid fa-trophy" style="color: var(--gold);"></i>
-            <span>تسجيل جولة: اختر الفائز (XX) وأدخل نقاط الخاسر</span>
-          </div>
-
-          <!-- Winner Selector -->
-          <div class="winner-selector-row">
-            <button type="button" class="btn-select-winner selected" id="btnWinnerP1" onclick="selectRoundWinner(1)">
-              <span class="badge-xx">XX</span>
-              <span id="winnerP1Label">الخصم 1 فاز (XX)</span>
-            </button>
-            <button type="button" class="btn-select-winner" id="btnWinnerP2" onclick="selectRoundWinner(2)">
-              <span class="badge-xx">XX</span>
-              <span id="winnerP2Label">الخصم 2 فاز (XX)</span>
-            </button>
-          </div>
-
-          <!-- Loser Score Input + Add Round Button -->
-          <div class="loser-score-input-row">
-            <label><i class="fa-solid fa-hashtag"></i> نقاط الخاسر:</label>
-            <input type="number" id="loserScoreInput" placeholder="أدخل رقم النقاط (مثال: 50)" min="0" max="9999">
-            <button type="button" class="btn-add-round" onclick="addGameRound()">
-              <i class="fa-solid fa-plus"></i> إضافة الجولة
-            </button>
+        <!-- T-Chart Scores List with Vertical Divider Line -->
+        <div class="tchart-table-wrap">
+          <div class="tchart-grid" id="tchartGridBody">
+            <!-- Dynamically populated via JS: Cell P1 | Vertical Line | Cell P2 -->
           </div>
         </div>
 
-        <!-- Scores History Table -->
-        <div class="score-table-wrap">
-          <table class="score-table">
-            <thead>
-              <tr>
-                <th style="width: 18%;">الجولة</th>
-                <th id="thScoreP1" style="width: 36%;">الخصم الأول</th>
-                <th id="thScoreP2" style="width: 36%;">الخصم الثاني</th>
-                <th style="width: 10%;">حذف</th>
-              </tr>
-            </thead>
-            <tbody id="scoreTableBody">
-              <!-- Dynamically populated via JS -->
-            </tbody>
-          </table>
+        <!-- Automatic Point Difference Banner (فرق النقاط تلقائياً) -->
+        <div class="tchart-diff-banner">
+          <div class="tchart-diff-title">فرق النقاط التراكمي</div>
+          <div class="tchart-diff-value" id="tchartDiffText">فرق النقاط: 0</div>
         </div>
 
         <!-- Total Wins (XX) & Loser Points Summary -->
         <div class="score-totals-row">
           <div class="total-col">
-            <div class="total-player-name" id="totalP1Name">الخصم الأول</div>
-            <div class="total-wins-xx" id="totalP1Wins">0 فوز (XX)</div>
-            <div class="total-points" id="totalP1Points">0 نقطة خسارة</div>
+            <div class="total-player-name" id="tchartTotP1Name">اللاعب الأول</div>
+            <div class="total-wins-xx" id="tchartTotP1Wins">0 فوز (XX)</div>
+            <div class="total-points" id="tchartTotP1Points">0 نقطة خسارة</div>
           </div>
           <div class="total-col">
-            <div class="total-player-name" id="totalP2Name">الخصم الثاني</div>
-            <div class="total-wins-xx" id="totalP2Wins">0 فوز (XX)</div>
-            <div class="total-points" id="totalP2Points">0 نقطة خسارة</div>
+            <div class="total-player-name" id="tchartTotP2Name">اللاعب الثاني</div>
+            <div class="total-wins-xx" id="tchartTotP2Wins">0 فوز (XX)</div>
+            <div class="total-points" id="tchartTotP2Points">0 نقطة خسارة</div>
           </div>
         </div>
 
-        <button type="button" class="btn-score-reset" onclick="resetGameScore()">
+        <button type="button" class="btn-score-reset" onclick="resetTChartScore()">
           <i class="fa-solid fa-rotate-left"></i> تصفير النتيجة وبدء مباراة جديدة
         </button>
-      </div>
-
-      <!-- Wheel of Fortune Panel -->
-      <div id="wheelPanel" class="game-card-box" style="display: none; text-align: center; margin-top: 10px;">
-        <h4 style="font-size: 16px; font-weight: 800; color: #FFFFFF; margin-bottom: 6px;">🎡 عجلة الحظ للطاولة</h4>
-        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">لف العجلة واحصل على عبارة حظ أو مفاجأة خاصة بطاولتك!</p>
-        <div class="wheel-spinner" id="wheelSpinner" style="margin: 0 auto 14px;">
-          <i class="fa-solid fa-gift"></i>
-        </div>
-        <button type="button" class="btn-add-order" style="margin: 0 auto;" onclick="spinWheel()">اضغط للف العجلة 🎯</button>
-        <div id="wheelResultText" style="margin-top: 12px; font-size: 13px; font-weight: 700; color: var(--gold);"></div>
       </div>
     </div>
   </div>
@@ -1454,9 +1356,15 @@
 
     function getItemImageUrl(item) {
       if (!item) return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500&q=80';
-      const rawUri = item.imageUri || item.customImageUri || (item.galleryImages && item.galleryImages[0]) || '';
-      if (rawUri && (rawUri.startsWith('http://') || rawUri.startsWith('https://') || rawUri.startsWith('data:image'))) {
-        return rawUri;
+      let rawUri = item.imageUri || item.customImageUri || item.imageUrl || item.bgImageUri || item.photoUrl || (item.galleryImages && item.galleryImages[0]) || '';
+      if (rawUri && typeof rawUri === 'string') {
+        rawUri = rawUri.trim();
+        if (rawUri.startsWith('http://') || rawUri.startsWith('https://') || rawUri.startsWith('data:image')) {
+          return rawUri;
+        }
+        if (rawUri.startsWith('/9j/') || rawUri.startsWith('iVBORw') || (rawUri.length > 200 && !rawUri.startsWith('content:') && !rawUri.startsWith('file:'))) {
+          return 'data:image/jpeg;base64,' + rawUri;
+        }
       }
       const type = (item.imageType || '').toLowerCase();
       const name = (item.nameAr || '').toLowerCase();
@@ -1501,16 +1409,12 @@
         }).catch(err => console.log('Auto cafeteria lookup notice:', err));
       }
 
-      // A. Listen to Cafe Profile & Header Banner
+      // A. Listen to Cafe Profile
       db.collection('cafeterias').doc(cafeteriaId).onSnapshot((doc) => {
         if (doc && doc.exists) {
           const data = doc.data();
           const brandNameEl = document.getElementById('brandCafeName');
           if (brandNameEl && data.cafeName) brandNameEl.innerText = data.cafeName;
-          if (data.headerBannerUrl || data.bannerUrl) {
-            const bannerImg = document.getElementById('headerBannerImg');
-            if (bannerImg) bannerImg.src = data.headerBannerUrl || data.bannerUrl;
-          }
           // Guard against old cyan themeColor overriding gold palette
           if (data.themeColor && data.themeColor.toUpperCase() !== '#00DFC0') {
             document.documentElement.style.setProperty('--cyan-primary', data.themeColor);
@@ -1939,26 +1843,16 @@
       document.getElementById('detailsModal').style.display = 'none';
     }
 
-    // 11. Interactive Games & Entertainment Modal with Cards & Domino Scorecards
-    let currentGameType = 'cards'; // 'cards' | 'domino' | 'wheel'
-    let selectedWinner = 1; // 1 or 2
-
-    const gameScores = {
-      cards: {
-        p1Name: 'الخصم الأول',
-        p2Name: 'الخصم الثاني',
-        rounds: []
-      },
-      domino: {
-        p1Name: 'الخصم الأول',
-        p2Name: 'الخصم الثاني',
-        rounds: []
-      }
+    // 11. Unified T-Chart Game Scorecard ("تسجيل نتائج الألعاب")
+    let tchartData = {
+      p1Name: 'اللاعب الأول',
+      p2Name: 'اللاعب الثاني',
+      rounds: []
     };
 
     function openGamesModal() {
-      loadGameScores();
-      renderScorecard();
+      loadTChartScore();
+      renderTChart();
       document.getElementById('gamesModal').style.display = 'flex';
     }
 
@@ -1966,192 +1860,154 @@
       document.getElementById('gamesModal').style.display = 'none';
     }
 
-    function switchGameTab(type) {
-      currentGameType = type;
-      document.querySelectorAll('.game-tab-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.getAttribute('data-game') === type);
-      });
+    function updateTChartNames() {
+      const p1 = document.getElementById('tchartP1Name')?.value.trim();
+      const p2 = document.getElementById('tchartP2Name')?.value.trim();
+      if (p1) tchartData.p1Name = p1;
+      if (p2) tchartData.p2Name = p2;
+      saveTChartScore();
+      renderTChart();
+    }
 
-      if (type === 'wheel') {
-        document.getElementById('scorecardPanel').style.display = 'none';
-        document.getElementById('wheelPanel').style.display = 'block';
-      } else {
-        document.getElementById('scorecardPanel').style.display = 'block';
-        document.getElementById('wheelPanel').style.display = 'none';
-        renderScorecard();
+    // When points are entered on loser side, the winner side gets XX automatically!
+    function addTChartRound(loserPlayerNum) {
+      const inputEl = document.getElementById(loserPlayerNum === 1 ? 'tchartP1Input' : 'tchartP2Input');
+      const val = parseInt(inputEl?.value || '0', 10);
+      if (isNaN(val) || val <= 0) {
+        alert('يرجى إدخال رقم نقاط صحيح للخاسر');
+        return;
       }
-    }
 
-    function selectRoundWinner(playerNum) {
-      selectedWinner = playerNum;
-      const b1 = document.getElementById('btnWinnerP1');
-      const b2 = document.getElementById('btnWinnerP2');
-      if (b1) b1.classList.toggle('selected', playerNum === 1);
-      if (b2) b2.classList.toggle('selected', playerNum === 2);
-    }
+      updateTChartNames();
 
-    function updatePlayerNames() {
-      const g = gameScores[currentGameType];
-      if (!g) return;
-      const p1Input = document.getElementById('gameP1Name');
-      const p2Input = document.getElementById('gameP2Name');
-      if (p1Input && p1Input.value.trim()) g.p1Name = p1Input.value.trim();
-      if (p2Input && p2Input.value.trim()) g.p2Name = p2Input.value.trim();
-      saveGameScores();
-      renderScorecard();
-    }
-
-    function addGameRound() {
-      const g = gameScores[currentGameType];
-      if (!g) return;
-
-      const p1Input = document.getElementById('gameP1Name');
-      const p2Input = document.getElementById('gameP2Name');
-      if (p1Input && p1Input.value.trim()) g.p1Name = p1Input.value.trim();
-      if (p2Input && p2Input.value.trim()) g.p2Name = p2Input.value.trim();
-
-      const loserInput = document.getElementById('loserScoreInput');
-      const loserScore = parseInt(loserInput?.value || '0', 10);
-
-      const roundNum = g.rounds.length + 1;
       const newRound = {
-        round: roundNum,
-        winner: selectedWinner,
-        p1Score: (selectedWinner === 1) ? 'XX' : loserScore,
-        p2Score: (selectedWinner === 2) ? 'XX' : loserScore
+        round: tchartData.rounds.length + 1,
+        loser: loserPlayerNum,
+        p1Score: (loserPlayerNum === 1) ? val : 'XX',
+        p2Score: (loserPlayerNum === 2) ? val : 'XX'
       };
 
-      g.rounds.push(newRound);
-      saveGameScores();
-      if (loserInput) loserInput.value = '';
-      renderScorecard();
+      tchartData.rounds.push(newRound);
+      saveTChartScore();
+      if (inputEl) inputEl.value = '';
+      renderTChart();
     }
 
-    function deleteGameRound(index) {
-      const g = gameScores[currentGameType];
-      if (!g) return;
-      g.rounds.splice(index, 1);
-      g.rounds.forEach((r, idx) => r.round = idx + 1);
-      saveGameScores();
-      renderScorecard();
+    function deleteTChartRound(index) {
+      tchartData.rounds.splice(index, 1);
+      tchartData.rounds.forEach((r, idx) => r.round = idx + 1);
+      saveTChartScore();
+      renderTChart();
     }
 
-    function resetGameScore() {
+    function resetTChartScore() {
       if (!confirm('هل أنت متأكد من تصفير نتائج الجولات وبدء مباراة جديدة؟')) return;
-      const g = gameScores[currentGameType];
-      if (!g) return;
-      g.rounds = [];
-      saveGameScores();
-      renderScorecard();
+      tchartData.rounds = [];
+      saveTChartScore();
+      renderTChart();
     }
 
-    function renderScorecard() {
-      const g = gameScores[currentGameType];
-      if (!g) return;
+    function renderTChart() {
+      const p1Input = document.getElementById('tchartP1Name');
+      const p2Input = document.getElementById('tchartP2Name');
+      if (p1Input && document.activeElement !== p1Input) p1Input.value = tchartData.p1Name;
+      if (p2Input && document.activeElement !== p2Input) p2Input.value = tchartData.p2Name;
 
-      const p1Input = document.getElementById('gameP1Name');
-      const p2Input = document.getElementById('gameP2Name');
-      if (p1Input && document.activeElement !== p1Input) p1Input.value = g.p1Name;
-      if (p2Input && document.activeElement !== p2Input) p2Input.value = g.p2Name;
+      const gridBody = document.getElementById('tchartGridBody');
+      if (!gridBody) return;
+      gridBody.innerHTML = '';
 
-      const p1Lbl = document.getElementById('winnerP1Label');
-      const p2Lbl = document.getElementById('winnerP2Label');
-      if (p1Lbl) p1Lbl.innerText = g.p1Name + ' فاز (XX)';
-      if (p2Lbl) p2Lbl.innerText = g.p2Name + ' فاز (XX)';
-
-      const th1 = document.getElementById('thScoreP1');
-      const th2 = document.getElementById('thScoreP2');
-      if (th1) th1.innerText = g.p1Name;
-      if (th2) th2.innerText = g.p2Name;
-
-      const tbody = document.getElementById('scoreTableBody');
-      if (!tbody) return;
-      tbody.innerHTML = '';
-
-      if (g.rounds.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="color: var(--text-muted); padding: 14px 6px;">لا توجد جولات مسجلة بعد. حدد الفائز وأدخل نقاط الخاسر واضغط (+ إضافة).</td></tr>`;
+      if (tchartData.rounds.length === 0) {
+        gridBody.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 18px 8px; font-size: 12px;">
+            لا توجد جولات مسجلة بعد.<br>أدخل نقاط الخاسر في جهته واضغط (تسجيل) وسيظهر XX تلقائياً للرابح.
+          </div>
+        `;
       } else {
-        g.rounds.forEach((r, idx) => {
-          const p1Disp = (r.p1Score === 'XX')
+        tchartData.rounds.forEach((r, idx) => {
+          const p1Cell = document.createElement('div');
+          p1Cell.className = 'tchart-row-cell';
+          p1Cell.innerHTML = (r.p1Score === 'XX')
             ? '<span class="score-xx">XX</span>'
             : `<span class="score-num">${r.p1Score}</span>`;
-          const p2Disp = (r.p2Score === 'XX')
+
+          const vdiv = document.createElement('div');
+          vdiv.className = 'tchart-grid-vdiv';
+
+          const p2Cell = document.createElement('div');
+          p2Cell.className = 'tchart-row-cell';
+          p2Cell.innerHTML = (r.p2Score === 'XX')
             ? '<span class="score-xx">XX</span>'
             : `<span class="score-num">${r.p2Score}</span>`;
 
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td style="font-weight: 800; color: var(--text-secondary);">${r.round}</td>
-            <td>${p1Disp}</td>
-            <td>${p2Disp}</td>
-            <td>
-              <button type="button" onclick="deleteGameRound(${idx})" style="background: none; border: none; color: #EF4444; cursor: pointer; padding: 2px 4px; font-size: 13px;">
-                <i class="fa-solid fa-trash-can"></i>
-              </button>
-            </td>
-          `;
-          tbody.appendChild(tr);
+          // Small delete button next to round
+          const delBtn = document.createElement('button');
+          delBtn.type = 'button';
+          delBtn.innerHTML = '&times;';
+          delBtn.style.cssText = 'background:none;border:none;color:#EF4444;font-size:16px;cursor:pointer;margin-right:4px;';
+          delBtn.onclick = () => deleteTChartRound(idx);
+          p2Cell.appendChild(delBtn);
+
+          gridBody.appendChild(p1Cell);
+          gridBody.appendChild(vdiv);
+          gridBody.appendChild(p2Cell);
         });
       }
 
-      const p1WinsXX = g.rounds.filter(r => r.winner === 1).length;
-      const p2WinsXX = g.rounds.filter(r => r.winner === 2).length;
-      const p1LossPoints = g.rounds.filter(r => r.winner === 2).reduce((sum, r) => sum + (Number(r.p1Score) || 0), 0);
-      const p2LossPoints = g.rounds.filter(r => r.winner === 1).reduce((sum, r) => sum + (Number(r.p2Score) || 0), 0);
+      // Calculations
+      const p1Wins = tchartData.rounds.filter(r => r.p1Score === 'XX').length;
+      const p2Wins = tchartData.rounds.filter(r => r.p2Score === 'XX').length;
+      const p1Points = tchartData.rounds.filter(r => r.p1Score !== 'XX').reduce((sum, r) => sum + (Number(r.p1Score) || 0), 0);
+      const p2Points = tchartData.rounds.filter(r => r.p2Score !== 'XX').reduce((sum, r) => sum + (Number(r.p2Score) || 0), 0);
 
-      const totP1Name = document.getElementById('totalP1Name');
-      const totP2Name = document.getElementById('totalP2Name');
-      if (totP1Name) totP1Name.innerText = g.p1Name;
-      if (totP2Name) totP2Name.innerText = g.p2Name;
+      const totP1Name = document.getElementById('tchartTotP1Name');
+      const totP2Name = document.getElementById('tchartTotP2Name');
+      if (totP1Name) totP1Name.innerText = tchartData.p1Name;
+      if (totP2Name) totP2Name.innerText = tchartData.p2Name;
 
-      const totP1Wins = document.getElementById('totalP1Wins');
-      const totP2Wins = document.getElementById('totalP2Wins');
-      if (totP1Wins) totP1Wins.innerText = `${p1WinsXX} فوز (XX)`;
-      if (totP2Wins) totP2Wins.innerText = `${p2WinsXX} فوز (XX)`;
+      const totP1Wins = document.getElementById('tchartTotP1Wins');
+      const totP2Wins = document.getElementById('tchartTotP2Wins');
+      if (totP1Wins) totP1Wins.innerText = `${p1Wins} فوز (XX)`;
+      if (totP2Wins) totP2Wins.innerText = `${p2Wins} فوز (XX)`;
 
-      const totP1Pts = document.getElementById('totalP1Points');
-      const totP2Pts = document.getElementById('totalP2Points');
-      if (totP1Pts) totP1Pts.innerText = `${p1LossPoints} نقطة خسارة`;
-      if (totP2Pts) totP2Pts.innerText = `${p2LossPoints} نقطة خسارة`;
+      const totP1Pts = document.getElementById('tchartTotP1Points');
+      const totP2Pts = document.getElementById('tchartTotP2Points');
+      if (totP1Pts) totP1Pts.innerText = `${p1Points} نقطة`;
+      if (totP2Pts) totP2Pts.innerText = `${p2Points} نقطة`;
+
+      // Point difference calculation (فرق النقاط تلقائياً تحت القائمة)
+      const diffEl = document.getElementById('tchartDiffText');
+      if (diffEl) {
+        const diff = Math.abs(p1Points - p2Points);
+        if (p1Points === p2Points) {
+          diffEl.innerText = (tchartData.rounds.length === 0) ? 'فرق النقاط: 0' : 'النقاط متعادلة بين اللاعبين (0)';
+        } else if (p1Points < p2Points) {
+          // In domino/cards, lower loss points means leading/winning
+          diffEl.innerText = `فرق النقاط: ${diff} نقطة لصالح ${tchartData.p1Name} 🏆`;
+        } else {
+          diffEl.innerText = `فرق النقاط: ${diff} نقطة لصالح ${tchartData.p2Name} 🏆`;
+        }
+      }
     }
 
-    function saveGameScores() {
+    function saveTChartScore() {
       try {
-        localStorage.setItem('cafe_game_scores', JSON.stringify(gameScores));
+        localStorage.setItem('cafe_tchart_game', JSON.stringify(tchartData));
       } catch (_) {}
     }
 
-    function loadGameScores() {
+    function loadTChartScore() {
       try {
-        const raw = localStorage.getItem('cafe_game_scores');
+        const raw = localStorage.getItem('cafe_tchart_game');
         if (raw) {
           const parsed = JSON.parse(raw);
-          if (parsed.cards) gameScores.cards = parsed.cards;
-          if (parsed.domino) gameScores.domino = parsed.domino;
+          if (parsed && Array.isArray(parsed.rounds)) tchartData = parsed;
         }
       } catch (_) {}
     }
 
-    function spinWheel() {
-      const spinner = document.getElementById('wheelSpinner');
-      const randomDeg = 720 + Math.floor(Math.random() * 360);
-      spinner.style.transform = `rotate(${randomDeg}deg)`;
-
-      const fortunes = [
-        "✨ طاولتكم اليوم هي الأكثر تميزاً وإشراقاً في الكافيه!",
-        "☕ فنجان قهوة رائع بانتظاركم بعد قليل!",
-        "🎉 نتمنى لكم يوماً سعيداً ومليئاً بالبهجة واللذة!",
-        "⭐ أنتم ضيوفنا المميزون اليوم، أهلاً وسهلاً بكم!"
-      ];
-      const pick = fortunes[Math.floor(Math.random() * fortunes.length)];
-
-      setTimeout(() => {
-        document.getElementById('wheelResultText').innerText = pick;
-      }, 1500);
-    }
-
     // Initialize Multi-Tenant Firestore Sync
-    loadGameScores();
+    loadTChartScore();
     initFirebaseMultiTenantSync();
   </script>
 </body>

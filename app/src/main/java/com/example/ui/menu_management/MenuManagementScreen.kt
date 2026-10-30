@@ -75,7 +75,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -679,12 +683,19 @@ fun ItemGearSettingsDialog(
     var discountPercentStr by remember { mutableStateOf(if (item.offerDiscountPercent > 0) item.offerDiscountPercent.toString() else "") }
     var offerTag by remember { mutableStateOf(item.offerTag.ifBlank { "عرض خاص" }) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     val itemImagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         if (uri != null) {
-            itemImageUri = uri.toString()
+            coroutineScope.launch(Dispatchers.IO) {
+                val compressed = com.example.util.ImageCompressor.uriToCompressedBase64(context, uri.toString())
+                withContext(Dispatchers.Main) {
+                    itemImageUri = compressed ?: uri.toString()
+                }
+            }
         }
     }
 
@@ -692,7 +703,12 @@ fun ItemGearSettingsDialog(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         if (uri != null) {
-            itemBgImageUri = uri.toString()
+            coroutineScope.launch(Dispatchers.IO) {
+                val compressed = com.example.util.ImageCompressor.uriToCompressedBase64(context, uri.toString())
+                withContext(Dispatchers.Main) {
+                    itemBgImageUri = compressed ?: uri.toString()
+                }
+            }
         }
     }
 
@@ -700,7 +716,14 @@ fun ItemGearSettingsDialog(
         contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 10)
     ) { uris ->
         if (uris.isNotEmpty()) {
-            galleryImages = (galleryImages + uris.map { it.toString() }).distinct()
+            coroutineScope.launch(Dispatchers.IO) {
+                val compressedList = uris.map { u ->
+                    com.example.util.ImageCompressor.uriToCompressedBase64(context, u.toString()) ?: u.toString()
+                }
+                withContext(Dispatchers.Main) {
+                    galleryImages = (galleryImages + compressedList).distinct()
+                }
+            }
         }
     }
 
@@ -1387,24 +1410,47 @@ fun AddItemDialog(
     var offerNewPriceStr by remember { mutableStateOf("") }
     var discountPercentStr by remember { mutableStateOf("15") }
     var offerTag by remember { mutableStateOf("عرض خاص") }
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
-        if (uri != null) imageUri = uri.toString()
+        if (uri != null) {
+            coroutineScope.launch(Dispatchers.IO) {
+                val compressed = com.example.util.ImageCompressor.uriToCompressedBase64(context, uri.toString())
+                withContext(Dispatchers.Main) {
+                    imageUri = compressed ?: uri.toString()
+                }
+            }
+        }
     }
 
     val bgPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
-        if (uri != null) bgImageUri = uri.toString()
+        if (uri != null) {
+            coroutineScope.launch(Dispatchers.IO) {
+                val compressed = com.example.util.ImageCompressor.uriToCompressedBase64(context, uri.toString())
+                withContext(Dispatchers.Main) {
+                    bgImageUri = compressed ?: uri.toString()
+                }
+            }
+        }
     }
 
     val galleryPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 10)
     ) { uris ->
         if (uris.isNotEmpty()) {
-            galleryImages = (galleryImages + uris.map { it.toString() }).distinct()
+            coroutineScope.launch(Dispatchers.IO) {
+                val compressedList = uris.map { u ->
+                    com.example.util.ImageCompressor.uriToCompressedBase64(context, u.toString()) ?: u.toString()
+                }
+                withContext(Dispatchers.Main) {
+                    galleryImages = (galleryImages + compressedList).distinct()
+                }
+            }
         }
     }
 
@@ -1852,11 +1898,19 @@ fun CategoryFormDialog(
     var iconType by remember { mutableStateOf(initialIcon) }
     var customImageUri by remember { mutableStateOf(initialCustomImage) }
 
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
     val categoryPhotoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         if (uri != null) {
-            customImageUri = uri.toString()
+            coroutineScope.launch(Dispatchers.IO) {
+                val compressed = com.example.util.ImageCompressor.uriToCompressedBase64(context, uri.toString())
+                withContext(Dispatchers.Main) {
+                    customImageUri = compressed ?: uri.toString()
+                }
+            }
         }
     }
 
