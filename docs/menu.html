@@ -3,39 +3,32 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Q-Cafe - المنيو الإلكتروني الذكي</title>
+  <title>المنيو الإلكتروني الذكي | كافيه</title>
   
-  <!-- Google Fonts: Cairo -->
+  <!-- Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  
-  <!-- Font Awesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
-  <!-- Firebase SDKs (Compat version for smooth standalone single-file usage) -->
+  <!-- Firebase Compat SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
 
   <style>
     :root {
-      --bg-dark: #0D0B0A;
-      --bg-gradient-end: #171311;
-      --surface: #1B1715;
-      --surface-variant: #241F1C;
-      --cyan-primary: #F7A038;
-      --cyan-glow: rgba(247, 160, 56, 0.45);
-      --gold: #F59E0B;
-      --gold-dark: #D97706;
-      --card-border: #382F2A;
-      --card-border-glow: #5E4939;
-      --text-primary: #FFFFFF;
-      --text-secondary: #B5A99F;
-      --text-muted: #7E7269;
-      --input-bg: #13100E;
-      --hero-purple: #D97706;
-      --hero-purple-bg: #291C0E;
-      --hero-blue-bg: #1F150D;
+      --bg-dark: #0F0D0C;
+      --bg-card: #181412;
+      --bg-card-border: #2C2420;
+      --accent: #F7A038;
+      --accent-glow: rgba(247, 160, 56, 0.35);
+      --accent-hover: #FFAF54;
+      --text-main: #FFFFFF;
+      --text-sub: #A89B91;
+      --text-dim: #736760;
+      --danger: #EF4444;
+      --success: #10B981;
+      --surface: #201A17;
     }
 
     * {
@@ -47,1766 +40,1087 @@
     }
 
     body {
-      background: linear-gradient(180deg, var(--bg-dark) 0%, var(--bg-gradient-end) 45%, #050404 100%);
-      color: var(--text-primary);
+      background: var(--bg-dark);
+      color: var(--text-main);
       min-height: 100vh;
-      overflow-x: hidden;
       padding-bottom: 110px;
     }
 
-    /* Top Full-Width Ribbon Header Banner */
-    .header-banner-wrapper {
-      width: 100%;
-      position: relative;
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      background: transparent;
+    /* Top Sticky Header */
+    .top-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(15, 13, 12, 0.96);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--bg-card-border);
+      padding: 12px 16px;
     }
 
-    .top-table-header {
-      width: 100%;
-      padding: 14px 16px 8px;
+    .header-content {
+      max-width: 680px;
+      margin: 0 auto;
       display: flex;
       align-items: center;
-      justify-content: center;
-      background: transparent;
+      justify-content: space-between;
+      gap: 12px;
     }
 
-    .table-number-pill {
-      background: #1C140E;
-      border: 1.8px solid var(--cyan-primary);
-      border-radius: 24px;
-      padding: 7px 24px;
-      font-size: 15px;
-      font-weight: 900;
-      color: var(--cyan-primary);
+    .cafe-brand {
       display: flex;
       align-items: center;
       gap: 10px;
-      box-shadow: 0 4px 18px rgba(247, 160, 56, 0.35);
-      letter-spacing: 0.5px;
     }
 
-    /* Barcode Expired / Invalidation Modal */
-    .barcode-expired-modal {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.92);
-      backdrop-filter: blur(14px);
-      z-index: 99999;
+    .cafe-brand img {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      object-fit: cover;
+      border: 1.5px solid var(--accent);
+    }
+
+    .cafe-brand-info h1 {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text-main);
+      line-height: 1.2;
+    }
+
+    .cafe-brand-info p {
+      font-size: 12px;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .header-actions {
       display: flex;
       align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-
-    .barcode-expired-card {
-      background: #171311;
-      border: 2px solid #EF4444;
-      border-radius: 24px;
-      padding: 28px 22px;
-      max-width: 420px;
-      width: 100%;
-      text-align: center;
-      box-shadow: 0 0 35px rgba(239, 68, 68, 0.35);
-    }
-
-    .barcode-expired-icon {
-      width: 68px;
-      height: 68px;
-      border-radius: 50%;
-      background: rgba(239, 68, 68, 0.15);
-      border: 2px solid #EF4444;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 16px;
-      color: #EF4444;
-      font-size: 30px;
-    }
-
-    /* 3 Compact Rectangular Cards Side-by-Side */
-    .quick-nav-container {
-      margin: 12px 14px 6px;
-      padding: 0;
-    }
-
-    .quick-nav-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
       gap: 8px;
     }
 
-    .quick-nav-card {
-      background: linear-gradient(145deg, #1C1714 0%, #120E0C 100%);
-      border: 1.4px solid rgba(247, 160, 56, 0.45);
-      border-radius: 14px;
-      padding: 8px 4px;
+    .table-pill {
+      background: #251D18;
+      border: 1.5px solid var(--accent);
+      color: var(--accent);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 800;
       display: flex;
-      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 2px 10px var(--accent-glow);
+    }
+
+    .btn-icon-action {
+      background: #251D18;
+      border: 1px solid var(--bg-card-border);
+      color: var(--text-sub);
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
       align-items: center;
       justify-content: center;
-      cursor: pointer;
-      text-align: center;
-      position: relative;
-      min-height: 58px;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
-      transition: all 0.2s ease;
+      font-size: 15px;
+      transition: all 0.2s;
+    }
+    .btn-icon-action:hover {
+      color: var(--accent);
+      border-color: var(--accent);
     }
 
-    .quick-nav-card:active {
-      transform: scale(0.96);
-      border-color: var(--cyan-primary);
-      box-shadow: 0 0 16px rgba(247, 160, 56, 0.35);
+    /* Container */
+    .main-container {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 14px 16px;
     }
 
-    .quick-nav-icon {
-      font-size: 18px;
-      color: var(--cyan-primary);
-      margin-bottom: 3px;
-    }
-
-    .quick-nav-title {
-      font-size: 11.5px;
-      font-weight: 800;
-      color: #FFFFFF;
-      white-space: nowrap;
-    }
-
-    .quick-nav-sub {
-      font-size: 8.5px;
-      color: var(--text-secondary);
-      margin-top: 1px;
-    }
-
-    .quick-nav-badge {
-      position: absolute;
-      top: -4px;
-      right: -4px;
-      background: #EF4444;
-      color: #FFF;
-      font-size: 9px;
-      font-weight: 900;
-      padding: 1px 5px;
-      border-radius: 8px;
-    }
-
-    /* Scorecard & Games Modal Styles */
-    .game-tabs-row {
+    /* Quick Service Bar */
+    .service-bar {
       display: flex;
-      gap: 6px;
+      gap: 10px;
       margin-bottom: 14px;
-      background: #120E0C;
-      padding: 4px;
-      border-radius: 14px;
-      border: 1px solid var(--card-border);
     }
 
-    .game-tab-btn {
+    .btn-service {
       flex: 1;
-      padding: 8px 4px;
-      background: transparent;
-      border: none;
-      border-radius: 10px;
-      color: var(--text-secondary);
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: #1C1714;
+      border: 1px solid var(--bg-card-border);
+      color: var(--text-main);
       font-size: 12px;
       font-weight: 700;
-      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 5px;
-      transition: all 0.2s ease;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-service:active {
+      transform: scale(0.97);
+    }
+    .btn-service i {
+      color: var(--accent);
     }
 
-    .game-tab-btn.active {
-      background: var(--cyan-primary);
-      color: #140C04;
-      font-weight: 900;
-      box-shadow: 0 2px 10px rgba(247, 160, 56, 0.35);
+    /* Search & Categories */
+    .search-box {
+      position: relative;
+      margin-bottom: 14px;
     }
 
-    .scorecard-panel {
-      text-align: right;
+    .search-box i {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
+      font-size: 15px;
     }
 
-    .scorecard-players-row {
+    .search-input {
+      width: 100%;
+      padding: 10px 42px 10px 14px;
+      background: #1C1714;
+      border: 1.5px solid var(--bg-card-border);
+      border-radius: 14px;
+      color: var(--text-main);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-input:focus {
+      border-color: var(--accent);
+    }
+
+    .categories-scroll {
       display: flex;
-      align-items: center;
       gap: 8px;
-      margin-bottom: 12px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      margin-bottom: 14px;
+      scrollbar-width: none;
+    }
+    .categories-scroll::-webkit-scrollbar {
+      display: none;
     }
 
-    /* Unified T-Chart Game Scorecard (Classic Vertical & Horizontal Lines) */
-    .tchart-container {
-      background: #140E0B;
-      border: 1.5px solid var(--card-border);
-      border-radius: 16px;
-      padding: 12px;
-      margin-top: 6px;
+    .cat-btn {
+      padding: 7px 16px;
+      border-radius: 20px;
+      background: #181412;
+      border: 1px solid var(--bg-card-border);
+      color: var(--text-sub);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .cat-btn.active {
+      background: var(--accent);
+      color: #0F0D0C;
+      border-color: var(--accent);
+      font-weight: 800;
+      box-shadow: 0 3px 12px var(--accent-glow);
     }
 
-    .tchart-header {
-      display: flex;
-      align-items: stretch;
-      justify-content: space-between;
-      border-bottom: 2px solid var(--cyan-primary);
-      padding-bottom: 12px;
-      margin-bottom: 8px;
-    }
-
-    .tchart-player-col {
-      flex: 1;
+    /* Items List */
+    .items-grid {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      padding: 0 6px;
+      gap: 12px;
     }
 
-    .tchart-divider-v {
-      width: 2px;
-      background: var(--card-border);
-      align-self: stretch;
-      margin: 0 4px;
-    }
-
-    .tchart-name-input {
-      width: 100%;
-      background: #1E1612;
-      border: 1px solid var(--card-border);
-      color: #FFFFFF;
-      font-size: 13px;
-      font-weight: 800;
-      text-align: center;
-      padding: 6px 8px;
-      border-radius: 8px;
-      outline: none;
-    }
-
-    .tchart-name-input:focus {
-      border-color: var(--cyan-primary);
-    }
-
-    .tchart-entry-row {
+    .item-card {
+      background: var(--bg-card);
+      border: 1px solid var(--bg-card-border);
+      border-radius: 16px;
+      padding: 12px;
       display: flex;
-      width: 100%;
-      gap: 4px;
+      gap: 12px;
+      align-items: center;
+      transition: border-color 0.2s;
+    }
+    .item-card:hover {
+      border-color: #3D322B;
     }
 
-    .tchart-score-input {
-      flex: 1;
-      width: 50px;
-      background: #120D0A;
-      border: 1px solid var(--card-border);
-      color: #F59E0B;
-      font-size: 13px;
-      font-weight: 800;
-      text-align: center;
-      padding: 6px 4px;
-      border-radius: 6px;
-      outline: none;
-    }
-
-    .tchart-score-input:focus {
-      border-color: var(--gold);
-    }
-
-    .btn-tchart-add {
-      background: var(--cyan-primary);
-      color: #140C04;
-      border: none;
-      border-radius: 6px;
-      padding: 6px 10px;
-      font-size: 11px;
-      font-weight: 900;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: transform 0.15s ease;
-    }
-
-    .btn-tchart-add:active {
-      transform: scale(0.95);
-    }
-
-    .tchart-table-wrap {
-      max-height: 220px;
-      overflow-y: auto;
-      border-bottom: 2px solid var(--cyan-primary);
-      margin-bottom: 12px;
-    }
-
-    .tchart-grid {
-      display: grid;
-      grid-template-columns: 1fr 2px 1fr;
-      width: 100%;
-    }
-
-    .tchart-grid-vdiv {
-      background: var(--card-border);
-      width: 2px;
-    }
-
-    .tchart-row-cell {
-      padding: 8px 6px;
-      text-align: center;
-      font-size: 14px;
-      font-weight: 800;
-      border-bottom: 1px solid rgba(56, 47, 42, 0.4);
+    .item-img-wrap {
+      width: 82px;
+      height: 82px;
+      border-radius: 14px;
+      overflow: hidden;
+      flex-shrink: 0;
+      background: #251D18;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+    }
+    .item-img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .item-img-wrap .item-img-placeholder {
+      font-size: 28px;
+      color: var(--accent);
     }
 
-    .score-xx {
-      display: inline-block;
-      background: rgba(16, 185, 129, 0.18);
-      color: #34D399;
-      font-weight: 900;
-      padding: 2px 8px;
-      border-radius: 6px;
-      border: 1px solid rgba(16, 185, 129, 0.4);
-      letter-spacing: 0.5px;
-    }
-
-    .score-num {
-      display: inline-block;
-      background: rgba(239, 68, 68, 0.15);
-      color: #F87171;
-      font-weight: 800;
-      padding: 2px 7px;
-      border-radius: 6px;
-      border: 1px solid rgba(239, 68, 68, 0.3);
-    }
-
-    .tchart-diff-banner {
-      background: rgba(247, 160, 56, 0.14);
-      border: 1.5px solid var(--cyan-primary);
-      border-radius: 12px;
-      padding: 10px;
-      text-align: center;
-      margin-bottom: 10px;
-    }
-
-    .tchart-diff-title {
-      font-size: 11px;
-      color: var(--text-secondary);
-      margin-bottom: 2px;
-      font-weight: 700;
-    }
-
-    .tchart-diff-value {
-      font-size: 15px;
-      font-weight: 900;
-      color: var(--cyan-primary);
-    }
-
-    .score-totals-row {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-
-    .total-col {
+    .item-info {
       flex: 1;
-      background: #16110F;
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 8px;
-      text-align: center;
+      min-width: 0;
     }
 
-    .total-player-name {
-      font-size: 11px;
+    .item-title {
+      font-size: 15px;
       font-weight: 800;
-      color: #FFFFFF;
-      margin-bottom: 4px;
+      color: var(--text-main);
+      margin-bottom: 3px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
-    .total-wins-xx {
-      font-size: 13px;
-      font-weight: 900;
-      color: #34D399;
-      margin-bottom: 2px;
-    }
-
-    .total-points {
-      font-size: 10px;
-      color: var(--text-secondary);
-    }
-
-    .btn-score-reset {
-      width: 100%;
-      background: rgba(239, 68, 68, 0.15);
-      border: 1px solid rgba(239, 68, 68, 0.35);
-      color: #F87171;
-      border-radius: 10px;
-      padding: 7px;
-      font-size: 11px;
-      font-weight: 800;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    /* Categories Horizontal Bar */
-    .categories-bar {
-      display: flex;
-      gap: 10px;
-      padding: 10px 14px 8px;
-      overflow-x: auto;
-      scrollbar-width: none;
-    }
-
-    .categories-bar::-webkit-scrollbar {
-      display: none;
-    }
-
-    .cat-btn {
-      min-width: 82px;
-      height: 84px;
-      background: var(--surface);
-      border: 1.5px solid var(--card-border);
-      border-radius: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      cursor: pointer;
-      flex-shrink: 0;
-      transition: all 0.22s ease;
-    }
-
-    .cat-btn i {
-      font-size: 24px;
-      color: var(--cyan-primary);
-      transition: all 0.22s ease;
-    }
-
-    .cat-btn span {
+    .item-desc {
       font-size: 12px;
-      font-weight: 700;
-      color: var(--text-primary);
+      color: var(--text-dim);
+      margin-bottom: 8px;
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      line-height: 1.4;
     }
 
-    /* Active category: Warm Amber Gold matching brand */
-    .cat-btn.active {
-      background: var(--cyan-primary);
-      border-color: var(--cyan-primary);
-      box-shadow: 0 4px 16px rgba(247, 160, 56, 0.45);
-      transform: translateY(-2px);
-    }
-
-    .cat-btn.active i, .cat-btn.active span {
-      color: #140C04;
-      font-weight: 900;
-    }
-
-    /* Section Header */
-    .section-header {
+    .item-bottom {
       display: flex;
+      align-items: center;
       justify-content: space-between;
-      align-items: center;
-      padding: 12px 18px 8px;
-    }
-
-    .section-title {
-      font-size: 18px;
-      font-weight: 900;
-      color: #FFFFFF;
-      display: flex;
-      align-items: center;
       gap: 8px;
     }
 
-    .section-title i {
-      color: var(--cyan-primary);
-      font-size: 20px;
+    .item-price {
+      font-size: 15px;
+      font-weight: 900;
+      color: var(--accent);
     }
 
-    .section-count {
-      font-size: 13px;
-      font-weight: 800;
-      color: var(--cyan-primary);
-    }
-
-    /* Food Items List */
-    .items-container {
-      padding: 6px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-
-    /* Item Card (Matching the Screenshot Exactly) */
-    .item-card {
-      background: var(--surface);
-      border: 1.5px solid var(--card-border);
-      border-radius: 22px;
-      padding: 12px 14px;
-      display: flex;
-      gap: 14px;
-      align-items: center;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
-      transition: transform 0.2s ease, border-color 0.2s ease;
-    }
-
-    .item-card:hover {
-      border-color: var(--card-border-glow);
-    }
-
-    /* Square Food Image (Right Side) */
-    .item-image-wrapper {
-      width: 104px;
-      height: 104px;
-      border-radius: 18px;
-      background: #140E0B;
-      overflow: hidden;
-      flex-shrink: 0;
-      border: 1px solid rgba(247, 160, 56, 0.25);
-    }
-
-    .item-image-wrapper img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    /* Content Area (Left Side) */
-    .item-body {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    /* Offer Badge */
-    .item-offer-tag {
-      align-self: flex-start;
-      background: rgba(245, 176, 65, 0.16);
-      border: 1px solid rgba(245, 176, 65, 0.45);
-      color: var(--gold);
-      font-size: 10px;
-      font-weight: 800;
-      padding: 2px 8px;
-      border-radius: 10px;
+    /* DIRECT STEPPER (+ / -) ON EVERY CARD */
+    .card-stepper {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: 8px;
+      background: #0D0B0A;
+      border: 1.5px solid var(--bg-card-border);
+      border-radius: 24px;
+      padding: 3px 6px;
     }
 
-    .item-title {
-      font-size: 16px;
-      font-weight: 800;
-      color: #FFFFFF;
-      line-height: 1.25;
-    }
-
-    .item-desc {
-      font-size: 12px;
-      color: var(--text-secondary);
-      line-height: 1.4;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-
-    .item-gallery-link {
-      font-size: 11px;
-      color: var(--cyan-primary);
-      font-weight: 700;
-      display: inline-flex;
+    .btn-step {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: none;
+      display: flex;
       align-items: center;
-      gap: 4px;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 900;
       cursor: pointer;
+      line-height: 1;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+    .btn-step:active {
+      transform: scale(0.9);
+    }
+
+    .btn-step-minus {
+      background: var(--danger);
+      color: #FFFFFF;
+    }
+
+    .btn-step-plus {
+      background: var(--accent);
+      color: #0F0D0C;
+    }
+
+    .card-qty-label {
+      color: #FFFFFF !important;
+      font-weight: 900;
+      font-size: 15px;
+      min-width: 24px;
+      text-align: center;
       user-select: none;
     }
 
-    .item-gallery-link:hover {
-      text-decoration: underline;
-    }
-
-    /* Bottom row: Price & "+ طلب" Button */
-    .item-bottom-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 4px;
-    }
-
-    .item-price {
-      font-size: 16px;
-      font-weight: 900;
-      color: var(--cyan-primary);
-      letter-spacing: 0.5px;
-    }
-
-    .btn-add-order {
-      background: var(--cyan-primary);
-      color: #021215;
-      border: none;
-      border-radius: 20px;
-      padding: 6px 16px;
-      font-size: 13px;
-      font-weight: 900;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      cursor: pointer;
-      box-shadow: 0 2px 10px rgba(247, 160, 56, 0.35);
-      transition: transform 0.15s ease, background 0.15s ease;
-    }
-
-    .btn-add-order:active {
-      transform: scale(0.95);
-      background: #D97706;
-    }
-
-    /* Floating Cart Bar (Bottom) */
-    .cart-bar-floating {
+    /* Floating Cart Bar */
+    .floating-cart-bar {
       position: fixed;
-      bottom: 14px;
-      left: 14px;
-      right: 14px;
-      height: 60px;
-      background: linear-gradient(90deg, #1C140E 0%, #291C12 100%);
-      border: 1.8px solid var(--cyan-primary);
-      border-radius: 30px;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      max-width: 648px;
+      margin: 0 auto;
+      background: linear-gradient(135deg, #1C1714 0%, #291F1A 100%);
+      border: 1.8px solid var(--accent);
+      border-radius: 18px;
+      padding: 12px 18px;
       display: none;
       align-items: center;
       justify-content: space-between;
-      padding: 0 16px;
-      z-index: 100;
-      box-shadow: 0 6px 25px rgba(247, 160, 56, 0.35);
-      animation: slideUp 0.3s ease-out;
-    }
-
-    @keyframes slideUp {
-      from { transform: translateY(100%); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7), 0 0 20px var(--accent-glow);
+      z-index: 500;
+      cursor: pointer;
     }
 
     .cart-bar-left {
       display: flex;
       align-items: center;
       gap: 12px;
-      cursor: pointer;
     }
 
-    .cart-pill-icon {
-      width: 42px;
-      height: 42px;
-      border-radius: 50%;
-      background: var(--cyan-primary);
-      color: #021215;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      font-size: 18px;
-    }
-
-    .cart-count-badge {
-      position: absolute;
-      top: -4px;
-      right: -4px;
-      background: var(--gold);
-      color: #021215;
-      font-size: 11px;
+    .cart-badge {
+      background: var(--accent);
+      color: #0F0D0C;
       font-weight: 900;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 2px solid #07262B;
+      font-size: 14px;
+      padding: 4px 10px;
+      border-radius: 20px;
     }
 
-    .cart-bar-text {
-      text-align: right;
-    }
-
-    .cart-total-amount {
+    .cart-bar-total {
       font-size: 16px;
       font-weight: 900;
-      color: var(--cyan-primary);
+      color: #FFFFFF;
     }
 
-    .cart-total-label {
-      font-size: 11px;
-      color: var(--text-secondary);
-    }
-
-    .btn-checkout-cart {
-      background: var(--cyan-primary);
-      color: #021215;
+    .cart-bar-btn {
+      background: var(--accent);
+      color: #0F0D0C;
       border: none;
-      border-radius: 22px;
-      padding: 9px 18px;
-      font-size: 14px;
-      font-weight: 900;
-      cursor: pointer;
+      padding: 8px 16px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 800;
       display: flex;
       align-items: center;
       gap: 6px;
-      box-shadow: 0 2px 10px rgba(247, 160, 56, 0.35);
     }
 
-    /* Modals & Overlays */
-    .modal-backdrop {
+    /* Modals / Sheets */
+    .modal-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.82);
+      background: rgba(0, 0, 0, 0.85);
       backdrop-filter: blur(8px);
-      z-index: 120;
+      z-index: 1000;
       display: none;
       align-items: flex-end;
       justify-content: center;
-      animation: fadeIn 0.2s ease;
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    .modal-sheet {
-      background: #06191D;
-      border: 1.5px solid var(--card-border-glow);
-      border-radius: 28px 28px 0 0;
+    .sheet-card {
+      background: #181412;
+      border-top: 2px solid var(--accent);
+      border-radius: 24px 24px 0 0;
       width: 100%;
-      max-width: 520px;
+      max-width: 600px;
       max-height: 85vh;
       display: flex;
       flex-direction: column;
-      padding: 20px 18px 28px;
-      overflow-y: auto;
-      box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.7);
+      padding: 20px;
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.8);
+      animation: slideUp 0.25s ease-out;
     }
 
-    .modal-header {
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .sheet-header {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding-bottom: 14px;
-      border-bottom: 1px solid rgba(14, 67, 73, 0.5);
-      margin-bottom: 14px;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--bg-card-border);
     }
 
-    .modal-title {
+    .sheet-title {
       font-size: 18px;
-      font-weight: 800;
-      color: #FFFFFF;
+      font-weight: 900;
+      color: var(--text-main);
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
-    .modal-close-btn {
-      font-size: 22px;
-      color: var(--text-secondary);
-      background: none;
+    .btn-close-sheet {
+      background: #251D18;
       border: none;
-      cursor: pointer;
-    }
-
-    /* Cart Item Row */
-    .cart-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 0;
-      border-bottom: 1px solid rgba(14, 67, 73, 0.3);
-    }
-
-    .cart-item-desc h4 {
-      font-size: 14px;
-      font-weight: 800;
-      color: #FFFFFF;
-    }
-
-    .cart-item-desc span {
-      font-size: 12px;
-      color: var(--cyan-primary);
-      font-weight: 700;
-    }
-
-    .qty-controls {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .btn-qty {
+      color: var(--text-sub);
       width: 32px;
       height: 32px;
       border-radius: 50%;
-      background: var(--surface-variant);
-      border: 1px solid var(--card-border);
-      color: #FFFFFF;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .sheet-body {
+      overflow-y: auto;
+      flex: 1;
+      padding-bottom: 16px;
+    }
+
+    .cart-items-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .cart-row {
       display: flex;
       align-items: center;
-      justify-content: center;
-      cursor: pointer;
+      justify-content: space-between;
+      background: #1F1916;
+      border: 1px solid var(--bg-card-border);
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+
+    .cart-row-info h4 {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+    .cart-row-info span {
+      font-size: 12px;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .input-group {
+      margin-bottom: 14px;
+    }
+
+    .input-label {
       font-size: 13px;
-      user-select: none;
-      -webkit-tap-highlight-color: transparent;
-      transition: transform 0.1s ease;
+      font-weight: 700;
+      color: var(--text-sub);
+      margin-bottom: 6px;
+      display: block;
     }
 
-    .btn-qty i {
-      pointer-events: none;
-    }
-
-    .btn-qty:active {
-      transform: scale(0.9);
-    }
-
-    .btn-qty.plus {
-      background: var(--cyan-primary);
-      color: #021215;
-      border: none;
-    }
-
-    .btn-qty.minus {
-      background: #EF4444;
-      color: #FFFFFF;
-      border: none;
-    }
-
-    /* Prominent Quantity Numbers */
-    .qty-controls span, .stepper-count, .cart-qty-val {
-      color: #FFFFFF !important;
-      font-weight: 900 !important;
-      font-size: 16px !important;
-      min-width: 32px !important;
-      text-align: center !important;
-      display: inline-block !important;
-      user-select: none !important;
-    }
-
-    /* Item Card Stepper Controls */
-    .qty-controls.item-stepper {
-      background: #0D0B0A;
-      border: 1.8px solid var(--cyan-primary);
-      border-radius: 24px;
-      padding: 3px 8px;
-      gap: 6px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-    }
-
-    .qty-controls.item-stepper .btn-qty {
-      width: 30px;
-      height: 30px;
-      font-size: 16px;
-      font-weight: 900;
-    }
-
-    .notes-textarea {
+    .sheet-input {
       width: 100%;
-      background: var(--input-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 14px;
       padding: 10px 14px;
-      color: #FFFFFF;
-      font-size: 13px;
-      margin: 14px 0;
+      background: #13100E;
+      border: 1.5px solid var(--bg-card-border);
+      border-radius: 12px;
+      color: var(--text-main);
+      font-size: 14px;
       outline: none;
-      resize: none;
+    }
+    .sheet-input:focus {
+      border-color: var(--accent);
+    }
+
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-top: 1px dashed var(--bg-card-border);
+      margin-bottom: 16px;
+    }
+    .total-row span {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-sub);
+    }
+    .total-row strong {
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--accent);
     }
 
     .btn-submit-order {
       width: 100%;
-      height: 52px;
-      border-radius: 26px;
-      background: var(--cyan-primary);
-      color: #021215;
+      padding: 14px;
+      border-radius: 16px;
+      background: var(--accent);
+      border: none;
+      color: #0F0D0C;
       font-size: 16px;
       font-weight: 900;
-      border: none;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      box-shadow: 0 4px 18px rgba(247, 160, 56, 0.4);
+      gap: 10px;
+      box-shadow: 0 4px 20px var(--accent-glow);
+      transition: transform 0.1s;
+    }
+    .btn-submit-order:active {
+      transform: scale(0.98);
     }
 
-    /* Gallery / Details Modal */
-    .gallery-photo-main {
-      width: 100%;
-      height: 220px;
-      border-radius: 18px;
-      object-fit: cover;
-      margin-bottom: 12px;
+    /* Success / Tracking Dialog */
+    .center-dialog {
+      background: #181412;
+      border: 2px solid var(--accent);
+      border-radius: 24px;
+      padding: 24px;
+      width: 90%;
+      max-width: 440px;
+      text-align: center;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.9);
+      margin: auto;
     }
 
-    /* Live Tracking Badge */
+    .success-icon-wrap {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: rgba(247, 160, 56, 0.15);
+      border: 2px solid var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 14px;
+      color: var(--accent);
+      font-size: 30px;
+    }
+
     .status-badge {
       display: inline-block;
       padding: 8px 18px;
       border-radius: 20px;
       font-weight: 800;
       font-size: 14px;
-      margin: 12px 0;
+      margin: 14px 0;
+    }
+    .status-badge.new {
+      background: #2B2117;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+    .status-badge.prep {
+      background: #1F2937;
+      color: #60A5FA;
+      border: 1px solid #3B82F6;
+    }
+    .status-badge.ready {
+      background: #064E3B;
+      color: #34D399;
+      border: 1px solid #10B981;
     }
 
-    .status-new { background: rgba(247, 160, 56, 0.2); color: var(--cyan-primary); border: 1.5px solid var(--cyan-primary); }
-    .status-prep { background: rgba(245, 176, 65, 0.2); color: var(--gold); border: 1.5px solid var(--gold); }
-    .status-ready { background: rgba(76, 175, 80, 0.2); color: #4CAF50; border: 1.5px solid #4CAF50; }
-    .status-paid { background: rgba(33, 150, 243, 0.2); color: #2196F3; border: 1.5px solid #2196F3; }
-
-    /* Interactive Games Modal */
-    .game-card-box {
-      background: var(--surface-variant);
-      border: 1px solid var(--card-border);
-      border-radius: 16px;
-      padding: 16px;
-      text-align: center;
-      margin-bottom: 14px;
-    }
-
-    .wheel-spinner {
-      width: 120px;
-      height: 120px;
-      border-radius: 50%;
-      border: 4px dashed var(--cyan-primary);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 14px auto;
-      font-size: 28px;
-      color: var(--gold);
-      transition: transform 1.5s cubic-bezier(0.2, 0.8, 0.3, 1);
+    /* Toast */
+    .toast-box {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #251D18;
+      border: 1.5px solid var(--accent);
+      color: #FFFFFF;
+      padding: 10px 20px;
+      border-radius: 24px;
+      font-size: 13px;
+      font-weight: 800;
+      z-index: 2000;
+      display: none;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+      white-space: nowrap;
     }
   </style>
 </head>
 <body>
 
-  <!-- Top Full-Width Ribbon Header Banner (Replaces old table/cafe text bar) -->
-  <!-- Top Prominent Table Number Header (No banners or logos) -->
-  <header class="top-table-header">
-    <div class="table-number-pill" id="headerTableBadge">
-      <i class="fa-solid fa-chair"></i>
-      <span id="bannerTableText">طاولة 1</span>
+  <!-- Toast Notification -->
+  <div id="toastBox" class="toast-box"></div>
+
+  <!-- Top Sticky Header -->
+  <header class="top-header">
+    <div class="header-content">
+      <div class="cafe-brand">
+        <img id="cafeLogo" src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=120" alt="Logo">
+        <div class="cafe-brand-info">
+          <h1 id="cafeName">كافيه ديجيتال</h1>
+          <p id="cafeSubtitle">المنيو الذكي</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="table-pill">
+          <i class="fa-solid fa-chair"></i>
+          <span id="tablePillText">طاولة رقم 1</span>
+        </div>
+        <button class="btn-icon-action" onclick="openGameModal()" title="حاسبة نقاط الدومينو">
+          <i class="fa-solid fa-dice"></i>
+        </button>
+      </div>
     </div>
   </header>
 
-  <!-- Barcode Expired / Invalidation Alert Modal -->
-  <div id="barcodeExpiredModal" class="barcode-expired-modal" style="display: none;">
-    <div class="barcode-expired-card">
-      <div class="barcode-expired-icon">
-        <i class="fa-solid fa-ban"></i>
-      </div>
-      <h2 style="font-size: 20px; font-weight: 800; color: #FFFFFF; margin-bottom: 10px;">تم تجديد باركود الطاولة</h2>
-      <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 18px;">
-        عذراً، هذا الباركود قديم وتم تعطيله تلقائياً لأسباب أمنية.<br>
-        يرجى مسح الباركود الجديد الموجود على طاولتك لفتح المنيو وإرسال طلباتك.
-      </p>
-      <div style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 12px; padding: 12px; font-size: 12px; color: #FCA5A5; font-weight: 700;">
-        <i class="fa-solid fa-lock" style="margin-left: 5px;"></i> تم إيقاف استقبال الطلبات عبر هذا الرابط
+  <!-- Main Content Container -->
+  <div class="main-container">
+    
+    <!-- Quick Service Call Actions -->
+    <div class="service-bar">
+      <button class="btn-service" onclick="callService('WAITER')">
+        <i class="fa-solid fa-bell"></i>
+        <span>نداء النادل</span>
+      </button>
+      <button class="btn-service" onclick="callService('BILL')">
+        <i class="fa-solid fa-receipt"></i>
+        <span>طلب الحساب</span>
+      </button>
+      <button class="btn-service" onclick="openGameModal()">
+        <i class="fa-solid fa-table-list"></i>
+        <span>تسجيل النقاط</span>
+      </button>
+    </div>
+
+    <!-- Search Input -->
+    <div class="search-box">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="text" id="searchInput" class="search-input" placeholder="ابحث عن قهوة، حلى، عصير..." oninput="filterMenuItems()">
+    </div>
+
+    <!-- Category Tabs -->
+    <div class="categories-scroll" id="categoryTabs">
+      <button class="cat-btn active" onclick="selectCategory('ALL')">✨ الكل</button>
+    </div>
+
+    <!-- Menu Items List -->
+    <div class="items-grid" id="itemsList">
+      <div style="text-align:center; padding: 40px 0; color: var(--text-dim);">
+        <i class="fa-solid fa-spinner fa-spin" style="font-size:28px; color:var(--accent);"></i>
+        <p style="margin-top:10px; font-weight:700;">جاري تحميل قائمة المنيو...</p>
       </div>
     </div>
   </div>
 
-  <!-- 3 Side-by-Side Compact Rectangles Section -->
-  <section class="quick-nav-container">
-    <div class="quick-nav-grid">
-      <!-- 1. تصفح المنيو / قائمة الأصناف (لا تفتح السلة) -->
-      <div class="quick-nav-card" onclick="scrollToMenu()">
-        <i class="fa-solid fa-book-open quick-nav-icon"></i>
-        <div class="quick-nav-title">قائمة المنيو</div>
-        <div class="quick-nav-sub">تصفح الأصناف</div>
-      </div>
-
-      <!-- 2. العروض والجديد -->
-      <div class="quick-nav-card" onclick="filterOffersOnly()">
-        <span class="quick-nav-badge">جديد</span>
-        <i class="fa-solid fa-fire quick-nav-icon" style="color: #F59E0B;"></i>
-        <div class="quick-nav-title">العروض والجديد</div>
-        <div class="quick-nav-sub">أفضل الخصومات</div>
-      </div>
-
-      <!-- 3. تسجيل نتائج الألعاب (دومينو وورق) -->
-      <div class="quick-nav-card" onclick="openGamesModal()">
-        <i class="fa-solid fa-dice quick-nav-icon" style="color: #60A5FA;"></i>
-        <div class="quick-nav-title">تسجيل نتائج الألعاب</div>
-        <div class="quick-nav-sub">دومينو وورق اللعب</div>
-      </div>
+  <!-- Bottom Floating Cart Bar -->
+  <div class="floating-cart-bar" id="floatingCart" onclick="openCartModal()">
+    <div class="cart-bar-left">
+      <span class="cart-badge" id="cartBadgeCount">0</span>
+      <span class="cart-bar-total" id="cartBarTotal">0 د.ع</span>
     </div>
-  </section>
-
-  <!-- Categories Horizontal Scroll Bar -->
-  <div class="categories-bar" id="categoriesBar">
-    <div class="cat-btn active" onclick="selectCategory('all', this)">
-      <i class="fa-solid fa-burger"></i>
-      <span>الكل</span>
-    </div>
-    <!-- Dynamically loaded from Firebase Firestore -->
-  </div>
-
-  <!-- Section Header -->
-  <div class="section-header">
-    <div class="section-title" id="sectionTitle">
-      <i class="fa-solid fa-burger" id="sectionIcon"></i>
-      <span id="sectionName">البرجر</span>
-    </div>
-    <div class="section-count" id="itemsCountBadge">1 صنف</div>
-  </div>
-
-  <!-- Food Items List -->
-  <div class="items-container" id="itemsContainer">
-    <!-- Rendered Dynamically from Firebase -->
-  </div>
-
-  <!-- Floating Toast Feedback Notification -->
-  <div id="toastNotification" style="position: fixed; top: 18px; left: 50%; transform: translateX(-50%); background: #1B1715; color: #FFFFFF; border: 1.8px solid var(--cyan-primary); padding: 10px 22px; border-radius: 30px; font-weight: 900; font-size: 14px; z-index: 999999; display: none; box-shadow: 0 8px 30px rgba(0,0,0,0.8); align-items: center; gap: 8px; pointer-events: none;">
-  </div>
-
-  <!-- Floating Bottom Cart Bar -->
-  <div class="cart-bar-floating" id="floatingCartBar">
-    <div class="cart-bar-left" onclick="openCartModal()">
-      <div class="cart-pill-icon">
-        <i class="fa-solid fa-cart-shopping"></i>
-        <div class="cart-count-badge" id="cartCountBadge">0</div>
-      </div>
-      <div class="cart-bar-text">
-        <div class="cart-total-amount" id="cartTotalSummary">0 د.ع</div>
-        <div class="cart-total-label">المجموع الكلي</div>
-      </div>
-    </div>
-    <button class="btn-checkout-cart" onclick="openCartModal()">
-      <span>عرض الطلب</span>
+    <button class="cart-bar-btn">
+      <span>عرض السلة وإتمام الطلب</span>
       <i class="fa-solid fa-arrow-left"></i>
     </button>
   </div>
 
-  <!-- Cart Modal -->
-  <div class="modal-backdrop" id="cartModal">
-    <div class="modal-sheet">
-      <div class="modal-header">
-        <div class="modal-title">
-          <i class="fa-solid fa-utensils" style="color: var(--gold);"></i>
-          <span id="cartModalTitle">سلة طلب طاولة 1</span>
+  <!-- Cart Modal / Bottom Sheet -->
+  <div class="modal-overlay" id="cartModal">
+    <div class="sheet-card">
+      <div class="sheet-header">
+        <div class="sheet-title">
+          <i class="fa-solid fa-bag-shopping" style="color:var(--accent);"></i>
+          <span>سلة الطلب</span>
         </div>
-        <button class="modal-close-btn" onclick="closeCartModal()">&times;</button>
+        <button class="btn-close-sheet" onclick="closeCartModal()">&times;</button>
       </div>
 
-      <div id="cartItemsList" style="max-height: 280px; overflow-y: auto; margin-bottom: 12px;"></div>
-
-      <!-- Customer Name Input (إجباري) -->
-      <div style="margin-bottom: 12px; text-align: right;">
-        <label for="customerNameInput" style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; color: var(--gold); margin-bottom: 6px;">
-          <i class="fa-solid fa-user"></i>
-          <span>اسم الزبون (إجباري لإتمام الطلب):</span>
-        </label>
-        <input 
-          type="text" 
-          id="customerNameInput" 
-          class="notes-textarea" 
-          style="min-height: 44px; height: 44px; padding: 10px 14px; font-size: 14px; resize: none; margin-bottom: 0;"
-          placeholder="اكتب اسمك هنا (مثال: علي، أحمد، سارة)..." 
-          maxlength="40"
-        />
-        <div id="customerNameError" style="display: none; color: #ff5252; font-size: 12px; font-weight: 700; margin-top: 4px;">
-          ⚠️ يرجى كتابة اسمك أولاً لإرسال الطلب إلى الكاشير
+      <div class="sheet-body">
+        <div class="cart-items-list" id="cartItemsList">
+          <!-- Populated dynamically -->
         </div>
-      </div>
 
-      <textarea class="notes-textarea" id="orderNotes" placeholder="ملاحظات خاصة للمطبخ (مثال: بدون بصل، زيادة صوص، بدون سكر...)" rows="2"></textarea>
-
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <span style="font-size: 15px; font-weight: 700; color: var(--text-secondary);">المبلغ الإجمالي:</span>
-        <span style="font-size: 20px; font-weight: 900; color: var(--cyan-primary);" id="modalTotalSum">0 د.ع</span>
-      </div>
-
-      <button class="btn-submit-order" id="btnSubmitOrder" onclick="submitCustomerOrder()">
-        <i class="fa-solid fa-paper-plane"></i>
-        <span>إرسال الطلب إلى الكاشير</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- Details & Gallery Modal -->
-  <div class="modal-backdrop" id="detailsModal">
-    <div class="modal-sheet">
-      <div class="modal-header">
-        <div class="modal-title" id="detailsItemName">تفاصيل الصنف</div>
-        <button class="modal-close-btn" onclick="closeDetailsModal()">&times;</button>
-      </div>
-      <img id="detailsMainImage" class="gallery-photo-main" src="" alt="Item photo">
-      <div class="item-offer-tag" id="detailsOfferBadge" style="margin-bottom: 8px; display:none;">🔥 عرض اليوم</div>
-      <p id="detailsItemDesc" style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 16px;"></p>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-        <span style="font-size: 18px; font-weight: 900; color: var(--cyan-primary);" id="detailsItemPrice">0 د.ع</span>
-        <button class="btn-add-order" id="detailsAddBtn" onclick="">+ إضافة للطلب</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Unified Game Scorecard Modal ("تسجيل نتائج الألعاب") -->
-  <div class="modal-backdrop" id="gamesModal">
-    <div class="modal-sheet" style="text-align: right; max-height: 88vh; overflow-y: auto;">
-      <div class="modal-header">
-        <div class="modal-title">
-          <i class="fa-solid fa-gamepad" style="color: var(--cyan-primary);"></i>
-          <span>تسجيل نتائج الألعاب</span>
-        </div>
-        <button class="modal-close-btn" onclick="closeGamesModal()">&times;</button>
-      </div>
-
-      <!-- T-Chart Scorecard Container (Horizontal Header + Vertical Divider) -->
-      <div class="tchart-container">
-        <!-- Player Names & Points Entry Row (Horizontal Line Below) -->
-        <div class="tchart-header">
-          <!-- Player 1 Column -->
-          <div class="tchart-player-col">
-            <input type="text" id="tchartP1Name" class="tchart-name-input" value="اللاعب الأول" onchange="updateTChartNames()" placeholder="اللاعب 1">
-            <div class="tchart-entry-row">
-              <input type="number" id="tchartP1Input" class="tchart-score-input" placeholder="نقاط" min="0">
-              <button type="button" class="btn-tchart-add" onclick="addTChartRound(1)">تسجيل</button>
-            </div>
-          </div>
-
-          <!-- Vertical Divider Line Between Both Players -->
-          <div class="tchart-divider-v"></div>
-
-          <!-- Player 2 Column -->
-          <div class="tchart-player-col">
-            <input type="text" id="tchartP2Name" class="tchart-name-input" value="اللاعب الثاني" onchange="updateTChartNames()" placeholder="اللاعب 2">
-            <div class="tchart-entry-row">
-              <input type="number" id="tchartP2Input" class="tchart-score-input" placeholder="نقاط" min="0">
-              <button type="button" class="btn-tchart-add" onclick="addTChartRound(2)">تسجيل</button>
-            </div>
+        <div class="input-group">
+          <label class="input-label">اسمك الكريم (مطلوب للكاشير):</label>
+          <input type="text" id="customerName" class="sheet-input" placeholder="اكتب اسمك هنا (مثال: علي، أحمد)..." maxlength="30">
+          <div id="nameError" style="color:var(--danger); font-size:12px; font-weight:700; margin-top:4px; display:none;">
+            ⚠️ يرجى كتابة اسمك أولاً لإرسال الطلب إلى الكاشير
           </div>
         </div>
 
-        <!-- T-Chart Scores List with Vertical Divider Line -->
-        <div class="tchart-table-wrap">
-          <div class="tchart-grid" id="tchartGridBody">
-            <!-- Dynamically populated via JS: Cell P1 | Vertical Line | Cell P2 -->
-          </div>
+        <div class="input-group">
+          <label class="input-label">ملاحظات للمطبخ (اختياري):</label>
+          <input type="text" id="orderNotes" class="sheet-input" placeholder="مثال: بدون سكر، حار زيادة...">
         </div>
 
-        <!-- Automatic Point Difference Banner (فرق النقاط تلقائياً) -->
-        <div class="tchart-diff-banner">
-          <div class="tchart-diff-title">فرق النقاط التراكمي</div>
-          <div class="tchart-diff-value" id="tchartDiffText">فرق النقاط: 0</div>
+        <div class="total-row">
+          <span>المجموع الإجمالي:</span>
+          <strong id="modalTotalPrice">0 د.ع</strong>
         </div>
 
-        <!-- Total Wins (XX) & Loser Points Summary -->
-        <div class="score-totals-row">
-          <div class="total-col">
-            <div class="total-player-name" id="tchartTotP1Name">اللاعب الأول</div>
-            <div class="total-wins-xx" id="tchartTotP1Wins">0 فوز (XX)</div>
-            <div class="total-points" id="tchartTotP1Points">0 نقطة خسارة</div>
-          </div>
-          <div class="total-col">
-            <div class="total-player-name" id="tchartTotP2Name">اللاعب الثاني</div>
-            <div class="total-wins-xx" id="tchartTotP2Wins">0 فوز (XX)</div>
-            <div class="total-points" id="tchartTotP2Points">0 نقطة خسارة</div>
-          </div>
-        </div>
-
-        <button type="button" class="btn-score-reset" onclick="resetTChartScore()">
-          <i class="fa-solid fa-rotate-left"></i> تصفير النتيجة وبدء مباراة جديدة
+        <button class="btn-submit-order" onclick="submitOrder()">
+          <i class="fa-solid fa-paper-plane"></i>
+          <span>إرسال الطلب إلى الكاشير الآن</span>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Live Order Tracking Modal -->
-  <div class="modal-backdrop" id="trackingModal">
-    <div class="modal-sheet" style="text-align: center;">
-      <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(247, 160, 56, 0.18); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
-        <i class="fa-solid fa-check" style="font-size: 26px; color: var(--cyan-primary);"></i>
+  <!-- Order Success & Tracking Modal -->
+  <div class="modal-overlay" id="trackingModal" style="align-items:center;">
+    <div class="center-dialog">
+      <div class="success-icon-wrap">
+        <i class="fa-solid fa-check"></i>
       </div>
-      <h3 style="font-size: 19px; font-weight: 800; margin-bottom: 6px;">تم إرسال طلبك بنجاح!</h3>
-      <p style="font-size: 13px; color: var(--text-secondary);" id="trackingInfoText">وصل الطلب إلى الكاشير ويجري تحضيره الآن.</p>
+      <h2 style="font-size:20px; font-weight:900; margin-bottom:6px;">تم إرسال طلبك بنجاح!</h2>
+      <p style="font-size:13px; color:var(--text-sub);" id="trackingSubtext">وصل طلبك للكاشير ويجري تحضيره الآن.</p>
+      
+      <div class="status-badge new" id="orderStatusBadge">🕒 طلب جديد في الانتظار</div>
+      
+      <div style="font-size:12px; color:var(--text-dim); margin-bottom:18px;" id="orderIdText">رقم الطلب: #---</div>
 
-      <div style="margin: 16px 0; padding: 14px; background: var(--surface-variant); border-radius: 16px;">
-        <div style="font-size: 11px; color: var(--text-secondary);">حالة الطلب المباشرة:</div>
-        <div class="status-badge status-new" id="liveStatusBadge">طلب جديد في الانتظار 🕒</div>
-      </div>
-
-      <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;" id="trackingOrderIdText">رقم الطلب: #---</div>
-
-      <button class="btn-submit-order" onclick="closeTrackingModal()">
-        <span>العودة للمنيو</span>
+      <button class="btn-submit-order" style="padding:10px; font-size:14px;" onclick="closeTrackingModal()">
+        <span>موافق، العودة للمنيو</span>
       </button>
     </div>
   </div>
 
+  <!-- Domino / T-Chart Score Modal -->
+  <div class="modal-overlay" id="gameModal" style="align-items:center;">
+    <div class="center-dialog" style="max-width:380px;">
+      <div class="sheet-header" style="margin-bottom:12px;">
+        <div class="sheet-title">🎲 تسجيل نقاط الدومينو</div>
+        <button class="btn-close-sheet" onclick="closeGameModal()">&times;</button>
+      </div>
+      <div style="display:flex; justify-content:space-around; gap:12px; margin-bottom:16px;">
+        <div style="background:#251D18; padding:12px; border-radius:14px; flex:1;">
+          <div style="font-size:14px; color:var(--accent); font-weight:800;">فريقنا</div>
+          <div id="scoreTeam1" style="font-size:28px; font-weight:900; margin:6px 0;">0</div>
+          <div style="display:flex; gap:4px; justify-content:center;">
+            <button class="btn-step btn-step-plus" style="width:28px; height:28px; font-size:14px;" onclick="addScore(1, 25)">+25</button>
+            <button class="btn-step btn-step-plus" style="width:28px; height:28px; font-size:14px;" onclick="addScore(1, 50)">+50</button>
+          </div>
+        </div>
+        <div style="background:#251D18; padding:12px; border-radius:14px; flex:1;">
+          <div style="font-size:14px; color:#60A5FA; font-weight:800;">فريقهم</div>
+          <div id="scoreTeam2" style="font-size:28px; font-weight:900; margin:6px 0;">0</div>
+          <div style="display:flex; gap:4px; justify-content:center;">
+            <button class="btn-step btn-step-plus" style="width:28px; height:28px; font-size:14px; background:#3B82F6; color:#fff;" onclick="addScore(2, 25)">+25</button>
+            <button class="btn-step btn-step-plus" style="width:28px; height:28px; font-size:14px; background:#3B82F6; color:#fff;" onclick="addScore(2, 50)">+50</button>
+          </div>
+        </div>
+      </div>
+      <button class="btn-service" style="width:100%;" onclick="resetScores()">تصفير النقاط</button>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
   <script>
-    // 1. Firebase Credentials
+    // 1. Firebase Initialization
     const firebaseConfig = {
       apiKey: "AIzaSyAfudWfJUQBYlONgyVs50rRAEadPB4h1E8",
-      authDomain: "cafe00000-dee29.firebaseapp.com",
       projectId: "cafe00000-dee29",
-      storageBucket: "cafe00000-dee29.firebasestorage.app",
-      messagingSenderId: "686032896219",
-      appId: "1:686032896219:android:df35736a41046ff9520cfe"
+      appId: "1:686032896219:android:df35736a41046ff9520cfe",
+      messagingSenderId: "686032896219"
     };
 
     let db = null;
     try {
-      firebase.initializeApp(firebaseConfig);
+      if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+      }
       db = firebase.firestore();
-      console.log("Firebase Firestore connected successfully");
     } catch (e) {
-      console.warn("Firestore notice:", e);
+      console.warn("Firebase Init Error:", e);
     }
 
-    // 2. Dynamic URL Parameter Extraction
+    // 2. Parse URL Query Parameters
     const urlParams = new URLSearchParams(window.location.search);
-    let cafeteriaId = urlParams.get('cafeteriaId') || urlParams.get('cafeId') || urlParams.get('cid') || 'u_default';
-    const tableNumber = parseInt(urlParams.get('table') || urlParams.get('tableNumber') || urlParams.get('t') || '1', 10);
+    const cafeteriaId = urlParams.get('c') || 'itNW7gdqekQp538fOVzIbjG4BAp1';
+    const tableNumber = urlParams.get('t') || '1';
     const secToken = urlParams.get('sec') || '';
 
-    // Set Table number in header ribbon badge & modal
-    const bannerTableText = document.getElementById('bannerTableText');
-    if (bannerTableText) bannerTableText.innerText = 'طاولة ' + tableNumber;
-    const tableBadgeTitle = document.getElementById('tableBadgeTitle');
-    if (tableBadgeTitle) tableBadgeTitle.innerText = 'طاولة ' + tableNumber;
-    const cartModalTitle = document.getElementById('cartModalTitle');
-    if (cartModalTitle) cartModalTitle.innerText = 'سلة طلب طاولة ' + tableNumber;
+    // Update Header Table Pill
+    document.getElementById('tablePillText').innerText = 'طاولة رقم ' + tableNumber;
 
-    // 3. Fallback High Quality Initial Menu
-    let categories = [
-      { id: "cat_burgers", nameAr: "البرجر", nameEn: "Burgers", iconType: "burger", sortOrder: 1 },
-      { id: "cat_appetizers", nameAr: "المقبلات", nameEn: "Appetizers", iconType: "fries", sortOrder: 2 },
-      { id: "cat_drinks", nameAr: "المشروبات", nameEn: "Drinks", iconType: "drink", sortOrder: 3 },
-      { id: "cat_meals", nameAr: "الوجبات", nameEn: "Meals", iconType: "meals", sortOrder: 4 },
-      { id: "cat_sweets", nameAr: "الحلويات", nameEn: "Sweets", iconType: "sweets", sortOrder: 5 }
+    // Load Saved Customer Name
+    try {
+      const savedName = localStorage.getItem('cafe_customer_name');
+      if (savedName) document.getElementById('customerName').value = savedName;
+    } catch (_) {}
+
+    // State
+    let allMenuItems = [];
+    let categories = [];
+    let activeCategory = 'ALL';
+    let cart = []; // Array of { item, qty }
+
+    // Fallback Mock Items in case Firestore collection is empty
+    const fallbackMenuItems = [
+      { id: 'f1', nameAr: 'إسبريسو مضاعف', price: 2500, categoryId: 'hot', descriptionAr: 'قهوة غنية ومركزة بنكهة إيطالية أصيلة', currency: 'د.ع', imageUrl: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?w=300' },
+      { id: 'f2', nameAr: 'كابتشينو كريمي', price: 3500, categoryId: 'hot', descriptionAr: 'إسبريسو غني مع حليب مبخر ورغوة كثيفة مع لمسة كاكاو', currency: 'د.ع', imageUrl: 'https://images.unsplash.com/photo-1534778101976-62847782c213?w=300' },
+      { id: 'f3', nameAr: 'سبانش لاتيه بارد', price: 4500, categoryId: 'cold', descriptionAr: 'مزيج الحليب المكثف مع قهوة مختصة وقطع ثلج', currency: 'د.ع', imageUrl: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?w=300' },
+      { id: 'f4', nameAr: 'آيس كراميل ماكياتو', price: 4500, categoryId: 'cold', descriptionAr: 'قهوة مثلجة مع صوص الكراميل والحليب الغني', currency: 'د.ع', imageUrl: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=300' },
+      { id: 'f5', nameAr: 'كيكة الشوكولاتة واللوتس', price: 4000, categoryId: 'sweets', descriptionAr: 'كيك بلجيكي طري محشو صوص الشوكولاتة الذائبة', currency: 'د.ع', imageUrl: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=300' },
+      { id: 'f6', nameAr: 'تشيز كيك فراولة', price: 4500, categoryId: 'sweets', descriptionAr: 'طبقات البسكويت المقرمش مع جبن كريمي وصوص فراولة', currency: 'د.ع', imageUrl: 'https://images.unsplash.com/photo-1524351199678-941a58a3df50?w=300' },
+      { id: 'f7', nameAr: 'عصير برتقال طبيعي', price: 3000, categoryId: 'cold', descriptionAr: 'عصير طازج معصور يومياً بدون سكر مضاف', currency: 'د.ع', imageUrl: 'https://images.unsplash.com/photo-1613478223719-2ab802602423?w=300' }
     ];
 
-    let menuItems = [
-      {
-        id: "b1",
-        categoryId: "cat_burgers",
-        nameAr: "برجر كلاسيك",
-        nameEn: "Classic Burger",
-        descriptionAr: "لحم بقري مشوي مع الجبن الطازج والخس والطماطم مع البطاطس المقلية",
-        price: 7000,
-        currency: "د.ع",
-        isAvailable: true,
-        isOffer: true,
-        offerTag: "عرض اليوم",
-        imageUri: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&q=80"
-      },
-      {
-        id: "a1",
-        categoryId: "cat_appetizers",
-        nameAr: "بطاطس مقلية مقرمشة",
-        nameEn: "French Fries",
-        descriptionAr: "بطاطس ذهبية مقرمشة مع بهارات الكافيه الخاصة وصلصة الكاتشب",
-        price: 3000,
-        currency: "د.ع",
-        isAvailable: true,
-        isOffer: false,
-        offerTag: "طازج",
-        imageUri: "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=400&q=80"
-      },
-      {
-        id: "d1",
-        categoryId: "cat_drinks",
-        nameAr: "سبانش لاتيه بارد",
-        nameEn: "Iced Spanish Latte",
-        descriptionAr: "قهوة إسبريسو غنية مع الحليب المكثف المحلى ومكعبات الثلج المنعشة",
-        price: 4500,
-        currency: "د.ع",
-        isAvailable: true,
-        isOffer: true,
-        offerTag: "الأكثر طلباً",
-        imageUri: "https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?w=400&q=80"
-      },
-      {
-        id: "m1",
-        categoryId: "cat_meals",
-        nameAr: "وجبة شاورما عربي دجاج",
-        nameEn: "Chicken Shawarma Meal",
-        descriptionAr: "قطع شاورما دجاج متبلة في خبز الصاج مع الثومية والبطاطس والمخلل",
-        price: 8000,
-        currency: "د.ع",
-        isAvailable: true,
-        isOffer: false,
-        offerTag: "وجبة مميزة",
-        imageUri: "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=400&q=80"
-      },
-      {
-        id: "s1",
-        categoryId: "cat_sweets",
-        nameAr: "تشيز كيك فراولة",
-        nameEn: "Strawberry Cheesecake",
-        descriptionAr: "تشيز كيك كريمي بارد على قاعدة بسكويت مقرمش مع صوص الفراولة الطازجة",
-        price: 5000,
-        currency: "د.ع",
-        isAvailable: true,
-        isOffer: true,
-        offerTag: "حلوى اليوم",
-        imageUri: "https://images.unsplash.com/photo-1524351199678-941a58a3df50?w=400&q=80"
-      }
-    ];
-
-    let currentSelectedCategory = 'cat_burgers';
-    let cart = []; // [{ item, qty }]
-    let isTableBarcodeValid = true;
-
-    function getCategoryIconClass(type) {
-      switch ((type || '').toLowerCase()) {
-        case 'shisha':
-        case 'hookah':
-        case 'arghila': return 'fa-solid fa-wind';
-        case 'billiards':
-        case 'billiard':
-        case 'pool': return 'fa-solid fa-circle-dot';
-        case 'gaming':
-        case 'games':
-        case 'playstation': return 'fa-solid fa-gamepad';
-        case 'cards':
-        case 'dice': return 'fa-solid fa-dice';
-        case 'grill':
-        case 'bbq':
-        case 'meat': return 'fa-solid fa-fire-burner';
-        case 'breakfast':
-        case 'bakery': return 'fa-solid fa-bread-slice';
-        case 'seafood':
-        case 'fish': return 'fa-solid fa-fish';
-        case 'burger': return 'fa-solid fa-burger';
-        case 'fries': return 'fa-solid fa-french-fries';
-        case 'drink': return 'fa-solid fa-cup-straw';
-        case 'meals': return 'fa-solid fa-utensils';
-        case 'sweets': return 'fa-solid fa-cake-candles';
-        case 'pizza': return 'fa-solid fa-pizza-slice';
-        case 'cafe':
-        case 'coffee': return 'fa-solid fa-mug-hot';
-        default: return 'fa-solid fa-utensils';
-      }
-    }
-
-    function scrollToMenu() {
-      const bar = document.getElementById('categoriesBar');
-      if (bar) {
-        bar.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }
-
-    function formatPrice(amount, curr) {
-      return Number(amount || 0).toLocaleString() + ' ' + (curr || 'د.ع');
-    }
-
-    function getItemImageUrl(item) {
-      if (!item) return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500&q=80';
-      let rawUri = item.imageUri || item.customImageUri || item.imageUrl || item.bgImageUri || item.photoUrl || (item.galleryImages && item.galleryImages[0]) || '';
-      if (rawUri && typeof rawUri === 'string') {
-        rawUri = rawUri.trim();
-        if (rawUri.startsWith('http://') || rawUri.startsWith('https://') || rawUri.startsWith('data:image')) {
-          return rawUri;
-        }
-        if (rawUri.startsWith('/9j/') || rawUri.startsWith('iVBORw') || (rawUri.length > 200 && !rawUri.startsWith('content:') && !rawUri.startsWith('file:'))) {
-          return 'data:image/jpeg;base64,' + rawUri;
-        }
-      }
-      const type = (item.imageType || '').toLowerCase();
-      const name = (item.nameAr || '').toLowerCase();
-      if (type === 'burger' || name.includes('برجر') || name.includes('برغر')) {
-        return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&q=80';
-      }
-      if (type === 'fries' || name.includes('بطاطس') || name.includes('مقبلات') || name.includes('أصابع')) {
-        return 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=500&q=80';
-      }
-      if (type === 'drink' || name.includes('لاتيه') || name.includes('قهوة') || name.includes('عصير') || name.includes('شاي') || name.includes('مشروب')) {
-        return 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?w=500&q=80';
-      }
-      if (type === 'sweets' || name.includes('كيك') || name.includes('حلو') || name.includes('وافل') || name.includes('كريب') || name.includes('تشيز')) {
-        return 'https://images.unsplash.com/photo-1524351199678-941a58a3df50?w=500&q=80';
-      }
-      if (type === 'pizza' || name.includes('بيتزا')) {
-        return 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&q=80';
-      }
-      if (type === 'meals' || name.includes('شاورما') || name.includes('وجبة') || name.includes('دجاج') || name.includes('لحم')) {
-        return 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=500&q=80';
-      }
-      return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500&q=80';
-    }
-
-    // 4. Listen to Real-time Multi-tenant Data from Firebase
-    function initFirebaseMultiTenantSync() {
+    // 3. Load Cafeteria Profile & Menu from Firestore
+    function loadData() {
       if (!db) {
-        renderCategories();
-        renderItems();
+        useFallbackData();
         return;
       }
 
-      if (cafeteriaId === 'u_default') {
-        db.collection('cafeterias').limit(3).get().then(snap => {
-          if (!snap.empty) {
-            const firstValid = snap.docs.find(d => d.id !== 'u_default') || snap.docs[0];
-            if (firstValid && firstValid.id !== 'u_default') {
-              cafeteriaId = firstValid.id;
-              initFirebaseMultiTenantSync();
-            }
-          }
-        }).catch(err => console.log('Auto cafeteria lookup notice:', err));
-      }
-
-      // A. Listen to Cafe Profile
-      db.collection('cafeterias').doc(cafeteriaId).onSnapshot((doc) => {
+      // Load Cafe Profile
+      db.collection('cafeterias').doc(cafeteriaId).get().then(doc => {
         if (doc && doc.exists) {
           const data = doc.data();
-          const brandNameEl = document.getElementById('brandCafeName');
-          if (brandNameEl && data.cafeName) brandNameEl.innerText = data.cafeName;
-          // Guard against old cyan themeColor overriding gold palette
-          if (data.themeColor && data.themeColor.toUpperCase() !== '#00DFC0') {
-            document.documentElement.style.setProperty('--cyan-primary', data.themeColor);
-          }
+          if (data.name) document.getElementById('cafeName').innerText = data.name;
+          if (data.logoUrl) document.getElementById('cafeLogo').src = data.logoUrl;
+          if (data.tableCount) document.getElementById('cafeSubtitle').innerText = `طاولة رقم ${tableNumber} - مرحباً بك`;
         }
-      }, err => console.log('Cafe profile sync notice:', err));
+      }).catch(() => {});
 
-      // A2. Listen to Table Barcode Validity & Security Token (Deactivation Check)
-      const tableDocRef = db.collection('cafeterias').doc(cafeteriaId).collection('tables').doc('table_' + tableNumber);
-      tableDocRef.onSnapshot((doc) => {
-        if (doc && doc.exists) {
-          const data = doc.data();
-          const activeSec = (data.securityToken || '').trim();
-          const modal = document.getElementById('barcodeExpiredModal');
-          // If cafeteria renewed barcodes and a stale token is used, deactivate
-          if (activeSec && secToken && activeSec !== secToken.trim()) {
-            isTableBarcodeValid = false;
-            if (modal) modal.style.display = 'flex';
-          } else {
-            isTableBarcodeValid = true;
-            if (modal) modal.style.display = 'none';
-          }
-        }
-      }, err => console.log('Table security check notice:', err));
-
-      // B. Listen to Categories
-      const catSubRef = db.collection('cafeterias').doc(cafeteriaId).collection('categories');
-      catSubRef.onSnapshot((snapshot) => {
-        if (snapshot && !snapshot.empty) {
-          categories = snapshot.docs.map(d => d.data()).sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-          if (!categories.find(c => c.id === currentSelectedCategory)) {
-            currentSelectedCategory = categories[0]?.id || 'all';
-          }
+      // Load Categories
+      db.collection('cafeterias').doc(cafeteriaId).collection('categories').get().then(snap => {
+        if (snap && !snap.empty) {
+          categories = [];
+          snap.forEach(doc => categories.push({ id: doc.id, ...doc.data() }));
           renderCategories();
-          renderItems();
-        } else {
-          // Fallback to root categories if subcollection is empty
-          db.collection('categories').onSnapshot((rootSnap) => {
-            if (rootSnap && !rootSnap.empty) {
-              categories = rootSnap.docs.map(d => d.data()).sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-              renderCategories();
-              renderItems();
-            } else {
-              renderCategories();
-              renderItems();
-            }
-          });
         }
-      }, err => {
-        console.log('Categories listener notice:', err);
-        renderCategories();
-        renderItems();
-      });
+      }).catch(() => {});
 
-      // C. Listen to Menu Items
-      const itemSubRef = db.collection('cafeterias').doc(cafeteriaId).collection('menu_items');
-      itemSubRef.onSnapshot((snapshot) => {
-        if (snapshot && !snapshot.empty) {
-          menuItems = snapshot.docs.map(d => {
-            const data = d.data();
-            return { ...data, id: String(data.id || d.id) };
-          });
-          renderItems();
-        } else {
-          // Fallback to root menu_items
-          db.collection('menu_items').onSnapshot((rootSnap) => {
-            if (rootSnap && !rootSnap.empty) {
-              menuItems = rootSnap.docs.map(d => {
-                const data = d.data();
-                return { ...data, id: String(data.id || d.id) };
-              });
-              renderItems();
-            } else {
-              renderItems();
+      // Load Menu Items Realtime
+      db.collection('cafeterias').doc(cafeteriaId).collection('menu').onSnapshot(snap => {
+        if (snap && !snap.empty) {
+          allMenuItems = [];
+          snap.forEach(doc => {
+            const item = { id: doc.id, ...doc.data() };
+            if (item.isAvailable !== false) {
+              allMenuItems.push(item);
             }
           });
+          filterMenuItems();
+        } else {
+          useFallbackData();
         }
       }, err => {
-        console.log('Menu items listener notice:', err);
-        renderItems();
+        console.warn("Firestore menu load error, using fallback:", err);
+        useFallbackData();
       });
     }
 
-    // 5. Render Categories Bar
+    function useFallbackData() {
+      allMenuItems = [...fallbackMenuItems];
+      categories = [
+        { id: 'hot', nameAr: 'مشروبات ساخنة' },
+        { id: 'cold', nameAr: 'مشروبات باردة' },
+        { id: 'sweets', nameAr: 'حلويات' }
+      ];
+      renderCategories();
+      filterMenuItems();
+    }
+
+    // 4. Render Category Tabs
     function renderCategories() {
-      const bar = document.getElementById('categoriesBar');
-      bar.innerHTML = '';
-
+      const tabs = document.getElementById('categoryTabs');
+      let html = `<button class="cat-btn ${activeCategory === 'ALL' ? 'active' : ''}" onclick="selectCategory('ALL')">✨ الكل</button>`;
       categories.forEach(cat => {
-        const btn = document.createElement('div');
-        const isActive = (cat.id === currentSelectedCategory);
-        btn.className = `cat-btn ${isActive ? 'active' : ''}`;
-        btn.onclick = () => selectCategory(cat.id, btn);
-        btn.innerHTML = `
-          <i class="${getCategoryIconClass(cat.iconType)}"></i>
-          <span>${cat.nameAr}</span>
-        `;
-        bar.appendChild(btn);
+        const isActive = activeCategory === cat.id ? 'active' : '';
+        html += `<button class="cat-btn ${isActive}" onclick="selectCategory('${cat.id}')">${cat.nameAr}</button>`;
       });
+      tabs.innerHTML = html;
     }
 
-    function selectCategory(catId, btnEl) {
-      currentSelectedCategory = catId;
-      document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-      if (btnEl) btnEl.classList.add('active');
-      renderItems();
+    function selectCategory(catId) {
+      activeCategory = catId;
+      renderCategories();
+      filterMenuItems();
     }
 
-    function filterOffersOnly() {
-      const offers = menuItems.filter(i => i.isOffer);
-      renderFilteredItems(offers, "العروض والجديد", "fa-solid fa-fire");
-    }
+    // 5. Render Menu Items with Instant Steppers
+    function filterMenuItems() {
+      const q = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+      const list = document.getElementById('itemsList');
 
-    // 6. Render Items
-    function renderItems() {
-      const activeCat = categories.find(c => c.id === currentSelectedCategory);
-      const catName = activeCat ? activeCat.nameAr : "قائمة الطعام";
-      const iconClass = activeCat ? getCategoryIconClass(activeCat.iconType) : "fa-solid fa-utensils";
-
-      const filtered = menuItems.filter(item => {
-        return (item.categoryId === currentSelectedCategory || currentSelectedCategory === 'all') && item.isAvailable !== false;
+      let filtered = allMenuItems.filter(item => {
+        const matchCat = (activeCategory === 'ALL' || item.categoryId === activeCategory);
+        const matchQuery = !q || (item.nameAr && item.nameAr.toLowerCase().includes(q)) || (item.descriptionAr && item.descriptionAr.toLowerCase().includes(q));
+        return matchCat && matchQuery;
       });
 
-      renderFilteredItems(filtered, catName, iconClass);
-    }
-
-    function renderFilteredItems(itemsList, titleText, iconClass) {
-      document.getElementById('sectionName').innerText = titleText;
-      document.getElementById('sectionIcon').className = iconClass;
-      document.getElementById('itemsCountBadge').innerText = `${itemsList.length} صنف`;
-
-      const container = document.getElementById('itemsContainer');
-      container.innerHTML = '';
-
-      if (itemsList.length === 0) {
-        container.innerHTML = `
-          <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
-            <i class="fa-solid fa-bowl-food" style="font-size: 40px; margin-bottom: 12px; color: var(--card-border);"></i>
-            <p>لا توجد أصناف في هذا القسم حالياً.</p>
+      if (filtered.length === 0) {
+        list.innerHTML = `
+          <div style="text-align:center; padding: 40px 10px; color: var(--text-dim);">
+            <i class="fa-solid fa-mug-hot" style="font-size:32px; color:var(--bg-card-border); margin-bottom:8px;"></i>
+            <p style="font-weight:700;">لا توجد أصناف متوفرة في هذا القسم حالياً</p>
           </div>
         `;
         return;
       }
 
-      itemsList.forEach(item => {
-        const card = document.createElement('div');
-        card.className = 'item-card';
+      let html = '';
+      filtered.forEach(item => {
+        const inCart = cart.find(c => c.item.id === item.id);
+        const qty = inCart ? inCart.qty : 0;
+        const priceFmt = (item.price || 0).toLocaleString('ar-IQ') + ' ' + (item.currency || 'د.ع');
+        const img = item.imageUrl || '';
 
-        const imgSrc = getItemImageUrl(item);
-        const offerBadgeHtml = (item.isOffer || item.offerTag) ? `<div class="item-offer-tag">🔥 ${item.offerTag || 'عرض خاص'}</div>` : '';
-        const priceFormatted = Number(item.price).toLocaleString() + ' ' + (item.currency || 'د.ع');
-
-        // Check if item is already in cart to display stepper (+ / -)
-        const cartEntry = cart.find(c => String(c.item.id) === String(item.id));
-        const inCartQty = cartEntry ? cartEntry.qty : 0;
-
-        let inCartBadgeHtml = '';
-        let actionControlHtml = '';
-        if (inCartQty > 0) {
-          inCartBadgeHtml = `<div style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:900; color:#4ADE80; background:rgba(34,197,94,0.18); border:1px solid #22C55E; padding:2px 8px; border-radius:8px; width:fit-content; margin-bottom:2px;"><span>✅ مضاف بالسلة (${inCartQty})</span></div>`;
-          actionControlHtml = `
-            <div class="qty-controls item-stepper" style="display:inline-flex; align-items:center; gap:6px; background:#0D0B0A; padding:3px 8px; border-radius:24px; border:1.8px solid var(--cyan-primary);">
-              <button type="button" class="btn-qty minus" onclick="changeQty('${item.id}', -1)" title="تقليل" style="width:30px; height:30px; border-radius:50%; background:#EF4444; color:#FFFFFF; font-size:18px; font-weight:900; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1;">−</button>
-              <span class="stepper-count" style="color:#FFFFFF !important; font-weight:900; font-size:16px; min-width:28px; text-align:center; display:inline-block;">${inCartQty}</span>
-              <button type="button" class="btn-qty plus" onclick="changeQty('${item.id}', 1)" title="زيادة" style="width:30px; height:30px; border-radius:50%; background:var(--cyan-primary); color:#021215; font-size:18px; font-weight:900; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1;">+</button>
+        html += `
+          <div class="item-card">
+            <div class="item-img-wrap">
+              ${img ? `<img src="${img}" alt="${item.nameAr}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><i class="fa-solid fa-mug-hot item-img-placeholder" style="display:none;"></i>` : `<i class="fa-solid fa-mug-hot item-img-placeholder"></i>`}
             </div>
-          `;
-        } else {
-          actionControlHtml = `
-            <button type="button" class="btn-add-order" onclick="addToCart('${item.id}')">
-              <span>+ طلب</span>
-            </button>
-          `;
-        }
-
-        card.innerHTML = `
-          <!-- Food Image (Right) -->
-          <div class="item-image-wrapper">
-            <img src="${imgSrc}" alt="${item.nameAr}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80'">
-          </div>
-
-          <!-- Content (Left) -->
-          <div class="item-body">
-            ${offerBadgeHtml}
-            ${inCartBadgeHtml}
-            <div class="item-title">${item.nameAr}</div>
-            <div class="item-desc">${item.descriptionAr || ''}</div>
-            <div class="item-gallery-link" onclick="openDetailsModal('${item.id}')">
-              <span>🖼️ مزيد من التفاصيل وصور 📸</span>
-            </div>
-            <div class="item-bottom-row">
-              <div class="item-price">${priceFormatted}</div>
-              ${actionControlHtml}
+            <div class="item-info">
+              <div class="item-title">${item.nameAr}</div>
+              <div class="item-desc">${item.descriptionAr || ''}</div>
+              <div class="item-bottom">
+                <div class="item-price">${priceFmt}</div>
+                <!-- Stepper (+ / -) directly on card -->
+                <div class="card-stepper">
+                  <button type="button" class="btn-step btn-step-minus" onclick="changeQty('${item.id}', -1)">−</button>
+                  <span id="qty_${item.id}" class="card-qty-label">${qty}</span>
+                  <button type="button" class="btn-step btn-step-plus" onclick="changeQty('${item.id}', 1)">+</button>
+                </div>
+              </div>
             </div>
           </div>
         `;
-        container.appendChild(card);
       });
+
+      list.innerHTML = html;
     }
 
-    function showToast(msg) {
-      const toast = document.getElementById('toastNotification');
-      if (!toast) return;
-      toast.innerText = msg;
-      toast.style.display = 'flex';
-      clearTimeout(window._toastTimer);
-      window._toastTimer = setTimeout(() => {
-        toast.style.display = 'none';
-      }, 2200);
-    }
-
-    // 7. Cart Logic
-    function addToCart(itemId) {
-      if (!isTableBarcodeValid) {
-        alert('عذراً، هذا الباركود قديم أو تم تجديده من قِبل إدارة الكافتيريا. يرجى مسح الباركود الجديد من الطاولة.');
-        return;
-      }
-
-      const item = menuItems.find(i => String(i.id) === String(itemId));
+    // 6. Direct & Immediate Quantity Change
+    function changeQty(itemId, delta) {
+      const item = allMenuItems.find(i => i.id === itemId);
       if (!item) return;
 
-      const existing = cart.find(c => String(c.item.id) === String(itemId));
-      let currentQty = 1;
-      if (existing) {
-        existing.qty++;
-        currentQty = existing.qty;
-      } else {
-        cart.push({ item: item, qty: 1 });
+      let idx = cart.findIndex(c => c.item.id === itemId);
+      let newQty = 0;
+
+      if (delta > 0) {
+        if (idx >= 0) {
+          cart[idx].qty += delta;
+          newQty = cart[idx].qty;
+        } else {
+          cart.push({ item: item, qty: 1 });
+          newQty = 1;
+        }
+        showToast(`✅ ${item.nameAr} [${newQty}]`);
+      } else if (delta < 0) {
+        if (idx >= 0) {
+          cart[idx].qty += delta;
+          if (cart[idx].qty <= 0) {
+            cart.splice(idx, 1);
+            newQty = 0;
+            showToast(`🗑️ تم الحذف: ${item.nameAr}`);
+          } else {
+            newQty = cart[idx].qty;
+            showToast(`➖ ${item.nameAr} [${newQty}]`);
+          }
+        }
       }
 
-      showToast(`✅ تمت إضافة (${item.nameAr}) إلى السلة [العدد: ${currentQty}]`);
-      updateCartBar();
-      renderItems();
-      renderCartModalList();
-    }
-
-    function changeQty(itemId, delta) {
-      const entry = cart.find(c => String(c.item.id) === String(itemId));
-      if (!entry) return;
-
-      entry.qty += delta;
-      if (entry.qty <= 0) {
-        cart = cart.filter(c => String(c.item.id) !== String(itemId));
+      // Update the number directly on the item card (instant visual response)
+      const lbl = document.getElementById('qty_' + itemId);
+      if (lbl) {
+        lbl.innerText = newQty;
+        lbl.style.color = newQty > 0 ? 'var(--accent)' : '#FFFFFF';
       }
 
-      updateCartBar();
-      renderCartModalList();
-      renderItems();
-      if (cart.length === 0) closeCartModal();
+      updateFloatingCart();
+
+      // If cart modal is currently open, re-render its list
+      if (document.getElementById('cartModal').style.display === 'flex') {
+        renderCartModalItems();
+      }
     }
 
-    function updateCartBar() {
-      const totalQty = cart.reduce((sum, c) => sum + c.qty, 0);
-      const totalSum = cart.reduce((sum, c) => sum + (c.item.price * c.qty), 0);
+    // 7. Update Floating Cart Bar
+    function updateFloatingCart() {
+      const bar = document.getElementById('floatingCart');
+      const badge = document.getElementById('cartBadgeCount');
+      const totalText = document.getElementById('cartBarTotal');
+
+      const totalItems = cart.reduce((sum, c) => sum + c.qty, 0);
+      const totalPrice = cart.reduce((sum, c) => sum + (c.item.price * c.qty), 0);
       const currency = cart[0]?.item.currency || 'د.ع';
 
-      const bar = document.getElementById('floatingCartBar');
-      const heroBadge = document.getElementById('heroCartBadge');
-
-      if (totalQty > 0) {
+      if (totalItems > 0) {
         bar.style.display = 'flex';
-        heroBadge.style.display = 'inline-block';
-        heroBadge.innerText = totalQty;
-        document.getElementById('cartCountBadge').innerText = totalQty;
-        document.getElementById('cartTotalSummary').innerText = totalSum.toLocaleString() + ' ' + currency;
-        document.getElementById('modalTotalSum').innerText = totalSum.toLocaleString() + ' ' + currency;
+        badge.innerText = totalItems + ' أصناف';
+        totalText.innerText = totalPrice.toLocaleString('ar-IQ') + ' ' + currency;
       } else {
         bar.style.display = 'none';
-        heroBadge.style.display = 'none';
       }
     }
 
+    // 8. Cart Modal Functions
     function openCartModal() {
-      if (!isTableBarcodeValid) {
-        alert('عذراً، هذا الباركود قديم أو تم تجديده من قِبل إدارة الكافتيريا. يرجى مسح الباركود الجديد من الطاولة.');
-        return;
-      }
-      if (cart.length === 0) {
-        alert('سلة الطلب فارغة، يرجى اختيار أصناف أولاً بالضغط على (+ طلب)');
-        return;
-      }
-      renderCartModalList();
-      const savedName = localStorage.getItem('cafe_customer_name') || '';
-      const nameInput = document.getElementById('customerNameInput');
-      if (nameInput && savedName) {
-        nameInput.value = savedName;
-      }
-      const err = document.getElementById('customerNameError');
-      if (err) err.style.display = 'none';
+      if (cart.length === 0) return;
+      renderCartModalItems();
       document.getElementById('cartModal').style.display = 'flex';
     }
 
     function closeCartModal() {
-      const modal = document.getElementById('cartModal');
-      if (modal) modal.style.display = 'none';
+      document.getElementById('cartModal').style.display = 'none';
+      document.getElementById('nameError').style.display = 'none';
     }
 
-    function renderCartModalList() {
+    function renderCartModalItems() {
       const list = document.getElementById('cartItemsList');
-      if (!list) return;
-      list.innerHTML = '';
+      const totalSpan = document.getElementById('modalTotalPrice');
 
-      cart.forEach(c => {
-        const row = document.createElement('div');
-        row.className = 'cart-row';
-        const priceText = (c.item.price * c.qty).toLocaleString() + ' ' + (c.item.currency || 'د.ع');
-        row.innerHTML = `
-          <div class="cart-item-desc">
-            <h4>${c.item.nameAr}</h4>
-            <span>${priceText}</span>
-          </div>
-          <div class="qty-controls" style="display:flex; align-items:center; gap:8px;">
-            <button type="button" class="btn-qty minus" onclick="changeQty('${c.item.id}', -1)" title="تقليل" style="width:34px; height:34px; border-radius:50%; background:#EF4444; color:#FFFFFF; font-size:22px; font-weight:900; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1;">−</button>
-            <span class="cart-qty-val" style="color:#FFFFFF !important; font-weight:900; font-size:16px; min-width:36px; height:32px; background:#000000; border:1.8px solid var(--cyan-primary); border-radius:8px; display:inline-flex; align-items:center; justify-content:center;">${c.qty}</span>
-            <button type="button" class="btn-qty plus" onclick="changeQty('${c.item.id}', 1)" title="زيادة" style="width:34px; height:34px; border-radius:50%; background:var(--cyan-primary); color:#021215; font-size:22px; font-weight:900; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1;">+</button>
-          </div>
-        `;
-        list.appendChild(row);
-      });
-    }
-
-    // 8. Submit Order to Firebase Firestore
-    function submitCustomerOrder() {
-      if (!isTableBarcodeValid) {
-        alert('عذراً، هذا الباركود غير صالح أو تم تجديده من قِبل إدارة الكافتيريا. يرجى مسح الباركود الجديد من الطاولة.');
+      if (cart.length === 0) {
+        closeCartModal();
         return;
       }
+
+      let html = '';
+      let sum = 0;
+      let curr = cart[0]?.item.currency || 'د.ع';
+
+      cart.forEach(c => {
+        const itemTotal = c.item.price * c.qty;
+        sum += itemTotal;
+        html += `
+          <div class="cart-row">
+            <div class="cart-row-info">
+              <h4>${c.item.nameAr}</h4>
+              <span>${itemTotal.toLocaleString('ar-IQ')} ${curr} (${c.qty} × ${(c.item.price).toLocaleString('ar-IQ')})</span>
+            </div>
+            <div class="card-stepper">
+              <button type="button" class="btn-step btn-step-minus" onclick="changeQty('${c.item.id}', -1)">−</button>
+              <span class="card-qty-label" style="min-width:28px;">${c.qty}</span>
+              <button type="button" class="btn-step btn-step-plus" onclick="changeQty('${c.item.id}', 1)">+</button>
+            </div>
+          </div>
+        `;
+      });
+
+      list.innerHTML = html;
+      totalSpan.innerText = sum.toLocaleString('ar-IQ') + ' ' + curr;
+    }
+
+    // 9. Instant Submit Order to Firestore
+    function submitOrder() {
       if (cart.length === 0) return;
 
-      const nameInput = document.getElementById('customerNameInput');
+      const nameInput = document.getElementById('customerName');
       const custName = (nameInput ? nameInput.value.trim() : '') || '';
+      
       if (!custName) {
-        const err = document.getElementById('customerNameError');
+        const err = document.getElementById('nameError');
         if (err) err.style.display = 'block';
         if (nameInput) {
           nameInput.focus();
-          nameInput.style.border = '1.5px solid #ff5252';
+          nameInput.style.borderColor = 'var(--danger)';
         }
         return;
       }
-      const err = document.getElementById('customerNameError');
-      if (err) err.style.display = 'none';
-      if (nameInput) nameInput.style.border = '1px solid var(--card-border)';
+
       try {
         localStorage.setItem('cafe_customer_name', custName);
       } catch (_) {}
@@ -1814,9 +1128,9 @@
       const totalQty = cart.reduce((sum, c) => sum + c.qty, 0);
       const totalSum = cart.reduce((sum, c) => sum + (c.item.price * c.qty), 0);
       const currency = cart[0]?.item.currency || 'د.ع';
-      const summary = cart.map(c => `${c.qty}x ${c.item.nameAr} بسعر ${formatPrice(c.item.price * c.qty, currency)}`).join('، ');
-      const rawFee = totalSum * 0.01;
       const notes = (document.getElementById('orderNotes')?.value || '').trim();
+      const summary = cart.map(c => `${c.qty}× ${c.item.nameAr}`).join('، ');
+
       const orderId = 'ord_' + Math.floor(100000 + Math.random() * 900000);
 
       const orderData = {
@@ -1826,9 +1140,8 @@
         customerName: custName,
         itemsSummary: summary,
         itemsCount: totalQty,
-        totalPrice: totalSum + rawFee,
+        totalPrice: totalSum,
         subtotal: totalSum,
-        serviceFee: rawFee,
         currency: currency,
         status: "NEW",
         timestamp: Date.now(),
@@ -1836,291 +1149,132 @@
         securityToken: secToken
       };
 
-      const btn = document.getElementById('btnSubmitOrder');
-      if (btn) {
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الإرسال للكاشير...';
-        btn.disabled = true;
-      }
-
-      let isFinished = false;
-      const finishOrder = () => {
-        if (isFinished) return;
-        isFinished = true;
-        cart = [];
-        updateCartBar();
-        renderItems();
-        closeCartModal();
-        if (btn) {
-          btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> <span>إرسال الطلب إلى الكاشير</span>';
-          btn.disabled = false;
-        }
-        showTrackingModal(orderId);
-      };
-
+      // 1. Dispatch Write to Firestore
       if (db) {
-        // Multi-tenant: write strictly to this cafeteria's orders subcollection
         try {
-          db.collection('cafeterias').doc(cafeteriaId).collection('orders').doc(orderId).set(orderData)
-            .then(() => {
-              console.log("Order saved to cafeteria subcollection successfully!");
-              try { db.collection('orders').doc(orderId).set(orderData).catch(() => {}); } catch (_) {}
-              finishOrder();
-            })
-            .catch(err => {
-              console.error("Firestore subcollection error, attempting root collection fallback:", err);
-              db.collection('orders').doc(orderId).set(orderData)
-                .then(() => finishOrder())
-                .catch(e => {
-                  console.error("Root order fallback failed:", e);
-                  finishOrder();
-                });
-            });
+          db.collection('cafeterias').doc(cafeteriaId).collection('orders').doc(orderId).set(orderData).catch(() => {});
+          try { db.collection('orders').doc(orderId).set(orderData).catch(() => {}); } catch (_) {}
         } catch (e) {
-          console.error("Synchronous firestore write error:", e);
-          finishOrder();
+          console.warn("Order write error:", e);
         }
-
-        // Fast guaranteed transition: finish within 350ms so user is NEVER stuck on "جاري الإرسال"
-        setTimeout(finishOrder, 350);
-      } else {
-        setTimeout(finishOrder, 250);
       }
+
+      // 2. IMMEDIATE TRANSITION: Clear cart & show success right away
+      cart = [];
+      updateFloatingCart();
+
+      // Reset all visible labels on cards to 0
+      document.querySelectorAll('.card-qty-label').forEach(lbl => {
+        lbl.innerText = '0';
+        lbl.style.color = '#FFFFFF';
+      });
+
+      closeCartModal();
+      showSuccessModal(orderId);
     }
 
-    // 9. Live Tracking Modal
-    function showTrackingModal(orderId) {
-      document.getElementById('trackingOrderIdText').innerText = 'رقم الطلب: #' + orderId;
-      document.getElementById('trackingInfoText').innerText = `طلب طاولة ${tableNumber} وصل إلى لوحة الكاشير ويجري تحضيره الآن.`;
+    // 10. Success & Tracking Modal
+    let trackingUnsub = null;
+    function showSuccessModal(orderId) {
+      document.getElementById('orderIdText').innerText = 'رقم الطلب: #' + orderId;
+      document.getElementById('trackingSubtext').innerText = `طلب طاولة ${tableNumber} وصل إلى الكاشير ويجري تحضيره الآن.`;
+      
+      const badge = document.getElementById('orderStatusBadge');
+      badge.className = 'status-badge new';
+      badge.innerText = '🕒 طلب جديد في الانتظار';
+
       document.getElementById('trackingModal').style.display = 'flex';
 
+      // Realtime status listener
       if (db) {
-        db.collection('cafeterias').doc(cafeteriaId).collection('orders').doc(orderId)
+        if (trackingUnsub) trackingUnsub();
+        trackingUnsub = db.collection('cafeterias').doc(cafeteriaId).collection('orders').doc(orderId)
           .onSnapshot(doc => {
             if (doc && doc.exists) {
-              updateTrackingStatusBadge(doc.data().status);
+              const status = doc.data().status;
+              if (status === 'PREPARING') {
+                badge.className = 'status-badge prep';
+                badge.innerText = '🍳 جاري التحضير في المطبخ';
+              } else if (status === 'READY' || status === 'DELIVERED') {
+                badge.className = 'status-badge ready';
+                badge.innerText = '🍽️ طلبك جاهز للتقديم على الطاولة';
+              } else if (status === 'PAID') {
+                badge.className = 'status-badge ready';
+                badge.innerText = '💵 تم تسديد الحساب بنجاح';
+              }
             }
-          });
-      }
-    }
-
-    function updateTrackingStatusBadge(status) {
-      const b = document.getElementById('liveStatusBadge');
-      if (status === 'PREPARING') {
-        b.className = 'status-badge status-prep';
-        b.innerText = 'جاري التحضير في المطبخ 🍳';
-      } else if (status === 'DELIVERED' || status === 'READY') {
-        b.className = 'status-badge status-ready';
-        b.innerText = 'طلبك جاهز للتقديم على الطاولة 🍽️';
-      } else if (status === 'PAID') {
-        b.className = 'status-badge status-paid';
-        b.innerText = 'تم تسديد الحساب بنجاح 💵';
-      } else {
-        b.className = 'status-badge status-new';
-        b.innerText = 'طلب جديد في انتظار التأكيد 🕒';
+          }, () => {});
       }
     }
 
     function closeTrackingModal() {
       document.getElementById('trackingModal').style.display = 'none';
-    }
-
-    // 10. Item Details & Gallery Modal
-    function openDetailsModal(itemId) {
-      const item = menuItems.find(i => i.id === itemId);
-      if (!item) return;
-
-      document.getElementById('detailsItemName').innerText = item.nameAr;
-      document.getElementById('detailsMainImage').src = getItemImageUrl(item);
-      document.getElementById('detailsItemDesc').innerText = item.descriptionAr || 'طبق شهي ومميز يتم تحضيره بأعلى معايير الجودة.';
-      document.getElementById('detailsItemPrice').innerText = Number(item.price).toLocaleString() + ' ' + (item.currency || 'د.ع');
-
-      const badge = document.getElementById('detailsOfferBadge');
-      if (item.isOffer) {
-        badge.style.display = 'inline-flex';
-        badge.innerText = '🔥 ' + (item.offerTag || 'عرض خاص');
-      } else {
-        badge.style.display = 'none';
-      }
-
-      const addBtn = document.getElementById('detailsAddBtn');
-      addBtn.onclick = () => {
-        addToCart(item.id);
-        closeDetailsModal();
-      };
-
-      document.getElementById('detailsModal').style.display = 'flex';
-    }
-
-    function closeDetailsModal() {
-      document.getElementById('detailsModal').style.display = 'none';
-    }
-
-    // 11. Unified T-Chart Game Scorecard ("تسجيل نتائج الألعاب")
-    let tchartData = {
-      p1Name: 'اللاعب الأول',
-      p2Name: 'اللاعب الثاني',
-      rounds: []
-    };
-
-    function openGamesModal() {
-      loadTChartScore();
-      renderTChart();
-      document.getElementById('gamesModal').style.display = 'flex';
-    }
-
-    function closeGamesModal() {
-      document.getElementById('gamesModal').style.display = 'none';
-    }
-
-    function updateTChartNames() {
-      const p1 = document.getElementById('tchartP1Name')?.value.trim();
-      const p2 = document.getElementById('tchartP2Name')?.value.trim();
-      if (p1) tchartData.p1Name = p1;
-      if (p2) tchartData.p2Name = p2;
-      saveTChartScore();
-      renderTChart();
-    }
-
-    // When points are entered on loser side, the winner side gets XX automatically!
-    function addTChartRound(loserPlayerNum) {
-      const inputEl = document.getElementById(loserPlayerNum === 1 ? 'tchartP1Input' : 'tchartP2Input');
-      const val = parseInt(inputEl?.value || '0', 10);
-      if (isNaN(val) || val <= 0) {
-        alert('يرجى إدخال رقم نقاط صحيح للخاسر');
-        return;
-      }
-
-      updateTChartNames();
-
-      const newRound = {
-        round: tchartData.rounds.length + 1,
-        loser: loserPlayerNum,
-        p1Score: (loserPlayerNum === 1) ? val : 'XX',
-        p2Score: (loserPlayerNum === 2) ? val : 'XX'
-      };
-
-      tchartData.rounds.push(newRound);
-      saveTChartScore();
-      if (inputEl) inputEl.value = '';
-      renderTChart();
-    }
-
-    function deleteTChartRound(index) {
-      tchartData.rounds.splice(index, 1);
-      tchartData.rounds.forEach((r, idx) => r.round = idx + 1);
-      saveTChartScore();
-      renderTChart();
-    }
-
-    function resetTChartScore() {
-      if (!confirm('هل أنت متأكد من تصفير نتائج الجولات وبدء مباراة جديدة؟')) return;
-      tchartData.rounds = [];
-      saveTChartScore();
-      renderTChart();
-    }
-
-    function renderTChart() {
-      const p1Input = document.getElementById('tchartP1Name');
-      const p2Input = document.getElementById('tchartP2Name');
-      if (p1Input && document.activeElement !== p1Input) p1Input.value = tchartData.p1Name;
-      if (p2Input && document.activeElement !== p2Input) p2Input.value = tchartData.p2Name;
-
-      const gridBody = document.getElementById('tchartGridBody');
-      if (!gridBody) return;
-      gridBody.innerHTML = '';
-
-      if (tchartData.rounds.length === 0) {
-        gridBody.innerHTML = `
-          <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 18px 8px; font-size: 12px;">
-            لا توجد جولات مسجلة بعد.<br>أدخل نقاط الخاسر في جهته واضغط (تسجيل) وسيظهر XX تلقائياً للرابح.
-          </div>
-        `;
-      } else {
-        tchartData.rounds.forEach((r, idx) => {
-          const p1Cell = document.createElement('div');
-          p1Cell.className = 'tchart-row-cell';
-          p1Cell.innerHTML = (r.p1Score === 'XX')
-            ? '<span class="score-xx">XX</span>'
-            : `<span class="score-num">${r.p1Score}</span>`;
-
-          const vdiv = document.createElement('div');
-          vdiv.className = 'tchart-grid-vdiv';
-
-          const p2Cell = document.createElement('div');
-          p2Cell.className = 'tchart-row-cell';
-          p2Cell.innerHTML = (r.p2Score === 'XX')
-            ? '<span class="score-xx">XX</span>'
-            : `<span class="score-num">${r.p2Score}</span>`;
-
-          // Small delete button next to round
-          const delBtn = document.createElement('button');
-          delBtn.type = 'button';
-          delBtn.innerHTML = '&times;';
-          delBtn.style.cssText = 'background:none;border:none;color:#EF4444;font-size:16px;cursor:pointer;margin-right:4px;';
-          delBtn.onclick = () => deleteTChartRound(idx);
-          p2Cell.appendChild(delBtn);
-
-          gridBody.appendChild(p1Cell);
-          gridBody.appendChild(vdiv);
-          gridBody.appendChild(p2Cell);
-        });
-      }
-
-      // Calculations
-      const p1Wins = tchartData.rounds.filter(r => r.p1Score === 'XX').length;
-      const p2Wins = tchartData.rounds.filter(r => r.p2Score === 'XX').length;
-      const p1Points = tchartData.rounds.filter(r => r.p1Score !== 'XX').reduce((sum, r) => sum + (Number(r.p1Score) || 0), 0);
-      const p2Points = tchartData.rounds.filter(r => r.p2Score !== 'XX').reduce((sum, r) => sum + (Number(r.p2Score) || 0), 0);
-
-      const totP1Name = document.getElementById('tchartTotP1Name');
-      const totP2Name = document.getElementById('tchartTotP2Name');
-      if (totP1Name) totP1Name.innerText = tchartData.p1Name;
-      if (totP2Name) totP2Name.innerText = tchartData.p2Name;
-
-      const totP1Wins = document.getElementById('tchartTotP1Wins');
-      const totP2Wins = document.getElementById('tchartTotP2Wins');
-      if (totP1Wins) totP1Wins.innerText = `${p1Wins} فوز (XX)`;
-      if (totP2Wins) totP2Wins.innerText = `${p2Wins} فوز (XX)`;
-
-      const totP1Pts = document.getElementById('tchartTotP1Points');
-      const totP2Pts = document.getElementById('tchartTotP2Points');
-      if (totP1Pts) totP1Pts.innerText = `${p1Points} نقطة`;
-      if (totP2Pts) totP2Pts.innerText = `${p2Points} نقطة`;
-
-      // Point difference calculation (فرق النقاط تلقائياً تحت القائمة)
-      const diffEl = document.getElementById('tchartDiffText');
-      if (diffEl) {
-        const diff = Math.abs(p1Points - p2Points);
-        if (p1Points === p2Points) {
-          diffEl.innerText = (tchartData.rounds.length === 0) ? 'فرق النقاط: 0' : 'النقاط متعادلة بين اللاعبين (0)';
-        } else if (p1Points < p2Points) {
-          // In domino/cards, lower loss points means leading/winning
-          diffEl.innerText = `فرق النقاط: ${diff} نقطة لصالح ${tchartData.p1Name} 🏆`;
-        } else {
-          diffEl.innerText = `فرق النقاط: ${diff} نقطة لصالح ${tchartData.p2Name} 🏆`;
-        }
+      if (trackingUnsub) {
+        trackingUnsub();
+        trackingUnsub = null;
       }
     }
 
-    function saveTChartScore() {
-      try {
-        localStorage.setItem('cafe_tchart_game', JSON.stringify(tchartData));
-      } catch (_) {}
+    // 11. Quick Waiter / Bill Service Call
+    function callService(type) {
+      const typeLabel = type === 'WAITER' ? 'نداء النادل' : 'طلب الحساب';
+      showToast(`⏳ جاري إرسال ${typeLabel}...`);
+
+      if (db) {
+        const callId = 'call_' + Date.now();
+        db.collection('cafeterias').doc(cafeteriaId).collection('service_calls').doc(callId).set({
+          id: callId,
+          tableNumber: tableNumber,
+          type: type,
+          status: 'PENDING',
+          timestamp: Date.now()
+        }).catch(() => {});
+      }
+
+      setTimeout(() => {
+        showToast(type === 'WAITER' ? '🛎️ تم استدعاء النادل، سيصلك فوراً' : '🧾 تم إرسال طلب الحساب للكاشير');
+      }, 300);
     }
 
-    function loadTChartScore() {
-      try {
-        const raw = localStorage.getItem('cafe_tchart_game');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed && Array.isArray(parsed.rounds)) tchartData = parsed;
-        }
-      } catch (_) {}
+    // 12. Domino / T-Chart Simple Tracker
+    let score1 = 0;
+    let score2 = 0;
+
+    function openGameModal() {
+      document.getElementById('gameModal').style.display = 'flex';
+    }
+    function closeGameModal() {
+      document.getElementById('gameModal').style.display = 'none';
+    }
+    function addScore(team, val) {
+      if (team === 1) score1 += val;
+      else score2 += val;
+      updateScores();
+    }
+    function resetScores() {
+      score1 = 0;
+      score2 = 0;
+      updateScores();
+    }
+    function updateScores() {
+      document.getElementById('scoreTeam1').innerText = score1;
+      document.getElementById('scoreTeam2').innerText = score2;
     }
 
-    // Initialize Multi-Tenant Firestore Sync
-    loadTChartScore();
-    initFirebaseMultiTenantSync();
+    // 13. Toast Notification Helper
+    let toastTimeout = null;
+    function showToast(msg) {
+      const t = document.getElementById('toastBox');
+      t.innerText = msg;
+      t.style.display = 'block';
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        t.style.display = 'none';
+      }, 1800);
+    }
+
+    // Run On Load
+    window.addEventListener('DOMContentLoaded', loadData);
   </script>
 </body>
 </html>
