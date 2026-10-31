@@ -19,23 +19,23 @@
 
   <style>
     :root {
-      --bg-dark: #041215;
-      --bg-gradient-end: #071D22;
-      --surface: #071E22;
-      --surface-variant: #09272D;
-      --cyan-primary: #00DFC0;
-      --cyan-glow: rgba(0, 223, 192, 0.45);
-      --gold: #F5B041;
-      --gold-dark: #C68A27;
-      --card-border: #0E4349;
-      --card-border-glow: #166068;
+      --bg-dark: #0D0B0A;
+      --bg-gradient-end: #171311;
+      --surface: #1B1715;
+      --surface-variant: #241F1C;
+      --cyan-primary: #F7A038;
+      --cyan-glow: rgba(247, 160, 56, 0.45);
+      --gold: #F59E0B;
+      --gold-dark: #D97706;
+      --card-border: #382F2A;
+      --card-border-glow: #5E4939;
       --text-primary: #FFFFFF;
-      --text-secondary: #86ADB2;
-      --text-muted: #5B7D81;
-      --input-bg: #05181B;
-      --hero-purple: #7C4DFF;
-      --hero-purple-bg: #15062C;
-      --hero-blue-bg: #071A2E;
+      --text-secondary: #B5A99F;
+      --text-muted: #7E7269;
+      --input-bg: #13100E;
+      --hero-purple: #D97706;
+      --hero-purple-bg: #291C0E;
+      --hero-blue-bg: #1F150D;
     }
 
     * {
@@ -47,303 +47,410 @@
     }
 
     body {
-      background: linear-gradient(180deg, var(--bg-dark) 0%, var(--bg-gradient-end) 45%, #020C0E 100%);
+      background: linear-gradient(180deg, var(--bg-dark) 0%, var(--bg-gradient-end) 45%, #050404 100%);
       color: var(--text-primary);
       min-height: 100vh;
       overflow-x: hidden;
       padding-bottom: 110px;
     }
 
-    /* Top Bar - Clean Customer View (No Admin / Cashier Switchers) */
-    .top-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 16px 16px 12px;
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      background: rgba(4, 18, 21, 0.94);
-      backdrop-filter: blur(14px);
-      border-bottom: 1px solid rgba(14, 67, 73, 0.4);
+    /* Top Full-Width Ribbon Header Banner */
+    .header-banner-wrapper {
+      width: 100%;
+      position: relative;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: transparent;
     }
 
-    /* Left: Golden VIP Table Badge */
-    .vip-table-badge {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      border: 2px solid var(--gold);
-      background: rgba(14, 25, 28, 0.85);
-      border-radius: 22px;
-      padding: 6px 16px;
-      box-shadow: 0 0 16px rgba(245, 176, 65, 0.25);
-    }
-
-    .vip-trophy-box {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      line-height: 1;
-    }
-
-    .vip-trophy-box i {
-      color: var(--gold);
-      font-size: 17px;
-    }
-
-    .vip-trophy-box span {
-      color: var(--gold);
-      font-size: 8px;
-      font-weight: 900;
-      letter-spacing: 0.5px;
-      margin-top: 2px;
-    }
-
-    .vip-table-title {
-      font-size: 16px;
-      font-weight: 800;
-      color: #FFFFFF;
-      letter-spacing: 0.5px;
-    }
-
-    /* Right: Cafe Branding */
-    .brand-section {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .brand-logo-box {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      border: 1.5px solid var(--cyan-primary);
-      background: #000000;
+    .top-table-header {
+      width: 100%;
+      padding: 14px 16px 8px;
       display: flex;
       align-items: center;
       justify-content: center;
-      overflow: hidden;
-      box-shadow: 0 0 12px var(--cyan-glow);
+      background: transparent;
     }
 
-    .brand-logo-box img {
+    .table-number-pill {
+      background: #1C140E;
+      border: 1.8px solid var(--cyan-primary);
+      border-radius: 24px;
+      padding: 7px 24px;
+      font-size: 15px;
+      font-weight: 900;
+      color: var(--cyan-primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 4px 18px rgba(247, 160, 56, 0.35);
+      letter-spacing: 0.5px;
+    }
+
+    /* Barcode Expired / Invalidation Modal */
+    .barcode-expired-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.92);
+      backdrop-filter: blur(14px);
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .barcode-expired-card {
+      background: #171311;
+      border: 2px solid #EF4444;
+      border-radius: 24px;
+      padding: 28px 22px;
+      max-width: 420px;
       width: 100%;
-      height: 100%;
-      object-fit: cover;
+      text-align: center;
+      box-shadow: 0 0 35px rgba(239, 68, 68, 0.35);
     }
 
-    .brand-info {
+    .barcode-expired-icon {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      background: rgba(239, 68, 68, 0.15);
+      border: 2px solid #EF4444;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      color: #EF4444;
+      font-size: 30px;
+    }
+
+    /* 3 Compact Rectangular Cards Side-by-Side */
+    .quick-nav-container {
+      margin: 12px 14px 6px;
+      padding: 0;
+    }
+
+    .quick-nav-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .quick-nav-card {
+      background: linear-gradient(145deg, #1C1714 0%, #120E0C 100%);
+      border: 1.4px solid rgba(247, 160, 56, 0.45);
+      border-radius: 14px;
+      padding: 8px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      text-align: center;
+      position: relative;
+      min-height: 58px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+      transition: all 0.2s ease;
+    }
+
+    .quick-nav-card:active {
+      transform: scale(0.96);
+      border-color: var(--cyan-primary);
+      box-shadow: 0 0 16px rgba(247, 160, 56, 0.35);
+    }
+
+    .quick-nav-icon {
+      font-size: 18px;
+      color: var(--cyan-primary);
+      margin-bottom: 3px;
+    }
+
+    .quick-nav-title {
+      font-size: 11.5px;
+      font-weight: 800;
+      color: #FFFFFF;
+      white-space: nowrap;
+    }
+
+    .quick-nav-sub {
+      font-size: 8.5px;
+      color: var(--text-secondary);
+      margin-top: 1px;
+    }
+
+    .quick-nav-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: #EF4444;
+      color: #FFF;
+      font-size: 9px;
+      font-weight: 900;
+      padding: 1px 5px;
+      border-radius: 8px;
+    }
+
+    /* Scorecard & Games Modal Styles */
+    .game-tabs-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+      background: #120E0C;
+      padding: 4px;
+      border-radius: 14px;
+      border: 1px solid var(--card-border);
+    }
+
+    .game-tab-btn {
+      flex: 1;
+      padding: 8px 4px;
+      background: transparent;
+      border: none;
+      border-radius: 10px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: all 0.2s ease;
+    }
+
+    .game-tab-btn.active {
+      background: var(--cyan-primary);
+      color: #140C04;
+      font-weight: 900;
+      box-shadow: 0 2px 10px rgba(247, 160, 56, 0.35);
+    }
+
+    .scorecard-panel {
       text-align: right;
     }
 
-    .brand-name {
-      font-size: 17px;
-      font-weight: 900;
-      color: #FFFFFF;
-      line-height: 1.2;
-    }
-
-    .brand-tagline {
-      font-size: 11px;
-      color: var(--cyan-primary);
-      font-weight: 600;
-    }
-
-    /* Live Sync Indicator Pill */
-    .live-status-pill {
-      font-size: 10px;
-      color: #00DFC0;
-      background: rgba(0, 223, 192, 0.12);
-      border: 1px solid rgba(0, 223, 192, 0.35);
-      border-radius: 12px;
-      padding: 2px 8px;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      margin-top: 3px;
-    }
-
-    .pulse-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: #00DFC0;
-      box-shadow: 0 0 8px #00DFC0;
-      animation: pulse 1.6s infinite;
-    }
-
-    @keyframes pulse {
-      0% { opacity: 0.4; transform: scale(0.9); }
-      50% { opacity: 1; transform: scale(1.3); }
-      100% { opacity: 0.4; transform: scale(0.9); }
-    }
-
-    /* 3 Hero Cards Section (Framed in Cyan Glowing Border) */
-    .hero-container {
-      margin: 14px 14px 10px;
-      padding: 8px;
-      border-radius: 24px;
-      background: #021013;
-      border: 1.8px solid var(--cyan-primary);
-      box-shadow: 0 0 20px rgba(0, 223, 192, 0.2);
-    }
-
-    .hero-grid {
+    .scorecard-players-row {
       display: flex;
-      gap: 10px;
-      height: 175px;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
     }
 
-    /* Left Tall Card: "قائمة الطلب" */
-    .hero-card-left {
+    /* Unified T-Chart Game Scorecard (Classic Vertical & Horizontal Lines) */
+    .tchart-container {
+      background: #140E0B;
+      border: 1.5px solid var(--card-border);
+      border-radius: 16px;
+      padding: 12px;
+      margin-top: 6px;
+    }
+
+    .tchart-header {
+      display: flex;
+      align-items: stretch;
+      justify-content: space-between;
+      border-bottom: 2px solid var(--cyan-primary);
+      padding-bottom: 12px;
+      margin-bottom: 8px;
+    }
+
+    .tchart-player-col {
       flex: 1;
-      height: 100%;
-      background: linear-gradient(160deg, #181206 0%, #0c0802 60%, #1c1404 100%);
-      border: 1.6px solid var(--gold);
-      border-radius: 18px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 14px 8px;
+      gap: 6px;
+      padding: 0 6px;
+    }
+
+    .tchart-divider-v {
+      width: 2px;
+      background: var(--card-border);
+      align-self: stretch;
+      margin: 0 4px;
+    }
+
+    .tchart-name-input {
+      width: 100%;
+      background: #1E1612;
+      border: 1px solid var(--card-border);
+      color: #FFFFFF;
+      font-size: 13px;
+      font-weight: 800;
+      text-align: center;
+      padding: 6px 8px;
+      border-radius: 8px;
+      outline: none;
+    }
+
+    .tchart-name-input:focus {
+      border-color: var(--cyan-primary);
+    }
+
+    .tchart-entry-row {
+      display: flex;
+      width: 100%;
+      gap: 4px;
+    }
+
+    .tchart-score-input {
+      flex: 1;
+      width: 50px;
+      background: #120D0A;
+      border: 1px solid var(--card-border);
+      color: #F59E0B;
+      font-size: 13px;
+      font-weight: 800;
+      text-align: center;
+      padding: 6px 4px;
+      border-radius: 6px;
+      outline: none;
+    }
+
+    .tchart-score-input:focus {
+      border-color: var(--gold);
+    }
+
+    .btn-tchart-add {
+      background: var(--cyan-primary);
+      color: #140C04;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 900;
       cursor: pointer;
-      box-shadow: 0 4px 15px rgba(245, 176, 65, 0.15);
-      transition: transform 0.2s ease;
-      position: relative;
+      white-space: nowrap;
+      transition: transform 0.15s ease;
     }
 
-    .hero-card-left:active {
-      transform: scale(0.97);
+    .btn-tchart-add:active {
+      transform: scale(0.95);
     }
 
-    .hero-order-circle {
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      border: 2.5px solid var(--gold);
-      background: rgba(245, 176, 65, 0.1);
+    .tchart-table-wrap {
+      max-height: 220px;
+      overflow-y: auto;
+      border-bottom: 2px solid var(--cyan-primary);
+      margin-bottom: 12px;
+    }
+
+    .tchart-grid {
+      display: grid;
+      grid-template-columns: 1fr 2px 1fr;
+      width: 100%;
+    }
+
+    .tchart-grid-vdiv {
+      background: var(--card-border);
+      width: 2px;
+    }
+
+    .tchart-row-cell {
+      padding: 8px 6px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 800;
+      border-bottom: 1px solid rgba(56, 47, 42, 0.4);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 12px;
-      box-shadow: 0 0 16px rgba(245, 176, 65, 0.3);
+      gap: 6px;
     }
 
-    .hero-order-circle i {
-      color: var(--gold);
-      font-size: 26px;
+    .score-xx {
+      display: inline-block;
+      background: rgba(16, 185, 129, 0.18);
+      color: #34D399;
+      font-weight: 900;
+      padding: 2px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      letter-spacing: 0.5px;
     }
 
-    .hero-order-title {
-      color: #FFFFFF;
-      font-size: 16px;
+    .score-num {
+      display: inline-block;
+      background: rgba(239, 68, 68, 0.15);
+      color: #F87171;
       font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 6px;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .tchart-diff-banner {
+      background: rgba(247, 160, 56, 0.14);
+      border: 1.5px solid var(--cyan-primary);
+      border-radius: 12px;
+      padding: 10px;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .tchart-diff-title {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-bottom: 2px;
+      font-weight: 700;
+    }
+
+    .tchart-diff-value {
+      font-size: 15px;
+      font-weight: 900;
+      color: var(--cyan-primary);
+    }
+
+    .score-totals-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .total-col {
+      flex: 1;
+      background: #16110F;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 8px;
       text-align: center;
     }
 
-    .hero-order-badge {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      background: var(--cyan-primary);
-      color: #021215;
+    .total-player-name {
       font-size: 11px;
-      font-weight: 900;
-      padding: 2px 7px;
-      border-radius: 10px;
-      display: none;
-    }
-
-    /* Right Stacked Column (العروض والجديد + ألعاب وترفيه) */
-    .hero-col-right {
-      flex: 1.25;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      height: 100%;
-    }
-
-    /* Top Right: "العروض والجديد" */
-    .hero-card-offers {
-      flex: 1;
-      background: linear-gradient(135deg, var(--hero-purple-bg) 0%, #0B0117 100%);
-      border: 1.4px solid rgba(124, 77, 255, 0.7);
-      border-radius: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 12px;
-      cursor: pointer;
-      position: relative;
+      font-weight: 800;
+      color: #FFFFFF;
+      margin-bottom: 4px;
+      white-space: nowrap;
       overflow: hidden;
-      transition: transform 0.2s ease;
+      text-overflow: ellipsis;
     }
 
-    .hero-card-offers:active {
-      transform: scale(0.97);
-    }
-
-    .tag-new {
-      background: var(--hero-purple);
-      color: #FFFFFF;
-      font-size: 10px;
+    .total-wins-xx {
+      font-size: 13px;
       font-weight: 900;
-      padding: 4px 6px;
-      border-radius: 8px;
-      letter-spacing: 0.5px;
+      color: #34D399;
+      margin-bottom: 2px;
     }
 
-    .offers-title-box {
-      text-align: right;
+    .total-points {
+      font-size: 10px;
+      color: var(--text-secondary);
     }
 
-    .offers-main-title {
-      font-size: 15px;
+    .btn-score-reset {
+      width: 100%;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: #F87171;
+      border-radius: 10px;
+      padding: 7px;
+      font-size: 11px;
       font-weight: 800;
-      color: #FFFFFF;
-      line-height: 1.2;
-    }
-
-    .hero-card-offers i.fa-fire {
-      color: #FF9100;
-      font-size: 26px;
-      filter: drop-shadow(0 0 8px rgba(255, 145, 0, 0.6));
-    }
-
-    /* Bottom Right: "ألعاب وترفيه" */
-    .hero-card-games {
-      flex: 1;
-      background: linear-gradient(135deg, var(--hero-blue-bg) 0%, #030C16 100%);
-      border: 1.4px solid rgba(41, 121, 255, 0.65);
-      border-radius: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 12px;
       cursor: pointer;
-      transition: transform 0.2s ease;
-    }
-
-    .hero-card-games:active {
-      transform: scale(0.97);
-    }
-
-    .games-title-box {
-      text-align: right;
-    }
-
-    .games-main-title {
-      font-size: 15px;
-      font-weight: 800;
-      color: #FFFFFF;
-      line-height: 1.2;
-    }
-
-    .hero-card-games i.fa-gamepad {
-      color: #FFFFFF;
-      font-size: 26px;
-      filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.4));
+      transition: all 0.2s;
     }
 
     /* Categories Horizontal Bar */
@@ -387,16 +494,16 @@
       color: var(--text-primary);
     }
 
-    /* Active category: Bright Cyan pill matching the screenshot */
+    /* Active category: Warm Amber Gold matching brand */
     .cat-btn.active {
       background: var(--cyan-primary);
       border-color: var(--cyan-primary);
-      box-shadow: 0 4px 16px rgba(0, 223, 192, 0.45);
+      box-shadow: 0 4px 16px rgba(247, 160, 56, 0.45);
       transform: translateY(-2px);
     }
 
     .cat-btn.active i, .cat-btn.active span {
-      color: #021215;
+      color: #140C04;
       font-weight: 900;
     }
 
@@ -458,10 +565,10 @@
       width: 104px;
       height: 104px;
       border-radius: 18px;
-      background: #031316;
+      background: #140E0B;
       overflow: hidden;
       flex-shrink: 0;
-      border: 1px solid rgba(0, 223, 192, 0.2);
+      border: 1px solid rgba(247, 160, 56, 0.25);
     }
 
     .item-image-wrapper img {
@@ -553,13 +660,13 @@
       align-items: center;
       gap: 4px;
       cursor: pointer;
-      box-shadow: 0 2px 10px rgba(0, 223, 192, 0.3);
+      box-shadow: 0 2px 10px rgba(247, 160, 56, 0.35);
       transition: transform 0.15s ease, background 0.15s ease;
     }
 
     .btn-add-order:active {
       transform: scale(0.95);
-      background: #00BF9E;
+      background: #D97706;
     }
 
     /* Floating Cart Bar (Bottom) */
@@ -569,7 +676,7 @@
       left: 14px;
       right: 14px;
       height: 60px;
-      background: linear-gradient(90deg, #051A1D 0%, #07262B 100%);
+      background: linear-gradient(90deg, #1C140E 0%, #291C12 100%);
       border: 1.8px solid var(--cyan-primary);
       border-radius: 30px;
       display: none;
@@ -577,7 +684,7 @@
       justify-content: space-between;
       padding: 0 16px;
       z-index: 100;
-      box-shadow: 0 6px 25px rgba(0, 223, 192, 0.4);
+      box-shadow: 0 6px 25px rgba(247, 160, 56, 0.35);
       animation: slideUp 0.3s ease-out;
     }
 
@@ -650,7 +757,7 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      box-shadow: 0 2px 10px rgba(0, 223, 192, 0.35);
+      box-shadow: 0 2px 10px rgba(247, 160, 56, 0.35);
     }
 
     /* Modals & Overlays */
@@ -750,12 +857,46 @@
       justify-content: center;
       cursor: pointer;
       font-size: 13px;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.1s ease;
+    }
+
+    .btn-qty i {
+      pointer-events: none;
+    }
+
+    .btn-qty:active {
+      transform: scale(0.9);
     }
 
     .btn-qty.plus {
       background: var(--cyan-primary);
       color: #021215;
       border: none;
+    }
+
+    /* Item Card Stepper Controls */
+    .qty-controls.item-stepper {
+      background: rgba(247, 160, 56, 0.12);
+      border: 1.5px solid var(--cyan-primary);
+      border-radius: 20px;
+      padding: 3px 8px;
+      gap: 8px;
+    }
+
+    .qty-controls.item-stepper .stepper-count {
+      font-weight: 900;
+      font-size: 14px;
+      color: var(--cyan-primary);
+      min-width: 20px;
+      text-align: center;
+    }
+
+    .qty-controls.item-stepper .btn-qty {
+      width: 26px;
+      height: 26px;
+      font-size: 11px;
     }
 
     .notes-textarea {
@@ -785,7 +926,7 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
-      box-shadow: 0 4px 18px rgba(0, 223, 192, 0.4);
+      box-shadow: 0 4px 18px rgba(247, 160, 56, 0.4);
     }
 
     /* Gallery / Details Modal */
@@ -807,7 +948,7 @@
       margin: 12px 0;
     }
 
-    .status-new { background: rgba(0, 223, 192, 0.2); color: var(--cyan-primary); border: 1.5px solid var(--cyan-primary); }
+    .status-new { background: rgba(247, 160, 56, 0.2); color: var(--cyan-primary); border: 1.5px solid var(--cyan-primary); }
     .status-prep { background: rgba(245, 176, 65, 0.2); color: var(--gold); border: 1.5px solid var(--gold); }
     .status-ready { background: rgba(76, 175, 80, 0.2); color: #4CAF50; border: 1.5px solid #4CAF50; }
     .status-paid { background: rgba(33, 150, 243, 0.2); color: #2196F3; border: 1.5px solid #2196F3; }
@@ -839,63 +980,55 @@
 </head>
 <body>
 
-  <!-- Top Bar: Clean Customer Header (NO Table Switcher, NO Cashier Toggle) -->
-  <header class="top-bar">
-    <!-- Left: Gold VIP Table Badge -->
-    <div class="vip-table-badge" id="vipTableBadge">
-      <div class="vip-trophy-box">
-        <i class="fa-solid fa-trophy"></i>
-        <span>VIP</span>
-      </div>
-      <div class="vip-table-title" id="tableBadgeTitle">طاولة 1</div>
-    </div>
-
-    <!-- Right: Dynamic Cafe Branding -->
-    <div class="brand-section">
-      <div class="brand-info">
-        <div class="brand-name" id="brandCafeName">Q-Cafe</div>
-        <div class="brand-tagline" id="brandCafeTagline">منيو الطلب المباشر</div>
-        <div class="live-status-pill">
-          <span class="pulse-dot"></span>
-          <span id="syncText">متصل مباشر</span>
-        </div>
-      </div>
-      <div class="brand-logo-box" id="brandLogoBox">
-        <i class="fa-solid fa-mug-hot" style="color: var(--cyan-primary); font-size: 22px;"></i>
-      </div>
+  <!-- Top Full-Width Ribbon Header Banner (Replaces old table/cafe text bar) -->
+  <!-- Top Prominent Table Number Header (No banners or logos) -->
+  <header class="top-table-header">
+    <div class="table-number-pill" id="headerTableBadge">
+      <i class="fa-solid fa-chair"></i>
+      <span id="bannerTableText">طاولة 1</span>
     </div>
   </header>
 
-  <!-- 3 Hero Cards Section (Matching Screenshot) -->
-  <section class="hero-container">
-    <div class="hero-grid">
-      <!-- Left Tall Card: "قائمة الطلب" -->
-      <div class="hero-card-left" onclick="openCartModal()">
-        <span class="hero-order-badge" id="heroCartBadge">0</span>
-        <div class="hero-order-circle">
-          <i class="fa-solid fa-utensils"></i>
-        </div>
-        <div class="hero-order-title">قائمة الطلب</div>
+  <!-- Barcode Expired / Invalidation Alert Modal -->
+  <div id="barcodeExpiredModal" class="barcode-expired-modal" style="display: none;">
+    <div class="barcode-expired-card">
+      <div class="barcode-expired-icon">
+        <i class="fa-solid fa-ban"></i>
+      </div>
+      <h2 style="font-size: 20px; font-weight: 800; color: #FFFFFF; margin-bottom: 10px;">تم تجديد باركود الطاولة</h2>
+      <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 18px;">
+        عذراً، هذا الباركود قديم وتم تعطيله تلقائياً لأسباب أمنية.<br>
+        يرجى مسح الباركود الجديد الموجود على طاولتك لفتح المنيو وإرسال طلباتك.
+      </p>
+      <div style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 12px; padding: 12px; font-size: 12px; color: #FCA5A5; font-weight: 700;">
+        <i class="fa-solid fa-lock" style="margin-left: 5px;"></i> تم إيقاف استقبال الطلبات عبر هذا الرابط
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 Side-by-Side Compact Rectangles Section -->
+  <section class="quick-nav-container">
+    <div class="quick-nav-grid">
+      <!-- 1. تصفح المنيو / قائمة الأصناف (لا تفتح السلة) -->
+      <div class="quick-nav-card" onclick="scrollToMenu()">
+        <i class="fa-solid fa-book-open quick-nav-icon"></i>
+        <div class="quick-nav-title">قائمة المنيو</div>
+        <div class="quick-nav-sub">تصفح الأصناف</div>
       </div>
 
-      <!-- Right Stacked Column (العروض والجديد + ألعاب وترفيه) -->
-      <div class="hero-col-right">
-        <!-- Top Right: "العروض والجديد" -->
-        <div class="hero-card-offers" onclick="filterOffersOnly()">
-          <span class="tag-new">New</span>
-          <div class="offers-title-box">
-            <div class="offers-main-title">العروض<br>والجديد</div>
-          </div>
-          <i class="fa-solid fa-fire"></i>
-        </div>
+      <!-- 2. العروض والجديد -->
+      <div class="quick-nav-card" onclick="filterOffersOnly()">
+        <span class="quick-nav-badge">جديد</span>
+        <i class="fa-solid fa-fire quick-nav-icon" style="color: #F59E0B;"></i>
+        <div class="quick-nav-title">العروض والجديد</div>
+        <div class="quick-nav-sub">أفضل الخصومات</div>
+      </div>
 
-        <!-- Bottom Right: "ألعاب وترفيه" -->
-        <div class="hero-card-games" onclick="openGamesModal()">
-          <div class="games-title-box">
-            <div class="games-main-title">ألعاب<br>وترفيه</div>
-          </div>
-          <i class="fa-solid fa-gamepad"></i>
-        </div>
+      <!-- 3. تسجيل نتائج الألعاب (دومينو وورق) -->
+      <div class="quick-nav-card" onclick="openGamesModal()">
+        <i class="fa-solid fa-dice quick-nav-icon" style="color: #60A5FA;"></i>
+        <div class="quick-nav-title">تسجيل نتائج الألعاب</div>
+        <div class="quick-nav-sub">دومينو وورق اللعب</div>
       </div>
     </div>
   </section>
@@ -1004,25 +1137,73 @@
     </div>
   </div>
 
-  <!-- Games & Entertainment Modal ("ألعاب وترفيه") -->
+  <!-- Unified Game Scorecard Modal ("تسجيل نتائج الألعاب") -->
   <div class="modal-backdrop" id="gamesModal">
-    <div class="modal-sheet" style="text-align: center;">
+    <div class="modal-sheet" style="text-align: right; max-height: 88vh; overflow-y: auto;">
       <div class="modal-header">
         <div class="modal-title">
-          <i class="fa-solid fa-gamepad" style="color: #2979FF;"></i>
-          <span>ألعاب وتسلية الطاولة</span>
+          <i class="fa-solid fa-gamepad" style="color: var(--cyan-primary);"></i>
+          <span>تسجيل نتائج الألعاب</span>
         </div>
         <button class="modal-close-btn" onclick="closeGamesModal()">&times;</button>
       </div>
 
-      <div class="game-card-box">
-        <h4 style="font-size: 16px; font-weight: 800; color: #FFFFFF; margin-bottom: 6px;">🎡 عجلة الحظ للطاولة</h4>
-        <p style="font-size: 12px; color: var(--text-secondary);">لف العجلة واحصل على عبارة حظ أو مفاجأة خاصة بطاولتك!</p>
-        <div class="wheel-spinner" id="wheelSpinner">
-          <i class="fa-solid fa-gift"></i>
+      <!-- T-Chart Scorecard Container (Horizontal Header + Vertical Divider) -->
+      <div class="tchart-container">
+        <!-- Player Names & Points Entry Row (Horizontal Line Below) -->
+        <div class="tchart-header">
+          <!-- Player 1 Column -->
+          <div class="tchart-player-col">
+            <input type="text" id="tchartP1Name" class="tchart-name-input" value="اللاعب الأول" onchange="updateTChartNames()" placeholder="اللاعب 1">
+            <div class="tchart-entry-row">
+              <input type="number" id="tchartP1Input" class="tchart-score-input" placeholder="نقاط" min="0">
+              <button type="button" class="btn-tchart-add" onclick="addTChartRound(1)">تسجيل</button>
+            </div>
+          </div>
+
+          <!-- Vertical Divider Line Between Both Players -->
+          <div class="tchart-divider-v"></div>
+
+          <!-- Player 2 Column -->
+          <div class="tchart-player-col">
+            <input type="text" id="tchartP2Name" class="tchart-name-input" value="اللاعب الثاني" onchange="updateTChartNames()" placeholder="اللاعب 2">
+            <div class="tchart-entry-row">
+              <input type="number" id="tchartP2Input" class="tchart-score-input" placeholder="نقاط" min="0">
+              <button type="button" class="btn-tchart-add" onclick="addTChartRound(2)">تسجيل</button>
+            </div>
+          </div>
         </div>
-        <button class="btn-add-order" style="margin: 0 auto;" onclick="spinWheel()">اضغط للف العجلة 🎯</button>
-        <div id="wheelResultText" style="margin-top: 10px; font-size: 13px; font-weight: 700; color: var(--gold);"></div>
+
+        <!-- T-Chart Scores List with Vertical Divider Line -->
+        <div class="tchart-table-wrap">
+          <div class="tchart-grid" id="tchartGridBody">
+            <!-- Dynamically populated via JS: Cell P1 | Vertical Line | Cell P2 -->
+          </div>
+        </div>
+
+        <!-- Automatic Point Difference Banner (فرق النقاط تلقائياً) -->
+        <div class="tchart-diff-banner">
+          <div class="tchart-diff-title">فرق النقاط التراكمي</div>
+          <div class="tchart-diff-value" id="tchartDiffText">فرق النقاط: 0</div>
+        </div>
+
+        <!-- Total Wins (XX) & Loser Points Summary -->
+        <div class="score-totals-row">
+          <div class="total-col">
+            <div class="total-player-name" id="tchartTotP1Name">اللاعب الأول</div>
+            <div class="total-wins-xx" id="tchartTotP1Wins">0 فوز (XX)</div>
+            <div class="total-points" id="tchartTotP1Points">0 نقطة خسارة</div>
+          </div>
+          <div class="total-col">
+            <div class="total-player-name" id="tchartTotP2Name">اللاعب الثاني</div>
+            <div class="total-wins-xx" id="tchartTotP2Wins">0 فوز (XX)</div>
+            <div class="total-points" id="tchartTotP2Points">0 نقطة خسارة</div>
+          </div>
+        </div>
+
+        <button type="button" class="btn-score-reset" onclick="resetTChartScore()">
+          <i class="fa-solid fa-rotate-left"></i> تصفير النتيجة وبدء مباراة جديدة
+        </button>
       </div>
     </div>
   </div>
@@ -1030,7 +1211,7 @@
   <!-- Live Order Tracking Modal -->
   <div class="modal-backdrop" id="trackingModal">
     <div class="modal-sheet" style="text-align: center;">
-      <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(0,223,192,0.15); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+      <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(247, 160, 56, 0.18); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
         <i class="fa-solid fa-check" style="font-size: 26px; color: var(--cyan-primary);"></i>
       </div>
       <h3 style="font-size: 19px; font-weight: 800; margin-bottom: 6px;">تم إرسال طلبك بنجاح!</h3>
@@ -1075,9 +1256,13 @@
     const tableNumber = parseInt(urlParams.get('table') || urlParams.get('tableNumber') || urlParams.get('t') || '1', 10);
     const secToken = urlParams.get('sec') || '';
 
-    // Set Table number in badge
-    document.getElementById('tableBadgeTitle').innerText = 'طاولة ' + tableNumber;
-    document.getElementById('cartModalTitle').innerText = 'سلة طلب طاولة ' + tableNumber;
+    // Set Table number in header ribbon badge & modal
+    const bannerTableText = document.getElementById('bannerTableText');
+    if (bannerTableText) bannerTableText.innerText = 'طاولة ' + tableNumber;
+    const tableBadgeTitle = document.getElementById('tableBadgeTitle');
+    if (tableBadgeTitle) tableBadgeTitle.innerText = 'طاولة ' + tableNumber;
+    const cartModalTitle = document.getElementById('cartModalTitle');
+    if (cartModalTitle) cartModalTitle.innerText = 'سلة طلب طاولة ' + tableNumber;
 
     // 3. Fallback High Quality Initial Menu
     let categories = [
@@ -1158,23 +1343,62 @@
 
     let currentSelectedCategory = 'cat_burgers';
     let cart = []; // [{ item, qty }]
+    let isTableBarcodeValid = true;
 
     function getCategoryIconClass(type) {
-      switch (type) {
+      switch ((type || '').toLowerCase()) {
+        case 'shisha':
+        case 'hookah':
+        case 'arghila': return 'fa-solid fa-wind';
+        case 'billiards':
+        case 'billiard':
+        case 'pool': return 'fa-solid fa-circle-dot';
+        case 'gaming':
+        case 'games':
+        case 'playstation': return 'fa-solid fa-gamepad';
+        case 'cards':
+        case 'dice': return 'fa-solid fa-dice';
+        case 'grill':
+        case 'bbq':
+        case 'meat': return 'fa-solid fa-fire-burner';
+        case 'breakfast':
+        case 'bakery': return 'fa-solid fa-bread-slice';
+        case 'seafood':
+        case 'fish': return 'fa-solid fa-fish';
         case 'burger': return 'fa-solid fa-burger';
         case 'fries': return 'fa-solid fa-french-fries';
         case 'drink': return 'fa-solid fa-cup-straw';
         case 'meals': return 'fa-solid fa-utensils';
         case 'sweets': return 'fa-solid fa-cake-candles';
         case 'pizza': return 'fa-solid fa-pizza-slice';
+        case 'cafe':
+        case 'coffee': return 'fa-solid fa-mug-hot';
         default: return 'fa-solid fa-utensils';
       }
     }
 
+    function scrollToMenu() {
+      const bar = document.getElementById('categoriesBar');
+      if (bar) {
+        bar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    function formatPrice(amount, curr) {
+      return Number(amount || 0).toLocaleString() + ' ' + (curr || 'د.ع');
+    }
+
     function getItemImageUrl(item) {
       if (!item) return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500&q=80';
-      if (item.imageUri && (item.imageUri.startsWith('http://') || item.imageUri.startsWith('https://') || item.imageUri.startsWith('data:image'))) {
-        return item.imageUri;
+      let rawUri = item.imageUri || item.customImageUri || item.imageUrl || item.bgImageUri || item.photoUrl || (item.galleryImages && item.galleryImages[0]) || '';
+      if (rawUri && typeof rawUri === 'string') {
+        rawUri = rawUri.trim();
+        if (rawUri.startsWith('http://') || rawUri.startsWith('https://') || rawUri.startsWith('data:image')) {
+          return rawUri;
+        }
+        if (rawUri.startsWith('/9j/') || rawUri.startsWith('iVBORw') || (rawUri.length > 200 && !rawUri.startsWith('content:') && !rawUri.startsWith('file:'))) {
+          return 'data:image/jpeg;base64,' + rawUri;
+        }
       }
       const type = (item.imageType || '').toLowerCase();
       const name = (item.nameAr || '').toLowerCase();
@@ -1223,12 +1447,32 @@
       db.collection('cafeterias').doc(cafeteriaId).onSnapshot((doc) => {
         if (doc && doc.exists) {
           const data = doc.data();
-          if (data.cafeName) document.getElementById('brandCafeName').innerText = data.cafeName;
-          if (data.themeColor) {
+          const brandNameEl = document.getElementById('brandCafeName');
+          if (brandNameEl && data.cafeName) brandNameEl.innerText = data.cafeName;
+          // Guard against old cyan themeColor overriding gold palette
+          if (data.themeColor && data.themeColor.toUpperCase() !== '#00DFC0') {
             document.documentElement.style.setProperty('--cyan-primary', data.themeColor);
           }
         }
       }, err => console.log('Cafe profile sync notice:', err));
+
+      // A2. Listen to Table Barcode Validity & Security Token (Deactivation Check)
+      const tableDocRef = db.collection('cafeterias').doc(cafeteriaId).collection('tables').doc('table_' + tableNumber);
+      tableDocRef.onSnapshot((doc) => {
+        if (doc && doc.exists) {
+          const data = doc.data();
+          const activeSec = (data.securityToken || '').trim();
+          const modal = document.getElementById('barcodeExpiredModal');
+          // If cafeteria renewed barcodes and a stale token is used, deactivate
+          if (activeSec && secToken && activeSec !== secToken.trim()) {
+            isTableBarcodeValid = false;
+            if (modal) modal.style.display = 'flex';
+          } else {
+            isTableBarcodeValid = true;
+            if (modal) modal.style.display = 'none';
+          }
+        }
+      }, err => console.log('Table security check notice:', err));
 
       // B. Listen to Categories
       const catSubRef = db.collection('cafeterias').doc(cafeteriaId).collection('categories');
@@ -1263,13 +1507,19 @@
       const itemSubRef = db.collection('cafeterias').doc(cafeteriaId).collection('menu_items');
       itemSubRef.onSnapshot((snapshot) => {
         if (snapshot && !snapshot.empty) {
-          menuItems = snapshot.docs.map(d => d.data());
+          menuItems = snapshot.docs.map(d => {
+            const data = d.data();
+            return { ...data, id: String(data.id || d.id) };
+          });
           renderItems();
         } else {
           // Fallback to root menu_items
           db.collection('menu_items').onSnapshot((rootSnap) => {
             if (rootSnap && !rootSnap.empty) {
-              menuItems = rootSnap.docs.map(d => d.data());
+              menuItems = rootSnap.docs.map(d => {
+                const data = d.data();
+                return { ...data, id: String(data.id || d.id) };
+              });
               renderItems();
             } else {
               renderItems();
@@ -1351,6 +1601,27 @@
         const offerBadgeHtml = (item.isOffer || item.offerTag) ? `<div class="item-offer-tag">🔥 ${item.offerTag || 'عرض خاص'}</div>` : '';
         const priceFormatted = Number(item.price).toLocaleString() + ' ' + (item.currency || 'د.ع');
 
+        // Check if item is already in cart to display stepper (+ / -)
+        const cartEntry = cart.find(c => String(c.item.id) === String(item.id));
+        const inCartQty = cartEntry ? cartEntry.qty : 0;
+
+        let actionControlHtml = '';
+        if (inCartQty > 0) {
+          actionControlHtml = `
+            <div class="qty-controls item-stepper">
+              <button type="button" class="btn-qty" onclick="changeQty('${item.id}', -1)" title="تقليل"><i class="fa-solid fa-minus"></i></button>
+              <span class="stepper-count">${inCartQty}</span>
+              <button type="button" class="btn-qty plus" onclick="changeQty('${item.id}', 1)" title="زيادة"><i class="fa-solid fa-plus"></i></button>
+            </div>
+          `;
+        } else {
+          actionControlHtml = `
+            <button type="button" class="btn-add-order" onclick="addToCart('${item.id}')">
+              <span>+ طلب</span>
+            </button>
+          `;
+        }
+
         card.innerHTML = `
           <!-- Food Image (Right) -->
           <div class="item-image-wrapper">
@@ -1367,9 +1638,7 @@
             </div>
             <div class="item-bottom-row">
               <div class="item-price">${priceFormatted}</div>
-              <button class="btn-add-order" onclick="addToCart('${item.id}')">
-                <span>+ طلب</span>
-              </button>
+              ${actionControlHtml}
             </div>
           </div>
         `;
@@ -1379,10 +1648,15 @@
 
     // 7. Cart Logic
     function addToCart(itemId) {
-      const item = menuItems.find(i => i.id === itemId);
+      if (!isTableBarcodeValid) {
+        alert('عذراً، هذا الباركود قديم أو تم تجديده من قِبل إدارة الكافتيريا. يرجى مسح الباركود الجديد من الطاولة.');
+        return;
+      }
+
+      const item = menuItems.find(i => String(i.id) === String(itemId));
       if (!item) return;
 
-      const existing = cart.find(c => c.item.id === itemId);
+      const existing = cart.find(c => String(c.item.id) === String(itemId));
       if (existing) {
         existing.qty++;
       } else {
@@ -1390,19 +1664,22 @@
       }
 
       updateCartBar();
+      renderItems();
+      renderCartModalList();
     }
 
     function changeQty(itemId, delta) {
-      const entry = cart.find(c => c.item.id === itemId);
+      const entry = cart.find(c => String(c.item.id) === String(itemId));
       if (!entry) return;
 
       entry.qty += delta;
       if (entry.qty <= 0) {
-        cart = cart.filter(c => c.item.id !== itemId);
+        cart = cart.filter(c => String(c.item.id) !== String(itemId));
       }
 
       updateCartBar();
       renderCartModalList();
+      renderItems();
       if (cart.length === 0) closeCartModal();
     }
 
@@ -1428,6 +1705,10 @@
     }
 
     function openCartModal() {
+      if (!isTableBarcodeValid) {
+        alert('عذراً، هذا الباركود قديم أو تم تجديده من قِبل إدارة الكافتيريا. يرجى مسح الباركود الجديد من الطاولة.');
+        return;
+      }
       if (cart.length === 0) {
         alert('سلة الطلب فارغة، يرجى اختيار أصناف أولاً بالضغط على (+ طلب)');
         return;
@@ -1461,9 +1742,9 @@
             <span>${priceText}</span>
           </div>
           <div class="qty-controls">
-            <button class="btn-qty" onclick="changeQty('${c.item.id}', -1)"><i class="fa-solid fa-minus"></i></button>
-            <span style="font-weight: 900; font-size: 15px;">${c.qty}</span>
-            <button class="btn-qty plus" onclick="changeQty('${c.item.id}', 1)"><i class="fa-solid fa-plus"></i></button>
+            <button type="button" class="btn-qty" onclick="changeQty('${c.item.id}', -1)" title="تقليل"><i class="fa-solid fa-minus"></i></button>
+            <span style="font-weight: 900; font-size: 15px; min-width: 20px; text-align: center;">${c.qty}</span>
+            <button type="button" class="btn-qty plus" onclick="changeQty('${c.item.id}', 1)" title="زيادة"><i class="fa-solid fa-plus"></i></button>
           </div>
         `;
         list.appendChild(row);
@@ -1472,6 +1753,10 @@
 
     // 8. Submit Order to Firebase Firestore
     function submitCustomerOrder() {
+      if (!isTableBarcodeValid) {
+        alert('عذراً، هذا الباركود غير صالح أو تم تجديده من قِبل إدارة الكافتيريا. يرجى مسح الباركود الجديد من الطاولة.');
+        return;
+      }
       if (cart.length === 0) return;
 
       const nameInput = document.getElementById('customerNameInput');
@@ -1494,7 +1779,9 @@
 
       const totalQty = cart.reduce((sum, c) => sum + c.qty, 0);
       const totalSum = cart.reduce((sum, c) => sum + (c.item.price * c.qty), 0);
-      const summary = cart.map(c => `${c.qty}x ${c.item.nameAr}`).join('، ');
+      const currency = cart[0]?.item.currency || 'د.ع';
+      const summary = cart.map(c => `${c.qty}x ${c.item.nameAr} بسعر ${formatPrice(c.item.price * c.qty, currency)}`).join('، ');
+      const rawFee = totalSum * 0.01;
       const notes = document.getElementById('orderNotes').value.trim();
       const orderId = 'ord_' + Math.floor(100000 + Math.random() * 900000);
 
@@ -1505,10 +1792,10 @@
         customerName: custName,
         itemsSummary: summary,
         itemsCount: totalQty,
-        totalPrice: totalSum,
+        totalPrice: totalSum + rawFee,
         subtotal: totalSum,
-        serviceFee: 0.0,
-        currency: cart[0]?.item.currency || 'د.ع',
+        serviceFee: rawFee,
+        currency: currency,
         status: "NEW",
         timestamp: Date.now(),
         notes: notes,
@@ -1519,9 +1806,13 @@
       btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الإرسال للكاشير...';
       btn.disabled = true;
 
+      let isFinished = false;
       const finishOrder = () => {
+        if (isFinished) return;
+        isFinished = true;
         cart = [];
         updateCartBar();
+        renderItems();
         closeCartModal();
         btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> <span>إرسال الطلب إلى الكاشير</span>';
         btn.disabled = false;
@@ -1530,17 +1821,36 @@
 
       if (db) {
         // Multi-tenant: write strictly to this cafeteria's orders subcollection
-        db.collection('cafeterias').doc(cafeteriaId).collection('orders').doc(orderId).set(orderData)
-          .then(() => {
-            console.log("Order saved to cafeteria subcollection successfully!");
+        try {
+          db.collection('cafeterias').doc(cafeteriaId).collection('orders').doc(orderId).set(orderData)
+            .then(() => {
+              console.log("Order saved to cafeteria subcollection successfully!");
+              try { db.collection('orders').doc(orderId).set(orderData).catch(() => {}); } catch (_) {}
+              finishOrder();
+            })
+            .catch(err => {
+              console.error("Firestore subcollection error, attempting root collection fallback:", err);
+              db.collection('orders').doc(orderId).set(orderData)
+                .then(() => finishOrder())
+                .catch(e => {
+                  console.error("Root order fallback failed:", e);
+                  finishOrder();
+                });
+            });
+        } catch (e) {
+          console.error("Synchronous firestore write error:", e);
+          finishOrder();
+        }
+
+        // Safety fallback: If Firestore server response is delayed, transition to tracking immediately after write dispatch
+        setTimeout(() => {
+          if (!isFinished) {
+            console.log("Finishing order via safety fallback timer");
             finishOrder();
-          })
-          .catch(err => {
-            console.error("Firestore error:", err);
-            finishOrder();
-          });
+          }
+        }, 800);
       } else {
-        setTimeout(finishOrder, 700);
+        setTimeout(finishOrder, 500);
       }
     }
 
@@ -1612,8 +1922,16 @@
       document.getElementById('detailsModal').style.display = 'none';
     }
 
-    // 11. Interactive Games & Entertainment Modal
+    // 11. Unified T-Chart Game Scorecard ("تسجيل نتائج الألعاب")
+    let tchartData = {
+      p1Name: 'اللاعب الأول',
+      p2Name: 'اللاعب الثاني',
+      rounds: []
+    };
+
     function openGamesModal() {
+      loadTChartScore();
+      renderTChart();
       document.getElementById('gamesModal').style.display = 'flex';
     }
 
@@ -1621,25 +1939,154 @@
       document.getElementById('gamesModal').style.display = 'none';
     }
 
-    function spinWheel() {
-      const spinner = document.getElementById('wheelSpinner');
-      const randomDeg = 720 + Math.floor(Math.random() * 360);
-      spinner.style.transform = `rotate(${randomDeg}deg)`;
+    function updateTChartNames() {
+      const p1 = document.getElementById('tchartP1Name')?.value.trim();
+      const p2 = document.getElementById('tchartP2Name')?.value.trim();
+      if (p1) tchartData.p1Name = p1;
+      if (p2) tchartData.p2Name = p2;
+      saveTChartScore();
+      renderTChart();
+    }
 
-      const fortunes = [
-        "✨ طاولتكم اليوم هي الأكثر تميزاً وإشراقاً في الكافيه!",
-        "☕ فنجان قهوة رائع بانتظاركم بعد قليل!",
-        "🎉 نتمنى لكم يوماً سعيداً ومليئاً بالبهجة واللذة!",
-        "⭐ أنتم ضيوفنا المميزون اليوم، أهلاً وسهلاً بكم!"
-      ];
-      const pick = fortunes[Math.floor(Math.random() * fortunes.length)];
+    // When points are entered on loser side, the winner side gets XX automatically!
+    function addTChartRound(loserPlayerNum) {
+      const inputEl = document.getElementById(loserPlayerNum === 1 ? 'tchartP1Input' : 'tchartP2Input');
+      const val = parseInt(inputEl?.value || '0', 10);
+      if (isNaN(val) || val <= 0) {
+        alert('يرجى إدخال رقم نقاط صحيح للخاسر');
+        return;
+      }
 
-      setTimeout(() => {
-        document.getElementById('wheelResultText').innerText = pick;
-      }, 1500);
+      updateTChartNames();
+
+      const newRound = {
+        round: tchartData.rounds.length + 1,
+        loser: loserPlayerNum,
+        p1Score: (loserPlayerNum === 1) ? val : 'XX',
+        p2Score: (loserPlayerNum === 2) ? val : 'XX'
+      };
+
+      tchartData.rounds.push(newRound);
+      saveTChartScore();
+      if (inputEl) inputEl.value = '';
+      renderTChart();
+    }
+
+    function deleteTChartRound(index) {
+      tchartData.rounds.splice(index, 1);
+      tchartData.rounds.forEach((r, idx) => r.round = idx + 1);
+      saveTChartScore();
+      renderTChart();
+    }
+
+    function resetTChartScore() {
+      if (!confirm('هل أنت متأكد من تصفير نتائج الجولات وبدء مباراة جديدة؟')) return;
+      tchartData.rounds = [];
+      saveTChartScore();
+      renderTChart();
+    }
+
+    function renderTChart() {
+      const p1Input = document.getElementById('tchartP1Name');
+      const p2Input = document.getElementById('tchartP2Name');
+      if (p1Input && document.activeElement !== p1Input) p1Input.value = tchartData.p1Name;
+      if (p2Input && document.activeElement !== p2Input) p2Input.value = tchartData.p2Name;
+
+      const gridBody = document.getElementById('tchartGridBody');
+      if (!gridBody) return;
+      gridBody.innerHTML = '';
+
+      if (tchartData.rounds.length === 0) {
+        gridBody.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 18px 8px; font-size: 12px;">
+            لا توجد جولات مسجلة بعد.<br>أدخل نقاط الخاسر في جهته واضغط (تسجيل) وسيظهر XX تلقائياً للرابح.
+          </div>
+        `;
+      } else {
+        tchartData.rounds.forEach((r, idx) => {
+          const p1Cell = document.createElement('div');
+          p1Cell.className = 'tchart-row-cell';
+          p1Cell.innerHTML = (r.p1Score === 'XX')
+            ? '<span class="score-xx">XX</span>'
+            : `<span class="score-num">${r.p1Score}</span>`;
+
+          const vdiv = document.createElement('div');
+          vdiv.className = 'tchart-grid-vdiv';
+
+          const p2Cell = document.createElement('div');
+          p2Cell.className = 'tchart-row-cell';
+          p2Cell.innerHTML = (r.p2Score === 'XX')
+            ? '<span class="score-xx">XX</span>'
+            : `<span class="score-num">${r.p2Score}</span>`;
+
+          // Small delete button next to round
+          const delBtn = document.createElement('button');
+          delBtn.type = 'button';
+          delBtn.innerHTML = '&times;';
+          delBtn.style.cssText = 'background:none;border:none;color:#EF4444;font-size:16px;cursor:pointer;margin-right:4px;';
+          delBtn.onclick = () => deleteTChartRound(idx);
+          p2Cell.appendChild(delBtn);
+
+          gridBody.appendChild(p1Cell);
+          gridBody.appendChild(vdiv);
+          gridBody.appendChild(p2Cell);
+        });
+      }
+
+      // Calculations
+      const p1Wins = tchartData.rounds.filter(r => r.p1Score === 'XX').length;
+      const p2Wins = tchartData.rounds.filter(r => r.p2Score === 'XX').length;
+      const p1Points = tchartData.rounds.filter(r => r.p1Score !== 'XX').reduce((sum, r) => sum + (Number(r.p1Score) || 0), 0);
+      const p2Points = tchartData.rounds.filter(r => r.p2Score !== 'XX').reduce((sum, r) => sum + (Number(r.p2Score) || 0), 0);
+
+      const totP1Name = document.getElementById('tchartTotP1Name');
+      const totP2Name = document.getElementById('tchartTotP2Name');
+      if (totP1Name) totP1Name.innerText = tchartData.p1Name;
+      if (totP2Name) totP2Name.innerText = tchartData.p2Name;
+
+      const totP1Wins = document.getElementById('tchartTotP1Wins');
+      const totP2Wins = document.getElementById('tchartTotP2Wins');
+      if (totP1Wins) totP1Wins.innerText = `${p1Wins} فوز (XX)`;
+      if (totP2Wins) totP2Wins.innerText = `${p2Wins} فوز (XX)`;
+
+      const totP1Pts = document.getElementById('tchartTotP1Points');
+      const totP2Pts = document.getElementById('tchartTotP2Points');
+      if (totP1Pts) totP1Pts.innerText = `${p1Points} نقطة`;
+      if (totP2Pts) totP2Pts.innerText = `${p2Points} نقطة`;
+
+      // Point difference calculation (فرق النقاط تلقائياً تحت القائمة)
+      const diffEl = document.getElementById('tchartDiffText');
+      if (diffEl) {
+        const diff = Math.abs(p1Points - p2Points);
+        if (p1Points === p2Points) {
+          diffEl.innerText = (tchartData.rounds.length === 0) ? 'فرق النقاط: 0' : 'النقاط متعادلة بين اللاعبين (0)';
+        } else if (p1Points < p2Points) {
+          // In domino/cards, lower loss points means leading/winning
+          diffEl.innerText = `فرق النقاط: ${diff} نقطة لصالح ${tchartData.p1Name} 🏆`;
+        } else {
+          diffEl.innerText = `فرق النقاط: ${diff} نقطة لصالح ${tchartData.p2Name} 🏆`;
+        }
+      }
+    }
+
+    function saveTChartScore() {
+      try {
+        localStorage.setItem('cafe_tchart_game', JSON.stringify(tchartData));
+      } catch (_) {}
+    }
+
+    function loadTChartScore() {
+      try {
+        const raw = localStorage.getItem('cafe_tchart_game');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.rounds)) tchartData = parsed;
+        }
+      } catch (_) {}
     }
 
     // Initialize Multi-Tenant Firestore Sync
+    loadTChartScore();
     initFirebaseMultiTenantSync();
   </script>
 </body>
