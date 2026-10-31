@@ -876,27 +876,38 @@
       border: none;
     }
 
-    /* Item Card Stepper Controls */
-    .qty-controls.item-stepper {
-      background: rgba(247, 160, 56, 0.12);
-      border: 1.5px solid var(--cyan-primary);
-      border-radius: 20px;
-      padding: 3px 8px;
-      gap: 8px;
+    .btn-qty.minus {
+      background: #EF4444;
+      color: #FFFFFF;
+      border: none;
     }
 
-    .qty-controls.item-stepper .stepper-count {
-      font-weight: 900;
-      font-size: 14px;
-      color: var(--cyan-primary);
-      min-width: 20px;
-      text-align: center;
+    /* Prominent Quantity Numbers */
+    .qty-controls span, .stepper-count, .cart-qty-val {
+      color: #FFFFFF !important;
+      font-weight: 900 !important;
+      font-size: 16px !important;
+      min-width: 32px !important;
+      text-align: center !important;
+      display: inline-block !important;
+      user-select: none !important;
+    }
+
+    /* Item Card Stepper Controls */
+    .qty-controls.item-stepper {
+      background: #0D0B0A;
+      border: 1.8px solid var(--cyan-primary);
+      border-radius: 24px;
+      padding: 3px 8px;
+      gap: 6px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
     }
 
     .qty-controls.item-stepper .btn-qty {
-      width: 26px;
-      height: 26px;
-      font-size: 11px;
+      width: 30px;
+      height: 30px;
+      font-size: 16px;
+      font-weight: 900;
     }
 
     .notes-textarea {
@@ -1054,6 +1065,10 @@
   <!-- Food Items List -->
   <div class="items-container" id="itemsContainer">
     <!-- Rendered Dynamically from Firebase -->
+  </div>
+
+  <!-- Floating Toast Feedback Notification -->
+  <div id="toastNotification" style="position: fixed; top: 18px; left: 50%; transform: translateX(-50%); background: #1B1715; color: #FFFFFF; border: 1.8px solid var(--cyan-primary); padding: 10px 22px; border-radius: 30px; font-weight: 900; font-size: 14px; z-index: 999999; display: none; box-shadow: 0 8px 30px rgba(0,0,0,0.8); align-items: center; gap: 8px; pointer-events: none;">
   </div>
 
   <!-- Floating Bottom Cart Bar -->
@@ -1605,13 +1620,15 @@
         const cartEntry = cart.find(c => String(c.item.id) === String(item.id));
         const inCartQty = cartEntry ? cartEntry.qty : 0;
 
+        let inCartBadgeHtml = '';
         let actionControlHtml = '';
         if (inCartQty > 0) {
+          inCartBadgeHtml = `<div style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:900; color:#4ADE80; background:rgba(34,197,94,0.18); border:1px solid #22C55E; padding:2px 8px; border-radius:8px; width:fit-content; margin-bottom:2px;"><span>✅ مضاف بالسلة (${inCartQty})</span></div>`;
           actionControlHtml = `
-            <div class="qty-controls item-stepper">
-              <button type="button" class="btn-qty" onclick="changeQty('${item.id}', -1)" title="تقليل"><i class="fa-solid fa-minus"></i></button>
-              <span class="stepper-count">${inCartQty}</span>
-              <button type="button" class="btn-qty plus" onclick="changeQty('${item.id}', 1)" title="زيادة"><i class="fa-solid fa-plus"></i></button>
+            <div class="qty-controls item-stepper" style="display:inline-flex; align-items:center; gap:6px; background:#0D0B0A; padding:3px 8px; border-radius:24px; border:1.8px solid var(--cyan-primary);">
+              <button type="button" class="btn-qty minus" onclick="changeQty('${item.id}', -1)" title="تقليل" style="width:30px; height:30px; border-radius:50%; background:#EF4444; color:#FFFFFF; font-size:18px; font-weight:900; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1;">−</button>
+              <span class="stepper-count" style="color:#FFFFFF !important; font-weight:900; font-size:16px; min-width:28px; text-align:center; display:inline-block;">${inCartQty}</span>
+              <button type="button" class="btn-qty plus" onclick="changeQty('${item.id}', 1)" title="زيادة" style="width:30px; height:30px; border-radius:50%; background:var(--cyan-primary); color:#021215; font-size:18px; font-weight:900; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1;">+</button>
             </div>
           `;
         } else {
@@ -1631,6 +1648,7 @@
           <!-- Content (Left) -->
           <div class="item-body">
             ${offerBadgeHtml}
+            ${inCartBadgeHtml}
             <div class="item-title">${item.nameAr}</div>
             <div class="item-desc">${item.descriptionAr || ''}</div>
             <div class="item-gallery-link" onclick="openDetailsModal('${item.id}')">
@@ -1646,6 +1664,17 @@
       });
     }
 
+    function showToast(msg) {
+      const toast = document.getElementById('toastNotification');
+      if (!toast) return;
+      toast.innerText = msg;
+      toast.style.display = 'flex';
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => {
+        toast.style.display = 'none';
+      }, 2200);
+    }
+
     // 7. Cart Logic
     function addToCart(itemId) {
       if (!isTableBarcodeValid) {
@@ -1657,12 +1686,15 @@
       if (!item) return;
 
       const existing = cart.find(c => String(c.item.id) === String(itemId));
+      let currentQty = 1;
       if (existing) {
         existing.qty++;
+        currentQty = existing.qty;
       } else {
         cart.push({ item: item, qty: 1 });
       }
 
+      showToast(`✅ تمت إضافة (${item.nameAr}) إلى السلة [العدد: ${currentQty}]`);
       updateCartBar();
       renderItems();
       renderCartModalList();
@@ -1725,11 +1757,13 @@
     }
 
     function closeCartModal() {
-      document.getElementById('cartModal').style.display = 'none';
+      const modal = document.getElementById('cartModal');
+      if (modal) modal.style.display = 'none';
     }
 
     function renderCartModalList() {
       const list = document.getElementById('cartItemsList');
+      if (!list) return;
       list.innerHTML = '';
 
       cart.forEach(c => {
@@ -1741,10 +1775,10 @@
             <h4>${c.item.nameAr}</h4>
             <span>${priceText}</span>
           </div>
-          <div class="qty-controls">
-            <button type="button" class="btn-qty" onclick="changeQty('${c.item.id}', -1)" title="تقليل"><i class="fa-solid fa-minus"></i></button>
-            <span style="font-weight: 900; font-size: 15px; min-width: 20px; text-align: center;">${c.qty}</span>
-            <button type="button" class="btn-qty plus" onclick="changeQty('${c.item.id}', 1)" title="زيادة"><i class="fa-solid fa-plus"></i></button>
+          <div class="qty-controls" style="display:flex; align-items:center; gap:8px;">
+            <button type="button" class="btn-qty minus" onclick="changeQty('${c.item.id}', -1)" title="تقليل" style="width:34px; height:34px; border-radius:50%; background:#EF4444; color:#FFFFFF; font-size:22px; font-weight:900; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1;">−</button>
+            <span class="cart-qty-val" style="color:#FFFFFF !important; font-weight:900; font-size:16px; min-width:36px; height:32px; background:#000000; border:1.8px solid var(--cyan-primary); border-radius:8px; display:inline-flex; align-items:center; justify-content:center;">${c.qty}</span>
+            <button type="button" class="btn-qty plus" onclick="changeQty('${c.item.id}', 1)" title="زيادة" style="width:34px; height:34px; border-radius:50%; background:var(--cyan-primary); color:#021215; font-size:22px; font-weight:900; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1;">+</button>
           </div>
         `;
         list.appendChild(row);
@@ -1782,7 +1816,7 @@
       const currency = cart[0]?.item.currency || 'د.ع';
       const summary = cart.map(c => `${c.qty}x ${c.item.nameAr} بسعر ${formatPrice(c.item.price * c.qty, currency)}`).join('، ');
       const rawFee = totalSum * 0.01;
-      const notes = document.getElementById('orderNotes').value.trim();
+      const notes = (document.getElementById('orderNotes')?.value || '').trim();
       const orderId = 'ord_' + Math.floor(100000 + Math.random() * 900000);
 
       const orderData = {
@@ -1803,8 +1837,10 @@
       };
 
       const btn = document.getElementById('btnSubmitOrder');
-      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الإرسال للكاشير...';
-      btn.disabled = true;
+      if (btn) {
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الإرسال للكاشير...';
+        btn.disabled = true;
+      }
 
       let isFinished = false;
       const finishOrder = () => {
@@ -1814,8 +1850,10 @@
         updateCartBar();
         renderItems();
         closeCartModal();
-        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> <span>إرسال الطلب إلى الكاشير</span>';
-        btn.disabled = false;
+        if (btn) {
+          btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> <span>إرسال الطلب إلى الكاشير</span>';
+          btn.disabled = false;
+        }
         showTrackingModal(orderId);
       };
 
@@ -1842,15 +1880,10 @@
           finishOrder();
         }
 
-        // Safety fallback: If Firestore server response is delayed, transition to tracking immediately after write dispatch
-        setTimeout(() => {
-          if (!isFinished) {
-            console.log("Finishing order via safety fallback timer");
-            finishOrder();
-          }
-        }, 800);
+        // Fast guaranteed transition: finish within 350ms so user is NEVER stuck on "جاري الإرسال"
+        setTimeout(finishOrder, 350);
       } else {
-        setTimeout(finishOrder, 500);
+        setTimeout(finishOrder, 250);
       }
     }
 
