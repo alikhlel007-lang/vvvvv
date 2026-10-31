@@ -71,7 +71,7 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
         val clean = baseUrl.trim()
         val baseWithoutQuery = if (clean.contains("?")) clean.substringBefore("?") else clean
         val normalized = if (baseWithoutQuery.endsWith("/")) baseWithoutQuery else "$baseWithoutQuery/"
-        return "${normalized}?cafeteriaId=${currentCafeteriaId}&table=${tableNumber}&sec=${secToken}"
+        return "${normalized}?cafeteriaId=${currentCafeteriaId}&c=${currentCafeteriaId}&table=${tableNumber}&t=${tableNumber}&sec=${secToken}"
     }
 
     fun startFirestoreOrdersListener(scope: CoroutineScope, cafeId: String = currentCafeteriaId) {
@@ -92,13 +92,28 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
                     // Strict isolation: discard orders from other cafeterias
                     if (docCafeId != targetCafeId) return@launch
 
-                    val tableNumber = doc.getLong("tableNumber")?.toInt() ?: 1
+                    val tableNumber = doc.getLong("tableNumber")?.toInt()
+                        ?: doc.getString("tableNumber")?.toIntOrNull()
+                        ?: doc.getDouble("tableNumber")?.toInt()
+                        ?: 1
                     val customerName = doc.getString("customerName") ?: "طاولة $tableNumber"
                     val itemsSummary = doc.getString("itemsSummary") ?: ""
-                    val itemsCount = doc.getLong("itemsCount")?.toInt() ?: 1
-                    val totalPrice = doc.getDouble("totalPrice") ?: 0.0
-                    val subtotal = doc.getDouble("subtotal") ?: totalPrice
-                    val serviceFee = doc.getDouble("serviceFee") ?: 0.0
+                    val itemsCount = doc.getLong("itemsCount")?.toInt()
+                        ?: doc.getString("itemsCount")?.toIntOrNull()
+                        ?: doc.getDouble("itemsCount")?.toInt()
+                        ?: 1
+                    val totalPrice = doc.getDouble("totalPrice")
+                        ?: doc.getLong("totalPrice")?.toDouble()
+                        ?: doc.getString("totalPrice")?.toDoubleOrNull()
+                        ?: 0.0
+                    val subtotal = doc.getDouble("subtotal")
+                        ?: doc.getLong("subtotal")?.toDouble()
+                        ?: doc.getString("subtotal")?.toDoubleOrNull()
+                        ?: totalPrice
+                    val serviceFee = doc.getDouble("serviceFee")
+                        ?: doc.getLong("serviceFee")?.toDouble()
+                        ?: doc.getString("serviceFee")?.toDoubleOrNull()
+                        ?: 0.0
                     val currency = doc.getString("currency") ?: "د.ع"
                     val statusStr = doc.getString("status") ?: "NEW"
                     val timestamp = doc.getLong("timestamp") ?: System.currentTimeMillis()

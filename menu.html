@@ -833,11 +833,33 @@
       console.warn("Firebase Init Error:", e);
     }
 
-    // 2. Parse URL Query Parameters
+    // 2. Parse URL Query Parameters with multi-tenant cafeteria support
     const urlParams = new URLSearchParams(window.location.search);
-    const cafeteriaId = urlParams.get('c') || 'itNW7gdqekQp538fOVzIbjG4BAp1';
-    const tableNumber = urlParams.get('t') || '1';
-    const secToken = urlParams.get('sec') || '';
+    const cafeteriaId = (
+      urlParams.get('cafeteriaId') || 
+      urlParams.get('cafeId') || 
+      urlParams.get('c') || 
+      localStorage.getItem('cafe_last_cafeteria_id') || 
+      ''
+    ).trim();
+
+    const tableNumber = (
+      urlParams.get('table') || 
+      urlParams.get('tableNumber') || 
+      urlParams.get('t') || 
+      localStorage.getItem('cafe_last_table_number') || 
+      '1'
+    ).trim();
+
+    const secToken = (urlParams.get('sec') || '').trim();
+
+    // Persist active cafeteria and table for reliable experience on the same device
+    if (cafeteriaId) {
+      try { localStorage.setItem('cafe_last_cafeteria_id', cafeteriaId); } catch (_) {}
+    }
+    if (tableNumber) {
+      try { localStorage.setItem('cafe_last_table_number', tableNumber); } catch (_) {}
+    }
 
     // Update Header Table Pill
     document.getElementById('tablePillText').innerText = 'طاولة رقم ' + tableNumber;
@@ -854,21 +876,24 @@
     let activeCategory = 'ALL';
     let cart = []; // Array of { item, qty }
 
-    // Fallback Mock Items in case Firestore collection is empty
-    const fallbackMenuItems = [
-      { id: 'f1', nameAr: 'إسبريسو مضاعف', price: 2500, categoryId: 'hot', descriptionAr: 'قهوة غنية ومركزة بنكهة إيطالية أصيلة', currency: 'د.ع', imageUrl: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?w=300' },
-      { id: 'f2', nameAr: 'كابتشينو كريمي', price: 3500, categoryId: 'hot', descriptionAr: 'إسبريسو غني مع حليب مبخر ورغوة كثيفة مع لمسة كاكاو', currency: 'د.ع', imageUrl: 'https://images.unsplash.com/photo-1534778101976-62847782c213?w=300' },
-      { id: 'f3', nameAr: 'سبانش لاتيه بارد', price: 4500, categoryId: 'cold', descriptionAr: 'مزيج الحليب المكثف مع قهوة مختصة وقطع ثلج', currency: 'د.ع', imageUrl: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?w=300' },
-      { id: 'f4', nameAr: 'آيس كراميل ماكياتو', price: 4500, categoryId: 'cold', descriptionAr: 'قهوة مثلجة مع صوص الكراميل والحليب الغني', currency: 'د.ع', imageUrl: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=300' },
-      { id: 'f5', nameAr: 'كيكة الشوكولاتة واللوتس', price: 4000, categoryId: 'sweets', descriptionAr: 'كيك بلجيكي طري محشو صوص الشوكولاتة الذائبة', currency: 'د.ع', imageUrl: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=300' },
-      { id: 'f6', nameAr: 'تشيز كيك فراولة', price: 4500, categoryId: 'sweets', descriptionAr: 'طبقات البسكويت المقرمش مع جبن كريمي وصوص فراولة', currency: 'د.ع', imageUrl: 'https://images.unsplash.com/photo-1524351199678-941a58a3df50?w=300' },
-      { id: 'f7', nameAr: 'عصير برتقال طبيعي', price: 3000, categoryId: 'cold', descriptionAr: 'عصير طازج معصور يومياً بدون سكر مضاف', currency: 'د.ع', imageUrl: 'https://images.unsplash.com/photo-1613478223719-2ab802602423?w=300' }
-    ];
-
     // 3. Load Cafeteria Profile & Menu from Firestore
     function loadData() {
       if (!db) {
-        useFallbackData();
+        showNoDbWarning();
+        return;
+      }
+
+      // If no cafeteria ID was provided in the barcode or storage, guide the user
+      if (!cafeteriaId) {
+        document.getElementById('itemsList').innerHTML = `
+          <div style="text-align:center; padding: 40px 16px; background: #1C1714; border: 1.5px dashed var(--accent); border-radius: 18px; margin: 20px 0;">
+            <i class="fa-solid fa-qrcode" style="font-size: 42px; color: var(--accent); margin-bottom: 12px;"></i>
+            <h3 style="font-size: 17px; font-weight: 800; color: #fff; margin-bottom: 8px;">يرجى مسح باركود الكافتيريا</h3>
+            <p style="font-size: 13px; color: var(--text-sub); line-height: 1.6;">
+              لم يتم العثور على معرّف الكافتيريا في الرابط. يرجى مسح باركود الطاولة المخصص لك لتنزيل المنيو وإرسال طلباتك مباشرة إلى شاشة الكاشير.
+            </p>
+          </div>
+        `;
         return;
       }
 
@@ -876,11 +901,13 @@
       db.collection('cafeterias').doc(cafeteriaId).get().then(doc => {
         if (doc && doc.exists) {
           const data = doc.data();
-          if (data.name) document.getElementById('cafeName').innerText = data.name;
-          if (data.logoUrl) document.getElementById('cafeLogo').src = data.logoUrl;
-          if (data.tableCount) document.getElementById('cafeSubtitle').innerText = `طاولة رقم ${tableNumber} - مرحباً بك`;
+          const name = data.cafeName || data.name || data.title;
+          if (name) document.getElementById('cafeName').innerText = name;
+          const logo = data.customLogoUri || data.logoUrl || data.logoUri;
+          if (logo) document.getElementById('cafeLogo').src = logo;
+          document.getElementById('cafeSubtitle').innerText = `طاولة رقم ${tableNumber} - مرحباً بكم`;
         }
-      }).catch(() => {});
+      }).catch(err => console.warn("Cafe profile load:", err));
 
       // Load Categories
       db.collection('cafeterias').doc(cafeteriaId).collection('categories').get().then(snap => {
@@ -889,37 +916,50 @@
           snap.forEach(doc => categories.push({ id: doc.id, ...doc.data() }));
           renderCategories();
         }
-      }).catch(() => {});
+      }).catch(err => console.warn("Categories load:", err));
 
-      // Load Menu Items Realtime
-      db.collection('cafeterias').doc(cafeteriaId).collection('menu').onSnapshot(snap => {
+      // Load Menu Items Realtime from menu_items (and fallback to menu)
+      const menuRef = db.collection('cafeterias').doc(cafeteriaId).collection('menu_items');
+      menuRef.onSnapshot(snap => {
         if (snap && !snap.empty) {
-          allMenuItems = [];
-          snap.forEach(doc => {
-            const item = { id: doc.id, ...doc.data() };
-            if (item.isAvailable !== false) {
-              allMenuItems.push(item);
-            }
-          });
-          filterMenuItems();
+          populateItemsFromSnap(snap);
         } else {
-          useFallbackData();
+          // If menu_items subcollection is empty, check legacy 'menu' subcollection
+          db.collection('cafeterias').doc(cafeteriaId).collection('menu').get().then(legacySnap => {
+            if (legacySnap && !legacySnap.empty) {
+              populateItemsFromSnap(legacySnap);
+            } else {
+              allMenuItems = [];
+              filterMenuItems();
+            }
+          }).catch(() => {
+            allMenuItems = [];
+            filterMenuItems();
+          });
         }
       }, err => {
-        console.warn("Firestore menu load error, using fallback:", err);
-        useFallbackData();
+        console.warn("Firestore menu_items load error:", err);
       });
     }
 
-    function useFallbackData() {
-      allMenuItems = [...fallbackMenuItems];
-      categories = [
-        { id: 'hot', nameAr: 'مشروبات ساخنة' },
-        { id: 'cold', nameAr: 'مشروبات باردة' },
-        { id: 'sweets', nameAr: 'حلويات' }
-      ];
-      renderCategories();
+    function populateItemsFromSnap(snap) {
+      allMenuItems = [];
+      snap.forEach(doc => {
+        const item = { id: doc.id, ...doc.data() };
+        if (item.isAvailable !== false) {
+          allMenuItems.push(item);
+        }
+      });
       filterMenuItems();
+    }
+
+    function showNoDbWarning() {
+      document.getElementById('itemsList').innerHTML = `
+        <div style="text-align:center; padding: 40px 10px; color: var(--danger);">
+          <i class="fa-solid fa-triangle-exclamation" style="font-size:32px; margin-bottom:8px;"></i>
+          <p style="font-weight:700;">تعذر الاتصال بقاعدة البيانات. يرجى التأكد من اتصال الإنترنت.</p>
+        </div>
+      `;
     }
 
     // 4. Render Category Tabs
@@ -964,8 +1004,9 @@
       filtered.forEach(item => {
         const inCart = cart.find(c => c.item.id === item.id);
         const qty = inCart ? inCart.qty : 0;
-        const priceFmt = (item.price || 0).toLocaleString('ar-IQ') + ' ' + (item.currency || 'د.ع');
-        const img = item.imageUrl || '';
+        const numPrice = Number(item.price) || 0;
+        const priceFmt = numPrice.toLocaleString('ar-IQ') + ' ' + (item.currency || 'د.ع');
+        const img = item.imageUrl || item.imageUri || item.customImageUri || item.bgImageUri || '';
 
         html += `
           <div class="item-card">
@@ -1045,7 +1086,7 @@
       const totalText = document.getElementById('cartBarTotal');
 
       const totalItems = cart.reduce((sum, c) => sum + c.qty, 0);
-      const totalPrice = cart.reduce((sum, c) => sum + (c.item.price * c.qty), 0);
+      const totalPrice = cart.reduce((sum, c) => sum + ((Number(c.item.price) || 0) * c.qty), 0);
       const currency = cart[0]?.item.currency || 'د.ع';
 
       if (totalItems > 0) {
@@ -1083,13 +1124,14 @@
       let curr = cart[0]?.item.currency || 'د.ع';
 
       cart.forEach(c => {
-        const itemTotal = c.item.price * c.qty;
+        const itemPrice = Number(c.item.price) || 0;
+        const itemTotal = itemPrice * c.qty;
         sum += itemTotal;
         html += `
           <div class="cart-row">
             <div class="cart-row-info">
               <h4>${c.item.nameAr}</h4>
-              <span>${itemTotal.toLocaleString('ar-IQ')} ${curr} (${c.qty} × ${(c.item.price).toLocaleString('ar-IQ')})</span>
+              <span>${itemTotal.toLocaleString('ar-IQ')} ${curr} (${c.qty} × ${itemPrice.toLocaleString('ar-IQ')})</span>
             </div>
             <div class="card-stepper">
               <button type="button" class="btn-step btn-step-minus" onclick="changeQty('${c.item.id}', -1)">−</button>
@@ -1125,8 +1167,9 @@
         localStorage.setItem('cafe_customer_name', custName);
       } catch (_) {}
 
+      const numTable = parseInt(tableNumber, 10) || 1;
       const totalQty = cart.reduce((sum, c) => sum + c.qty, 0);
-      const totalSum = cart.reduce((sum, c) => sum + (c.item.price * c.qty), 0);
+      const totalSum = cart.reduce((sum, c) => sum + ((Number(c.item.price) || 0) * c.qty), 0);
       const currency = cart[0]?.item.currency || 'د.ع';
       const notes = (document.getElementById('orderNotes')?.value || '').trim();
       const summary = cart.map(c => `${c.qty}× ${c.item.nameAr}`).join('، ');
@@ -1136,12 +1179,13 @@
       const orderData = {
         id: orderId,
         cafeteriaId: cafeteriaId,
-        tableNumber: tableNumber,
+        tableNumber: numTable,
         customerName: custName,
         itemsSummary: summary,
         itemsCount: totalQty,
         totalPrice: totalSum,
         subtotal: totalSum,
+        serviceFee: 0,
         currency: currency,
         status: "NEW",
         timestamp: Date.now(),
@@ -1149,14 +1193,15 @@
         securityToken: secToken
       };
 
-      // 1. Dispatch Write to Firestore
-      if (db) {
+      // 1. Dispatch Write to THIS cafeteria's orders subcollection
+      if (db && cafeteriaId) {
+        db.collection('cafeterias').doc(cafeteriaId).collection('orders').doc(orderId).set(orderData)
+          .then(() => console.log("Order written to cafeteria orders:", orderId))
+          .catch(err => console.error("Firestore write order error:", err));
+
         try {
-          db.collection('cafeterias').doc(cafeteriaId).collection('orders').doc(orderId).set(orderData).catch(() => {});
-          try { db.collection('orders').doc(orderId).set(orderData).catch(() => {}); } catch (_) {}
-        } catch (e) {
-          console.warn("Order write error:", e);
-        }
+          db.collection('orders').doc(orderId).set(orderData).catch(() => {});
+        } catch (_) {}
       }
 
       // 2. IMMEDIATE TRANSITION: Clear cart & show success right away
@@ -1185,8 +1230,8 @@
 
       document.getElementById('trackingModal').style.display = 'flex';
 
-      // Realtime status listener
-      if (db) {
+      // Realtime status listener for this specific cafeteria's order
+      if (db && cafeteriaId) {
         if (trackingUnsub) trackingUnsub();
         trackingUnsub = db.collection('cafeterias').doc(cafeteriaId).collection('orders').doc(orderId)
           .onSnapshot(doc => {
@@ -1220,11 +1265,12 @@
       const typeLabel = type === 'WAITER' ? 'نداء النادل' : 'طلب الحساب';
       showToast(`⏳ جاري إرسال ${typeLabel}...`);
 
-      if (db) {
+      if (db && cafeteriaId) {
         const callId = 'call_' + Date.now();
         db.collection('cafeterias').doc(cafeteriaId).collection('service_calls').doc(callId).set({
           id: callId,
-          tableNumber: tableNumber,
+          cafeteriaId: cafeteriaId,
+          tableNumber: parseInt(tableNumber, 10) || 1,
           type: type,
           status: 'PENDING',
           timestamp: Date.now()
