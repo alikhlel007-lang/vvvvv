@@ -857,12 +857,46 @@
       justify-content: center;
       cursor: pointer;
       font-size: 13px;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.1s ease;
+    }
+
+    .btn-qty i {
+      pointer-events: none;
+    }
+
+    .btn-qty:active {
+      transform: scale(0.9);
     }
 
     .btn-qty.plus {
       background: var(--cyan-primary);
       color: #021215;
       border: none;
+    }
+
+    /* Item Card Stepper Controls */
+    .qty-controls.item-stepper {
+      background: rgba(247, 160, 56, 0.12);
+      border: 1.5px solid var(--cyan-primary);
+      border-radius: 20px;
+      padding: 3px 8px;
+      gap: 8px;
+    }
+
+    .qty-controls.item-stepper .stepper-count {
+      font-weight: 900;
+      font-size: 14px;
+      color: var(--cyan-primary);
+      min-width: 20px;
+      text-align: center;
+    }
+
+    .qty-controls.item-stepper .btn-qty {
+      width: 26px;
+      height: 26px;
+      font-size: 11px;
     }
 
     .notes-textarea {
@@ -1473,13 +1507,19 @@
       const itemSubRef = db.collection('cafeterias').doc(cafeteriaId).collection('menu_items');
       itemSubRef.onSnapshot((snapshot) => {
         if (snapshot && !snapshot.empty) {
-          menuItems = snapshot.docs.map(d => d.data());
+          menuItems = snapshot.docs.map(d => {
+            const data = d.data();
+            return { ...data, id: String(data.id || d.id) };
+          });
           renderItems();
         } else {
           // Fallback to root menu_items
           db.collection('menu_items').onSnapshot((rootSnap) => {
             if (rootSnap && !rootSnap.empty) {
-              menuItems = rootSnap.docs.map(d => d.data());
+              menuItems = rootSnap.docs.map(d => {
+                const data = d.data();
+                return { ...data, id: String(data.id || d.id) };
+              });
               renderItems();
             } else {
               renderItems();
@@ -1561,6 +1601,27 @@
         const offerBadgeHtml = (item.isOffer || item.offerTag) ? `<div class="item-offer-tag">🔥 ${item.offerTag || 'عرض خاص'}</div>` : '';
         const priceFormatted = Number(item.price).toLocaleString() + ' ' + (item.currency || 'د.ع');
 
+        // Check if item is already in cart to display stepper (+ / -)
+        const cartEntry = cart.find(c => String(c.item.id) === String(item.id));
+        const inCartQty = cartEntry ? cartEntry.qty : 0;
+
+        let actionControlHtml = '';
+        if (inCartQty > 0) {
+          actionControlHtml = `
+            <div class="qty-controls item-stepper">
+              <button type="button" class="btn-qty" onclick="changeQty('${item.id}', -1)" title="تقليل"><i class="fa-solid fa-minus"></i></button>
+              <span class="stepper-count">${inCartQty}</span>
+              <button type="button" class="btn-qty plus" onclick="changeQty('${item.id}', 1)" title="زيادة"><i class="fa-solid fa-plus"></i></button>
+            </div>
+          `;
+        } else {
+          actionControlHtml = `
+            <button type="button" class="btn-add-order" onclick="addToCart('${item.id}')">
+              <span>+ طلب</span>
+            </button>
+          `;
+        }
+
         card.innerHTML = `
           <!-- Food Image (Right) -->
           <div class="item-image-wrapper">
@@ -1577,9 +1638,7 @@
             </div>
             <div class="item-bottom-row">
               <div class="item-price">${priceFormatted}</div>
-              <button class="btn-add-order" onclick="addToCart('${item.id}')">
-                <span>+ طلب</span>
-              </button>
+              ${actionControlHtml}
             </div>
           </div>
         `;
@@ -1594,10 +1653,10 @@
         return;
       }
 
-      const item = menuItems.find(i => i.id === itemId);
+      const item = menuItems.find(i => String(i.id) === String(itemId));
       if (!item) return;
 
-      const existing = cart.find(c => c.item.id === itemId);
+      const existing = cart.find(c => String(c.item.id) === String(itemId));
       if (existing) {
         existing.qty++;
       } else {
@@ -1605,19 +1664,22 @@
       }
 
       updateCartBar();
+      renderItems();
+      renderCartModalList();
     }
 
     function changeQty(itemId, delta) {
-      const entry = cart.find(c => c.item.id === itemId);
+      const entry = cart.find(c => String(c.item.id) === String(itemId));
       if (!entry) return;
 
       entry.qty += delta;
       if (entry.qty <= 0) {
-        cart = cart.filter(c => c.item.id !== itemId);
+        cart = cart.filter(c => String(c.item.id) !== String(itemId));
       }
 
       updateCartBar();
       renderCartModalList();
+      renderItems();
       if (cart.length === 0) closeCartModal();
     }
 
@@ -1680,9 +1742,9 @@
             <span>${priceText}</span>
           </div>
           <div class="qty-controls">
-            <button class="btn-qty" onclick="changeQty('${c.item.id}', -1)"><i class="fa-solid fa-minus"></i></button>
-            <span style="font-weight: 900; font-size: 15px;">${c.qty}</span>
-            <button class="btn-qty plus" onclick="changeQty('${c.item.id}', 1)"><i class="fa-solid fa-plus"></i></button>
+            <button type="button" class="btn-qty" onclick="changeQty('${c.item.id}', -1)" title="تقليل"><i class="fa-solid fa-minus"></i></button>
+            <span style="font-weight: 900; font-size: 15px; min-width: 20px; text-align: center;">${c.qty}</span>
+            <button type="button" class="btn-qty plus" onclick="changeQty('${c.item.id}', 1)" title="زيادة"><i class="fa-solid fa-plus"></i></button>
           </div>
         `;
         list.appendChild(row);
@@ -1744,9 +1806,13 @@
       btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الإرسال للكاشير...';
       btn.disabled = true;
 
+      let isFinished = false;
       const finishOrder = () => {
+        if (isFinished) return;
+        isFinished = true;
         cart = [];
         updateCartBar();
+        renderItems();
         closeCartModal();
         btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> <span>إرسال الطلب إلى الكاشير</span>';
         btn.disabled = false;
@@ -1755,23 +1821,36 @@
 
       if (db) {
         // Multi-tenant: write strictly to this cafeteria's orders subcollection
-        db.collection('cafeterias').doc(cafeteriaId).collection('orders').doc(orderId).set(orderData)
-          .then(() => {
-            console.log("Order saved to cafeteria subcollection successfully!");
-            try { db.collection('orders').doc(orderId).set(orderData).catch(() => {}); } catch (_) {}
+        try {
+          db.collection('cafeterias').doc(cafeteriaId).collection('orders').doc(orderId).set(orderData)
+            .then(() => {
+              console.log("Order saved to cafeteria subcollection successfully!");
+              try { db.collection('orders').doc(orderId).set(orderData).catch(() => {}); } catch (_) {}
+              finishOrder();
+            })
+            .catch(err => {
+              console.error("Firestore subcollection error, attempting root collection fallback:", err);
+              db.collection('orders').doc(orderId).set(orderData)
+                .then(() => finishOrder())
+                .catch(e => {
+                  console.error("Root order fallback failed:", e);
+                  finishOrder();
+                });
+            });
+        } catch (e) {
+          console.error("Synchronous firestore write error:", e);
+          finishOrder();
+        }
+
+        // Safety fallback: If Firestore server response is delayed, transition to tracking immediately after write dispatch
+        setTimeout(() => {
+          if (!isFinished) {
+            console.log("Finishing order via safety fallback timer");
             finishOrder();
-          })
-          .catch(err => {
-            console.error("Firestore subcollection error, attempting root collection fallback:", err);
-            db.collection('orders').doc(orderId).set(orderData)
-              .then(() => finishOrder())
-              .catch(e => {
-                console.error("Root order fallback failed:", e);
-                finishOrder();
-              });
-          });
+          }
+        }, 800);
       } else {
-        setTimeout(finishOrder, 700);
+        setTimeout(finishOrder, 500);
       }
     }
 
