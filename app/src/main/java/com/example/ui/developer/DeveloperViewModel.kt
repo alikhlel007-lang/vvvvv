@@ -81,6 +81,9 @@ class DeveloperViewModel(application: Application) : AndroidViewModel(applicatio
     private val _cafeForCollection = MutableStateFlow<CafeteriaAdminSummary?>(null)
     val cafeForCollection: StateFlow<CafeteriaAdminSummary?> = _cafeForCollection.asStateFlow()
 
+    private val _cafeForDebtLimit = MutableStateFlow<CafeteriaAdminSummary?>(null)
+    val cafeForDebtLimit: StateFlow<CafeteriaAdminSummary?> = _cafeForDebtLimit.asStateFlow()
+
     private val _cafeForHistory = MutableStateFlow<CafeteriaAdminSummary?>(null)
     val cafeForHistory: StateFlow<CafeteriaAdminSummary?> = _cafeForHistory.asStateFlow()
 
@@ -205,13 +208,15 @@ class DeveloperViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun toggleCafeStatus(cafe: CafeteriaAdminSummary) {
         viewModelScope.launch {
+            val targetActive = !cafe.isActive
             val res = repository.toggleCafeStatus(cafe.id, cafe.isActive)
             if (res.isSuccess) {
-                val newActive = res.getOrDefault(!cafe.isActive)
+                val newActive = res.getOrDefault(targetActive)
                 _allCafeterias.value = _allCafeterias.value.map {
-                    if (it.id == cafe.id) it.copy(isActive = newActive) else it
+                    if (it.id == cafe.id) it.copy(isActive = newActive, isAutoSuspended = false) else it
                 }
-                _statusMessage.value = if (newActive) "تم تفعيل الكافتيريا بنجاح" else "تم إيقاف الكافتيريا بنجاح"
+                _statusMessage.value = if (newActive) "تم تفعيل الكافتيريا (${cafe.cafeName}) بنجاح" else "تم إيقاف الكافتيريا (${cafe.cafeName}) بنجاح"
+                refreshDashboard()
             } else {
                 _errorMessage.value = "تعذر تعديل حالة الكافتيريا: ${res.exceptionOrNull()?.localizedMessage}"
             }
@@ -228,17 +233,46 @@ class DeveloperViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun confirmFeeCollection(cafe: CafeteriaAdminSummary, amount: Double, note: String) {
         if (amount <= 0) {
-            _errorMessage.value = "يرجى إدخال مبلغ صحيح"
+            _errorMessage.value = "يرجى إدخال مبلغ صحيح للتحصيل"
             return
         }
         viewModelScope.launch {
+            _isLoading.value = true
             val res = repository.recordFeeCollection(cafe.id, amount, note)
+            _isLoading.value = false
             if (res.isSuccess) {
                 _cafeForCollection.value = null
-                _statusMessage.value = "تم تسجيل استلام $amount د.ع بنجاح"
+                _statusMessage.value = "تم تسجيل تحصيل مبلغ ${amount.toLong()} د.ع بنجاح للكافتيريا (${cafe.cafeName})"
                 refreshDashboard()
             } else {
                 _errorMessage.value = "تعذر تسجيل الاستلام: ${res.exceptionOrNull()?.localizedMessage}"
+            }
+        }
+    }
+
+    fun openDebtLimitDialog(cafe: CafeteriaAdminSummary) {
+        _cafeForDebtLimit.value = cafe
+    }
+
+    fun closeDebtLimitDialog() {
+        _cafeForDebtLimit.value = null
+    }
+
+    fun confirmDebtLimit(cafe: CafeteriaAdminSummary, newLimit: Double) {
+        if (newLimit < 0) {
+            _errorMessage.value = "يرجى إدخال حد ديون صحيح"
+            return
+        }
+        viewModelScope.launch {
+            _isLoading.value = true
+            val res = repository.updateDebtLimit(cafe.id, newLimit)
+            _isLoading.value = false
+            if (res.isSuccess) {
+                _cafeForDebtLimit.value = null
+                _statusMessage.value = "تم تعيين حد الديون لـ (${cafe.cafeName}) بمبلغ ${newLimit.toLong()} د.ع"
+                refreshDashboard()
+            } else {
+                _errorMessage.value = "تعذر تحديث حد الديون: ${res.exceptionOrNull()?.localizedMessage}"
             }
         }
     }

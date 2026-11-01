@@ -897,8 +897,8 @@
         return;
       }
 
-      // Load Cafe Profile
-      db.collection('cafeterias').doc(cafeteriaId).get().then(doc => {
+      // Real-time listener for Cafe Profile & Active/Suspended Status
+      db.collection('cafeterias').doc(cafeteriaId).onSnapshot(doc => {
         if (doc && doc.exists) {
           const data = doc.data();
           const name = data.cafeName || data.name || data.title;
@@ -906,8 +906,15 @@
           const logo = data.customLogoUri || data.logoUrl || data.logoUri;
           if (logo) document.getElementById('cafeLogo').src = logo;
           document.getElementById('cafeSubtitle').innerText = `طاولة رقم ${tableNumber} - مرحباً بكم`;
+
+          const isActive = data.isActive !== false;
+          if (!isActive) {
+            showSuspendedOverlay(data.suspensionReason || 'عذراً، تم إيقاف استقبال الطلبات في هذه الكافتيريا مؤقتاً لمراجعة الحسابات.');
+          } else {
+            hideSuspendedOverlay();
+          }
         }
-      }).catch(err => console.warn("Cafe profile load:", err));
+      }, err => console.warn("Cafe profile load:", err));
 
       // Load Categories
       db.collection('cafeterias').doc(cafeteriaId).collection('categories').get().then(snap => {
@@ -1148,6 +1155,10 @@
 
     // 9. Instant Submit Order to Firestore
     function submitOrder() {
+      if (document.getElementById('suspendedModal')?.style.display === 'flex') {
+        alert('عذراً، استقبال الطلبات في هذه الكافتيريا متوقف حالياً.');
+        return;
+      }
       if (cart.length === 0) return;
 
       const nameInput = document.getElementById('customerName');
@@ -1258,6 +1269,41 @@
         trackingUnsub();
         trackingUnsub = null;
       }
+    }
+
+    // Suspension Overlay Handlers
+    function showSuspendedOverlay(reason) {
+      let overlay = document.getElementById('suspendedModal');
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'suspendedModal';
+        overlay.className = 'modal-overlay';
+        overlay.style.display = 'flex';
+        overlay.style.alignItems = 'center';
+        overlay.style.zIndex = '999999';
+        overlay.innerHTML = `
+          <div class="center-dialog" style="border-color:#EF4444; max-width:400px; padding:28px 20px;">
+            <div class="success-icon-wrap" style="border-color:#EF4444; background:rgba(239,68,68,0.15); color:#EF4444; margin-bottom:12px;">
+              <i class="fa-solid fa-ban"></i>
+            </div>
+            <h2 style="font-size:18px; font-weight:900; color:#FFFFFF; margin-bottom:8px;">استقبال الطلبات متوقف</h2>
+            <p id="suspendedReasonText" style="font-size:13px; color:var(--text-sub); line-height:1.6; margin-bottom:14px;"></p>
+            <div style="font-size:11px; color:#A89B91; background:#1F1916; padding:10px; border-radius:12px; border:1px solid #382F2A;">
+              يرجى مراجعة إدارة الكافتيريا لإعادة تفعيل الخدمة واستئناف استقبال الطلبات.
+            </div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+      }
+      const reasonEl = document.getElementById('suspendedReasonText');
+      if (reasonEl) reasonEl.innerText = reason;
+      overlay.style.display = 'flex';
+      closeCartModal();
+    }
+
+    function hideSuspendedOverlay() {
+      const overlay = document.getElementById('suspendedModal');
+      if (overlay) overlay.style.display = 'none';
     }
 
     // 11. Quick Waiter / Bill Service Call

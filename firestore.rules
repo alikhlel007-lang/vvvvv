@@ -16,6 +16,18 @@ service cloud.firestore {
       match /orders/{orderId} {
         allow read, write: if true;
       }
+
+      match /fee_collections/{feeId} {
+        allow read, write: if true;
+      }
+
+      match /tables/{tableId} {
+        allow read, write: if true;
+      }
+
+      match /service_calls/{callId} {
+        allow read, write: if true;
+      }
     }
 
     // Root collections for compatibility

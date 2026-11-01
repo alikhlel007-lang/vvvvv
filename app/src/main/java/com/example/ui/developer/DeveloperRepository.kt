@@ -63,7 +63,11 @@ class DeveloperRepository {
                 val phone = doc.getString("phone") ?: ""
                 val email = doc.getString("email") ?: ""
                 val address = doc.getString("address") ?: ""
-                val isActive = doc.getBoolean("isActive") ?: true
+                val rawIsActive = doc.getBoolean("isActive") ?: true
+                val maxDebtLimit = doc.getDouble("maxDebtLimit")
+                    ?: (doc.getLong("maxDebtLimit")?.toDouble())
+                    ?: 50000.0
+                val storedReason = doc.getString("suspensionReason") ?: ""
                 val createdAt = doc.getLong("createdAt") ?: 0L
 
                 // Fetch orders for this cafeteria to calculate totals
@@ -77,6 +81,8 @@ class DeveloperRepository {
                         if (status.equals("PAID", ignoreCase = true) || status == "الفواتير المسددة") {
                             paidCount++
                             val total = orderDoc.getDouble("totalPrice")
+                                ?: (orderDoc.getLong("totalPrice")?.toDouble())
+                                ?: (orderDoc.getString("totalPrice")?.toDoubleOrNull())
                                 ?: orderDoc.getDouble("subtotal")
                                 ?: 0.0
                             totalSales += total
@@ -90,13 +96,39 @@ class DeveloperRepository {
                 try {
                     val collectionsSnap = db.collection("cafeterias").document(id).collection("fee_collections").get().awaitTask()
                     for (colDoc in collectionsSnap.documents) {
-                        val amt = colDoc.getDouble("amount") ?: 0.0
+                        val amt = colDoc.getDouble("amount")
+                            ?: (colDoc.getLong("amount")?.toDouble())
+                            ?: (colDoc.getString("amount")?.toDoubleOrNull())
+                            ?: 0.0
                         collectedFees += amt
                     }
                 } catch (_: Exception) {}
 
                 val serviceFeeTotal = totalSales * 0.01
                 val remainingFee = (serviceFeeTotal - collectedFees).coerceAtLeast(0.0)
+
+                // Automatic Suspension logic: If remaining unpaid fee exceeds maxDebtLimit
+                val isOverLimit = (maxDebtLimit > 0.0 && remainingFee >= maxDebtLimit)
+                val finalIsActive = if (isOverLimit) false else rawIsActive
+                val reason = if (isOverLimit) {
+                    "تجاوز حد الديون المسموح به (${maxDebtLimit.toLong()} $currency)"
+                } else if (!finalIsActive) {
+                    storedReason.ifBlank { "إيقاف يدوي من قِبل المطور" }
+                } else ""
+
+                // If automatically suspended, sync isActive = false to Firestore
+                if (isOverLimit && rawIsActive) {
+                    try {
+                        db.collection("cafeterias").document(id).set(
+                            mapOf(
+                                "isActive" to false,
+                                "isAutoSuspended" to true,
+                                "suspensionReason" to reason
+                            ),
+                            SetOptions.merge()
+                        )
+                    } catch (_: Exception) {}
+                }
 
                 list.add(
                     CafeteriaAdminSummary(
@@ -107,13 +139,16 @@ class DeveloperRepository {
                         phone = phone,
                         email = email,
                         address = address,
-                        isActive = isActive,
+                        isActive = finalIsActive,
                         createdAt = createdAt,
                         totalSales = totalSales,
                         paidOrdersCount = paidCount,
                         serviceFeeTotal = serviceFeeTotal,
                         collectedFees = collectedFees,
                         remainingFee = remainingFee,
+                        maxDebtLimit = maxDebtLimit,
+                        isAutoSuspended = isOverLimit,
+                        suspensionReason = reason,
                         currency = currency
                     )
                 )
@@ -133,13 +168,21 @@ class DeveloperRepository {
             val snap = db.collection("cafeterias").document(cafeId).collection("orders").get().awaitTask()
             for (doc in snap.documents) {
                 val id = doc.id
-                val tableNumber = doc.getLong("tableNumber")?.toInt() ?: 1
+                val tableNumber = doc.getLong("tableNumber")?.toInt()
+                    ?: doc.getString("tableNumber")?.toIntOrNull()
+                    ?: 1
                 val customerName = doc.getString("customerName") ?: "طاولة $tableNumber"
                 val itemsSummary = doc.getString("itemsSummary") ?: ""
                 val itemsCount = doc.getLong("itemsCount")?.toInt() ?: 1
-                val totalPrice = doc.getDouble("totalPrice") ?: 0.0
-                val subtotal = doc.getDouble("subtotal") ?: totalPrice
-                val serviceFee = doc.getDouble("serviceFee") ?: 0.0
+                val totalPrice = doc.getDouble("totalPrice")
+                    ?: (doc.getLong("totalPrice")?.toDouble())
+                    ?: 0.0
+                val subtotal = doc.getDouble("subtotal")
+                    ?: (doc.getLong("subtotal")?.toDouble())
+                    ?: totalPrice
+                val serviceFee = doc.getDouble("serviceFee")
+                    ?: (doc.getLong("serviceFee")?.toDouble())
+                    ?: 0.0
                 val currency = doc.getString("currency") ?: "د.ع"
                 val status = doc.getString("status") ?: "PAID"
                 val timestamp = doc.getLong("timestamp") ?: System.currentTimeMillis()
@@ -200,10 +243,32 @@ class DeveloperRepository {
         val db = firestore ?: return@withContext Result.failure(Exception("قاعدة البيانات غير متصلة"))
         val newStatus = !currentActive
         try {
+            val map = hashMapOf<String, Any>(
+                "isActive" to newStatus,
+                "isAutoSuspended" to false,
+                "suspensionReason" to if (!newStatus) "إيقاف يدوي من قِبل المطور المشرف" else "",
+                "statusUpdatedAt" to System.currentTimeMillis()
+            )
             db.collection("cafeterias").document(cafeId)
-                .set(mapOf("isActive" to newStatus), SetOptions.merge())
+                .set(map, SetOptions.merge())
                 .awaitTask()
             Result.success(newStatus)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateDebtLimit(cafeId: String, newLimit: Double): Result<Unit> = withContext(Dispatchers.IO) {
+        val db = firestore ?: return@withContext Result.failure(Exception("قاعدة البيانات غير متصلة"))
+        try {
+            val map = hashMapOf<String, Any>(
+                "maxDebtLimit" to newLimit,
+                "limitUpdatedAt" to System.currentTimeMillis()
+            )
+            db.collection("cafeterias").document(cafeId)
+                .set(map, SetOptions.merge())
+                .awaitTask()
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -212,12 +277,25 @@ class DeveloperRepository {
     suspend fun recordFeeCollection(cafeId: String, amount: Double, note: String): Result<Unit> = withContext(Dispatchers.IO) {
         val db = firestore ?: return@withContext Result.failure(Exception("قاعدة البيانات غير متصلة"))
         try {
-            val record = hashMapOf(
+            val record = hashMapOf<String, Any>(
                 "amount" to amount,
                 "note" to note.trim(),
                 "timestamp" to System.currentTimeMillis()
             )
             db.collection("cafeterias").document(cafeId).collection("fee_collections").add(record).awaitTask()
+
+            // After fee collection, reset auto-suspension flag and reactivate if paid
+            try {
+                db.collection("cafeterias").document(cafeId).set(
+                    mapOf(
+                        "isAutoSuspended" to false,
+                        "isActive" to true,
+                        "suspensionReason" to ""
+                    ),
+                    SetOptions.merge()
+                ).awaitTask()
+            } catch (_: Exception) {}
+
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -230,7 +308,9 @@ class DeveloperRepository {
         try {
             val snap = db.collection("cafeterias").document(cafeId).collection("fee_collections").get().awaitTask()
             for (doc in snap.documents) {
-                val amount = doc.getDouble("amount") ?: 0.0
+                val amount = doc.getDouble("amount")
+                    ?: (doc.getLong("amount")?.toDouble())
+                    ?: 0.0
                 val note = doc.getString("note") ?: ""
                 val timestamp = doc.getLong("timestamp") ?: 0L
                 list.add(

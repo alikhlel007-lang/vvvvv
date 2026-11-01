@@ -15,6 +15,9 @@ data class CafeteriaAdminSummary(
     val serviceFeeTotal: Double = 0.0,
     val collectedFees: Double = 0.0,
     val remainingFee: Double = 0.0,
+    val maxDebtLimit: Double = 50000.0,
+    val isAutoSuspended: Boolean = false,
+    val suspensionReason: String = "",
     val currency: String = "د.ع"
 )
 

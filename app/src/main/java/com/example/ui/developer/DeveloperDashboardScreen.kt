@@ -38,7 +38,9 @@ import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -60,7 +62,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -76,6 +77,7 @@ import com.example.util.OrderFeeCalculator
 @Composable
 fun DeveloperDashboardScreen(
     viewModel: DeveloperViewModel,
+    onLogout: () -> Unit = { viewModel.logout() },
     onOpenCashierApp: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -90,18 +92,18 @@ fun DeveloperDashboardScreen(
     val remainingFees by viewModel.totalRemainingFees.collectAsState()
 
     val cafeForCollect by viewModel.cafeForCollection.collectAsState()
+    val cafeForDebtLimit by viewModel.cafeForDebtLimit.collectAsState()
     val cafeForHistory by viewModel.cafeForHistory.collectAsState()
     val historyRecords by viewModel.historyRecords.collectAsState()
     val historyLoading by viewModel.historyLoading.collectAsState()
 
     val statusMsg by viewModel.statusMessage.collectAsState()
     val errorMsg by viewModel.errorMessage.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(statusMsg, errorMsg) {
         val msg = statusMsg ?: errorMsg
         if (!msg.isNullOrBlank()) {
-            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
             viewModel.clearMessages()
         }
     }
@@ -138,23 +140,28 @@ fun DeveloperDashboardScreen(
                         Box(
                             modifier = Modifier
                                 .size(38.dp)
-                                .background(CafeCyanPrimary, RoundedCornerShape(10.dp)),
+                                .background(CafeCyanPrimary.copy(alpha = 0.15f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.Storefront, contentDescription = null, tint = Color(0xFF021215))
+                            Icon(
+                                Icons.Default.Storefront,
+                                contentDescription = null,
+                                tint = CafeCyanPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
-                                text = "لوحة تحكم المطور",
-                                color = Color.White,
+                                text = "لوحة المطور والمشرف",
                                 fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
                             )
                             Text(
-                                text = "تحصيل رسوم الخدمة 1% • إدارة النظام",
-                                color = CafeCyanPrimary,
-                                fontSize = 11.sp
+                                text = "إدارة الكافتيريات وحسابات رسوم الخدمة 1%",
+                                fontSize = 11.sp,
+                                color = CafeCyanPrimary
                             )
                         }
                     }
@@ -163,13 +170,8 @@ fun DeveloperDashboardScreen(
                         IconButton(onClick = { viewModel.refreshDashboard() }) {
                             Icon(Icons.Default.Refresh, contentDescription = "تحديث", tint = CafeCyanPrimary)
                         }
-                        if (onOpenCashierApp != null) {
-                            IconButton(onClick = onOpenCashierApp) {
-                                Icon(Icons.Default.Storefront, contentDescription = "تطبيق الكاشير", tint = CafeGold)
-                            }
-                        }
-                        IconButton(onClick = { viewModel.logout() }) {
-                            Icon(Icons.Default.ExitToApp, contentDescription = "خروج", tint = Color(0xFFFF5252))
+                        IconButton(onClick = onLogout) {
+                            Icon(Icons.Default.ExitToApp, contentDescription = "تسجيل خروج", tint = Color(0xFFFF5252))
                         }
                     }
                 }
@@ -178,72 +180,74 @@ fun DeveloperDashboardScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                    .padding(horizontal = 16.dp)
             ) {
                 item {
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
-                    // Summary Stats Grid
+                    // Overall System Metrics Banner
+                    Text(
+                        text = "نظرة عامة على النظام",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    // 4-Card Grid for Financials
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         MetricCard(
-                            title = "الكافتيريات المسجلة",
-                            value = "${allCafes.size}",
-                            subtitle = "كافتيريا نشطة في النظام",
-                            icon = Icons.Default.Storefront,
-                            accentColor = CafeCyanPrimary,
-                            modifier = Modifier.weight(1f)
-                        )
-                        MetricCard(
-                            title = "إجمالي المبيعات",
+                            title = "إجمالي مبيعات النظام",
                             value = OrderFeeCalculator.formatPrice(totalSales, "د.ع"),
-                            subtitle = "المبيعات المسددة بالكامل",
-                            icon = Icons.Default.Payments,
+                            subtitle = "${allCafes.size} كافتيريا مسجلة",
+                            icon = Icons.Default.MonetizationOn,
                             accentColor = Color(0xFF4CAF50),
                             modifier = Modifier.weight(1f)
                         )
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
                         MetricCard(
-                            title = "استحقاق المطور (1%)",
+                            title = "رسوم الخدمة المستحقة (1%)",
                             value = OrderFeeCalculator.formatPrice(totalFees, "د.ع"),
-                            subtitle = "مجموع رسوم الخدمة",
-                            icon = Icons.Default.MonetizationOn,
+                            subtitle = "حقوق المنظومة",
+                            icon = Icons.Default.ReceiptLong,
                             accentColor = CafeGold,
                             modifier = Modifier.weight(1f)
                         )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         MetricCard(
-                            title = "المتبقي للتحصيل",
+                            title = "الرسوم المحصلة فعلياً",
+                            value = OrderFeeCalculator.formatPrice(collectedFees, "د.ع"),
+                            subtitle = "تم استلامها",
+                            icon = Icons.Default.Payments,
+                            accentColor = Color(0xFF81C784),
+                            modifier = Modifier.weight(1f)
+                        )
+                        MetricCard(
+                            title = "الديون المتبقية للتحصيل",
                             value = OrderFeeCalculator.formatPrice(remainingFees, "د.ع"),
-                            subtitle = "مستحقات غير محصلة بعد",
-                            icon = Icons.Default.ReceiptLong,
-                            accentColor = if (remainingFees > 0) Color(0xFFFF8A80) else Color(0xFF81C784),
+                            subtitle = "مطلوبة من الكافتيريات",
+                            icon = Icons.Default.Block,
+                            accentColor = if (remainingFees > 0) Color(0xFFFF5252) else Color(0xFF81C784),
                             modifier = Modifier.weight(1f)
                         )
                     }
-                }
 
-                // Search Bar
-                item {
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    // Search Box
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { viewModel.onSearchQueryChange(it) },
-                        placeholder = {
-                            Text(
-                                "ابحث بالرقم التعريفي (مثل #10482) أو اسم الكافتيريا أو الهاتف...",
-                                color = CafeTextSecondary,
-                                fontSize = 12.sp
-                            )
-                        },
+                        placeholder = { Text("ابحث برقم المعرف (#0001)، اسم الكافتيريا، المالك، أو الهاتف...", color = CafeTextSecondary, fontSize = 12.sp) },
                         leadingIcon = {
                             Icon(Icons.Default.Search, contentDescription = null, tint = CafeCyanPrimary)
                         },
@@ -256,34 +260,47 @@ fun DeveloperDashboardScreen(
                         },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = CafeCyanPrimary,
-                            unfocusedBorderColor = Color(0xFF0E3F47),
-                            focusedContainerColor = Color(0xFF04171B),
-                            unfocusedContainerColor = Color(0xFF04171B),
+                            unfocusedBorderColor = Color(0xFF0F4750),
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White
                         ),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
-                }
 
-                if (isLoading) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(160.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = CafeCyanPrimary)
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "قائمة الكافتيريات (${cafeterias.size})",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                color = CafeCyanPrimary,
+                                strokeWidth = 2.dp
+                            )
                         }
                     }
-                } else if (cafeterias.isEmpty()) {
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+
+                if (cafeterias.isEmpty() && !isLoading) {
                     item {
                         Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF051A1E)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF051E23)),
                             shape = RoundedCornerShape(16.dp)
                         ) {
                             Column(
@@ -320,6 +337,7 @@ fun DeveloperDashboardScreen(
                             cafe = cafe,
                             onOpenInvoices = { viewModel.openInvoices(cafe) },
                             onCollectFee = { viewModel.openCollectDialog(cafe) },
+                            onSetDebtLimit = { viewModel.openDebtLimitDialog(cafe) },
                             onOpenHistory = { viewModel.openHistoryDialog(cafe) },
                             onToggleStatus = { viewModel.toggleCafeStatus(cafe) },
                             onCopyId = {
@@ -368,6 +386,17 @@ fun DeveloperDashboardScreen(
                 onDismiss = { viewModel.closeCollectDialog() },
                 onConfirm = { amount, note ->
                     viewModel.confirmFeeCollection(cafeForCollect!!, amount, note)
+                }
+            )
+        }
+
+        // Dialog for Setting Debt Limit
+        if (cafeForDebtLimit != null) {
+            DeveloperDebtLimitDialog(
+                cafe = cafeForDebtLimit!!,
+                onDismiss = { viewModel.closeDebtLimitDialog() },
+                onConfirm = { limit ->
+                    viewModel.confirmDebtLimit(cafeForDebtLimit!!, limit)
                 }
             )
         }
@@ -434,6 +463,7 @@ private fun CafeteriaAdminCard(
     cafe: CafeteriaAdminSummary,
     onOpenInvoices: () -> Unit,
     onCollectFee: () -> Unit,
+    onSetDebtLimit: () -> Unit,
     onOpenHistory: () -> Unit,
     onToggleStatus: () -> Unit,
     onCopyId: () -> Unit,
@@ -441,7 +471,9 @@ private fun CafeteriaAdminCard(
     onCall: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF051B20)),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(3.dp)
@@ -501,12 +533,57 @@ private fun CafeteriaAdminCard(
                     color = if (cafe.isActive) Color(0xFF1B4D2E) else Color(0xFF5A1C20)
                 ) {
                     Text(
-                        text = if (cafe.isActive) "نشط" else "موقوف",
+                        text = if (cafe.isActive) "نشط" else (if (cafe.isAutoSuspended) "موقوف تلقائياً" else "موقوف"),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (cafe.isActive) Color(0xFF81C784) else Color(0xFFFF8A80),
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
+                }
+            }
+
+            // Prominent Alert Banner if cafe is stopped or over debt limit
+            if (cafe.isAutoSuspended) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    color = Color(0xFF381216),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFFF5252), modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "⚠️ متوقف تلقائياً لتجاوز حد الديون (${OrderFeeCalculator.formatPrice(cafe.maxDebtLimit, cafe.currency)}). لا يمكن للزبائن الطلب حتى يتم السداد.",
+                            color = Color(0xFFFF8A80),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            } else if (!cafe.isActive) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    color = Color(0xFF2C1908),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Block, contentDescription = null, tint = CafeGold, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "⛔ الكافتيريا موقوفة حالياً بأمر المطور المشرف (منيو الزبائن معطل).",
+                            color = CafeGold,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
 
@@ -544,41 +621,64 @@ private fun CafeteriaAdminCard(
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(text = "المبيعات (${cafe.paidOrdersCount} طلب)", fontSize = 10.sp, color = CafeTextSecondary)
-                        Text(
-                            text = OrderFeeCalculator.formatPrice(cafe.totalSales, cafe.currency),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
+                Column(modifier = Modifier.padding(10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(text = "المبيعات (${cafe.paidOrdersCount} طلب)", fontSize = 10.sp, color = CafeTextSecondary)
+                            Text(
+                                text = OrderFeeCalculator.formatPrice(cafe.totalSales, cafe.currency),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+
+                        Column {
+                            Text(text = "العمولة (1%)", fontSize = 10.sp, color = CafeTextSecondary)
+                            Text(
+                                text = OrderFeeCalculator.formatPrice(cafe.serviceFeeTotal, cafe.currency),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CafeGold
+                            )
+                        }
+
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(text = "المتبقي للتحصيل", fontSize = 10.sp, color = CafeTextSecondary)
+                            Text(
+                                text = OrderFeeCalculator.formatPrice(cafe.remainingFee, cafe.currency),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (cafe.remainingFee > 0) Color(0xFFFF8A80) else Color(0xFF81C784)
+                            )
+                        }
                     }
 
-                    Column {
-                        Text(text = "العمولة (1%)", fontSize = 10.sp, color = CafeTextSecondary)
-                        Text(
-                            text = OrderFeeCalculator.formatPrice(cafe.serviceFeeTotal, cafe.currency),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = CafeGold
-                        )
-                    }
+                    Spacer(modifier = Modifier.height(6.dp))
 
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(text = "المتبقي للتحصيل", fontSize = 10.sp, color = CafeTextSecondary)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
-                            text = OrderFeeCalculator.formatPrice(cafe.remainingFee, cafe.currency),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (cafe.remainingFee > 0) Color(0xFFFF8A80) else Color(0xFF81C784)
+                            text = "سقف الديون المسموح: ${OrderFeeCalculator.formatPrice(cafe.maxDebtLimit, cafe.currency)}",
+                            fontSize = 11.sp,
+                            color = CafeCyanPrimary,
+                            fontWeight = FontWeight.Bold
                         )
+                        if (cafe.remainingFee >= cafe.maxDebtLimit && cafe.maxDebtLimit > 0) {
+                            Text(
+                                text = "تجاوز السقف ⚠️",
+                                fontSize = 11.sp,
+                                color = Color(0xFFFF5252),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
@@ -613,6 +713,18 @@ private fun CafeteriaAdminCard(
                     Icon(Icons.Default.Payments, contentDescription = null, tint = Color(0xFF021215), modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("تحصيل رسوم", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF021215))
+                }
+
+                // Set Debt Limit button
+                Button(
+                    onClick = onSetDebtLimit,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0B4652)),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.height(38.dp)
+                ) {
+                    Icon(Icons.Default.Speed, contentDescription = null, tint = CafeCyanPrimary, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("حد الديون", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
 
                 // History button
@@ -654,7 +766,7 @@ private fun CafeteriaAdminCard(
                         modifier = Modifier.size(15.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(if (cafe.isActive) "إيقاف" else "تفعيل", fontSize = 12.sp)
+                    Text(if (cafe.isActive) "إيقاف الكافتيريا" else "تفعيل الكافتيريا", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
