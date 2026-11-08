@@ -139,17 +139,7 @@ fun SplashScreen(viewModel: MainViewModel) {
                 modifier = Modifier.alpha(alpha.value)
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
 
-            // Subtitle in Arabic
-            Text(
-                text = "نظام المنيو الإلكتروني الذكي وإدارة الكاشير",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Normal,
-                color = CafeTextSecondary,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.alpha(alpha.value)
-            )
 
             Spacer(modifier = Modifier.height(48.dp))
 

@@ -703,27 +703,7 @@
   <!-- Toast Notification -->
   <div id="toastBox" class="toast-box"></div>
 
-  <!-- Top Sticky Header -->
-  <header class="top-header">
-    <div class="header-content">
-      <div class="cafe-brand">
-        <img id="cafeLogo" src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=120" alt="Logo">
-        <div class="cafe-brand-info">
-          <h1 id="cafeName">كافيه ديجيتال</h1>
-          <p id="cafeSubtitle">المنيو الذكي</p>
-        </div>
-      </div>
-      <div class="header-actions">
-        <div class="table-pill">
-          <i class="fa-solid fa-chair"></i>
-          <span id="tablePillText">طاولة رقم 1</span>
-        </div>
-        <button class="btn-icon-action" onclick="openOrdersListModal()" title="سجل طلبات الطاولة والفاتورة">
-          <i class="fa-solid fa-receipt"></i>
-        </button>
-      </div>
-    </div>
-  </header>
+
 
   <!-- Main Content Container -->
   <div class="main-container">
@@ -1002,8 +982,9 @@
       try { localStorage.setItem('cafe_last_table_number', tableNumber); } catch (_) {}
     }
 
-    // Update Header Table Pill
-    document.getElementById('tablePillText').innerText = 'طاولة رقم ' + tableNumber;
+    // Update Header Table Pill if present
+    const tablePill = document.getElementById('tablePillText');
+    if (tablePill) tablePill.innerText = 'طاولة رقم ' + tableNumber;
 
     // Load Saved Customer Name
     try {
@@ -1044,10 +1025,13 @@
         if (doc && doc.exists) {
           const data = doc.data();
           const name = data.cafeName || data.name || data.title;
-          if (name) document.getElementById('cafeName').innerText = name;
+          const nameEl = document.getElementById('cafeName');
+          if (nameEl && name) nameEl.innerText = name;
           const logo = data.customLogoUri || data.logoUrl || data.logoUri;
-          if (logo) document.getElementById('cafeLogo').src = logo;
-          document.getElementById('cafeSubtitle').innerText = `طاولة رقم ${tableNumber} - مرحباً بكم`;
+          const logoEl = document.getElementById('cafeLogo');
+          if (logoEl && logo) logoEl.src = logo;
+          const subEl = document.getElementById('cafeSubtitle');
+          if (subEl) subEl.innerText = `طاولة رقم ${tableNumber} - مرحباً بكم`;
 
           const isActive = data.isActive !== false;
           if (!isActive) {
