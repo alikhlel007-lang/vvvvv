@@ -168,6 +168,16 @@
     .btn-service i {
       color: var(--accent);
     }
+    .btn-service.active {
+      background: var(--accent);
+      color: #0F0D0C;
+      border-color: var(--accent);
+      font-weight: 800;
+      box-shadow: 0 2px 10px var(--accent-glow);
+    }
+    .btn-service.active i {
+      color: #0F0D0C !important;
+    }
 
     /* Search & Categories */
     .search-box {
@@ -708,8 +718,8 @@
           <i class="fa-solid fa-chair"></i>
           <span id="tablePillText">طاولة رقم 1</span>
         </div>
-        <button class="btn-icon-action" onclick="openGameModal()" title="حاسبة نقاط الدومينو">
-          <i class="fa-solid fa-dice"></i>
+        <button class="btn-icon-action" onclick="openOrdersListModal()" title="سجل طلبات الطاولة والفاتورة">
+          <i class="fa-solid fa-receipt"></i>
         </button>
       </div>
     </div>
@@ -718,17 +728,17 @@
   <!-- Main Content Container -->
   <div class="main-container">
     
-    <!-- Quick Action Bar -->
+    <!-- Quick Action Navigation Tabs -->
     <div class="service-bar">
-      <button class="btn-service" id="btnOffers" onclick="toggleOffers()">
-        <i class="fa-solid fa-fire" style="color:#F59E0B;"></i>
+      <button class="btn-service active" id="tabMenuBtn" onclick="switchMainTab('MENU')">
+        <i class="fa-solid fa-utensils"></i>
+        <span>قائمة الطلب</span>
+      </button>
+      <button class="btn-service" id="tabOffersBtn" onclick="switchMainTab('OFFERS')">
+        <i class="fa-solid fa-fire"></i>
         <span>العروض</span>
       </button>
-      <button class="btn-service" onclick="openOrdersListModal()">
-        <i class="fa-solid fa-clock-rotate-left" style="color:var(--accent);"></i>
-        <span>قائمة الطلبات</span>
-      </button>
-      <button class="btn-service" onclick="openGameModal()">
+      <button class="btn-service" id="tabGameBtn" onclick="openGameModal()">
         <i class="fa-solid fa-table-list"></i>
         <span>تسجيل النقاط</span>
       </button>
@@ -939,7 +949,7 @@
     let allMenuItems = [];
     let categories = [];
     let activeCategory = 'ALL';
-    let showingOffersOnly = false;
+    let currentMainTab = 'MENU'; // 'MENU' (قائمة الطلب) or 'OFFERS' (العروض)
     let cart = []; // Array of { item, qty }
 
     // 3. Load Cafeteria Profile & Menu from Firestore
@@ -1047,39 +1057,31 @@
     }
 
     function selectCategory(catId) {
-      showingOffersOnly = false;
-      const btn = document.getElementById('btnOffers');
-      if (btn) {
-        btn.style.background = '';
-        btn.style.borderColor = '';
-        btn.style.color = '';
+      if (currentMainTab !== 'MENU') {
+        switchMainTab('MENU', false);
       }
       activeCategory = catId;
       renderCategories();
       filterMenuItems();
     }
 
-    // Toggle Offers View
-    function toggleOffers() {
-      showingOffersOnly = !showingOffersOnly;
-      const btn = document.getElementById('btnOffers');
-      
-      if (showingOffersOnly) {
-        if (btn) {
-          btn.style.background = 'rgba(245, 158, 11, 0.22)';
-          btn.style.borderColor = '#F59E0B';
-          btn.style.color = '#F59E0B';
-        }
-        // Deselect active category highlight
-        document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-        showToast('🔥 عرض الخصومات والعروض الترويجية');
-      } else {
-        if (btn) {
-          btn.style.background = '';
-          btn.style.borderColor = '';
-          btn.style.color = '';
-        }
-        renderCategories();
+    // Switch between Main Tabs: 'MENU' (قائمة الطلب) or 'OFFERS' (العروض)
+    function switchMainTab(tab, triggerToast = true) {
+      currentMainTab = tab;
+      const tabMenuBtn = document.getElementById('tabMenuBtn');
+      const tabOffersBtn = document.getElementById('tabOffersBtn');
+      const catTabs = document.getElementById('categoryTabs');
+
+      if (tab === 'MENU') {
+        if (tabMenuBtn) tabMenuBtn.classList.add('active');
+        if (tabOffersBtn) tabOffersBtn.classList.remove('active');
+        if (catTabs) catTabs.style.display = 'flex';
+        if (triggerToast) showToast('📋 قائمة الطلب (المنيو الكامل)');
+      } else if (tab === 'OFFERS') {
+        if (tabOffersBtn) tabOffersBtn.classList.add('active');
+        if (tabMenuBtn) tabMenuBtn.classList.remove('active');
+        if (catTabs) catTabs.style.display = 'none'; // Offers are displayed directly
+        if (triggerToast) showToast('🔥 العروض الخاصة والتخفيضات');
       }
       filterMenuItems();
     }
@@ -1090,13 +1092,12 @@
       const list = document.getElementById('itemsList');
 
       let filtered = allMenuItems.filter(item => {
-        if (showingOffersOnly) {
+        if (currentMainTab === 'OFFERS') {
+          // Check if item is configured as an offer from settings
           const isOffer = item.isOffer === true || 
+            item.isOffer === "true" || 
             (item.offerDiscountPercent && Number(item.offerDiscountPercent) > 0) || 
-            item.offerTag || 
-            (item.badge && item.badge.length > 0) ||
-            (item.categoryId && item.categoryId.toLowerCase().includes('offer')) ||
-            (item.nameAr && (item.nameAr.includes('عرض') || item.nameAr.includes('خصم') || item.nameAr.includes('تخفيض')));
+            (item.offerTag && item.offerTag.trim().length > 0);
           const matchQuery = !q || (item.nameAr && item.nameAr.toLowerCase().includes(q)) || (item.descriptionAr && item.descriptionAr.toLowerCase().includes(q));
           return isOffer && matchQuery;
         }
@@ -1107,13 +1108,17 @@
       });
 
       if (filtered.length === 0) {
-        if (showingOffersOnly) {
+        if (currentMainTab === 'OFFERS') {
           list.innerHTML = `
-            <div style="text-align:center; padding: 40px 10px; color: var(--text-dim);">
-              <i class="fa-solid fa-fire" style="font-size:36px; color:#F59E0B; margin-bottom:10px;"></i>
-              <p style="font-weight:700; color:#fff; font-size:15px;">لا توجد عروض ترويجية نشطة حالياً</p>
-              <p style="font-size:12px; margin-top:4px;">يمكنك استكشاف الأصناف اللذيذة المتاحة في الأقسام الأخرى!</p>
-              <button onclick="toggleOffers()" class="cat-btn" style="margin-top:14px; background:var(--accent); color:#000; font-weight:800;">عرض كل الأصناف</button>
+            <div style="text-align:center; padding: 40px 14px; background: #1C1714; border: 1.5px dashed #F59E0B; border-radius: 18px; margin: 10px 0;">
+              <i class="fa-solid fa-fire" style="font-size: 38px; color: #F59E0B; margin-bottom: 10px;"></i>
+              <h3 style="font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 6px;">لا توجد عروض مخصصة حالياً</h3>
+              <p style="font-size: 13px; color: var(--text-sub); line-height: 1.5; margin-bottom: 14px;">
+                لم يتم إدراج عروض ترويجية من إعدادات المنيو حالياً. تصفح قائمة الطلب لاختيار ما يعجبك!
+              </p>
+              <button onclick="switchMainTab('MENU')" class="cat-btn active" style="padding: 8px 18px; font-size: 13px;">
+                <i class="fa-solid fa-utensils"></i> الانتقال لقائمة الطلب
+              </button>
             </div>
           `;
         } else {
@@ -1134,16 +1139,21 @@
         const numPrice = Number(item.price) || 0;
         const priceFmt = numPrice.toLocaleString('ar-IQ') + ' ' + (item.currency || 'د.ع');
         const img = item.imageUrl || item.imageUri || item.customImageUri || item.bgImageUri || '';
-        const isOfferItem = item.isOffer === true || (item.offerDiscountPercent && Number(item.offerDiscountPercent) > 0) || item.offerTag;
+        const isOfferItem = item.isOffer === true || item.isOffer === "true" || (item.offerDiscountPercent && Number(item.offerDiscountPercent) > 0) || (item.offerTag && item.offerTag.trim().length > 0);
+        const tagText = item.offerTag || 'عرض خاص';
+        const disc = Number(item.offerDiscountPercent) || 0;
 
         html += `
-          <div class="item-card" style="${isOfferItem ? 'border-color: rgba(245,158,11,0.45);' : ''}">
+          <div class="item-card" style="${isOfferItem ? 'border-color: rgba(245,158,11,0.5);' : ''}">
             <div class="item-img-wrap" style="position:relative;">
-              ${isOfferItem ? `<span style="position:absolute; top:4px; right:4px; background:#F59E0B; color:#000; font-size:9px; font-weight:900; padding:2px 6px; border-radius:6px; z-index:2;">عرض 🔥</span>` : ''}
+              ${isOfferItem ? `<span style="position:absolute; top:4px; right:4px; background:#F59E0B; color:#000; font-size:9px; font-weight:900; padding:2px 6px; border-radius:6px; z-index:2;">${tagText} 🔥</span>` : ''}
               ${img ? `<img src="${img}" alt="${item.nameAr}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><i class="fa-solid fa-mug-hot item-img-placeholder" style="display:none;"></i>` : `<i class="fa-solid fa-mug-hot item-img-placeholder"></i>`}
             </div>
             <div class="item-info">
-              <div class="item-title">${item.nameAr}</div>
+              <div class="item-title">
+                ${item.nameAr}
+                ${disc > 0 ? `<span style="font-size:10px; background:rgba(239,68,68,0.2); color:#F87171; border:1px solid rgba(239,68,68,0.4); padding:1px 5px; border-radius:4px; margin-right:6px; font-weight:800;">خصم ${disc}%</span>` : ''}
+              </div>
               <div class="item-desc">${item.descriptionAr || ''}</div>
               <div class="item-bottom">
                 <div class="item-price">${priceFmt}</div>
