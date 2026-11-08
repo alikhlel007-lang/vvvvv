@@ -310,23 +310,7 @@ fun LoginScreen(viewModel: MainViewModel) {
                 }
             }
 
-            Spacer(modifier = Modifier.height(18.dp))
 
-            // Quick bypass to customer view or direct dashboard
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { viewModel.navigateTo(AppScreen.CUSTOMER_MENU) }
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = "عرض وتجربة منيو الزبائن كطاولة ->",
-                    fontSize = 13.sp,
-                    color = CafeCyanPrimary,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
 
         }
     }

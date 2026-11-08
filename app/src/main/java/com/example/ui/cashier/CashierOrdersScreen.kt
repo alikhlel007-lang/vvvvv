@@ -742,7 +742,6 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                     OrderStatus.NEW,
                     OrderStatus.PREPARING,
                     OrderStatus.DELIVERED,
-                    OrderStatus.PAID,
                     OrderStatus.REJECTED
                 )
                 items(cashierStatuses) { status ->

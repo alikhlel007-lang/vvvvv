@@ -837,32 +837,98 @@
     </div>
   </div>
 
-  <!-- Domino / T-Chart Score Modal -->
-  <div class="modal-overlay" id="gameModal" style="align-items:center;">
-    <div class="center-dialog" style="max-width:380px;">
-      <div class="sheet-header" style="margin-bottom:12px;">
-        <div class="sheet-title">🎲 تسجيل نقاط الدومينو</div>
+  <!-- Card Game Score Sheet Modal -->
+  <div class="modal-overlay" id="gameModal" style="align-items:flex-end;">
+    <div class="sheet-card" style="max-height:90vh; display:flex; flex-direction:column; max-width:480px;">
+      <div class="sheet-header" style="margin-bottom:8px;">
+        <div class="sheet-title">
+          <i class="fa-solid fa-clone" style="color:var(--accent);"></i>
+          <span>تسجيل نقاط لعبة الورق</span>
+        </div>
         <button class="btn-close-sheet" onclick="closeGameModal()">&times;</button>
       </div>
-      <div style="display:flex; justify-content:space-around; gap:12px; margin-bottom:16px;">
-        <div style="background:#251D18; padding:12px; border-radius:14px; flex:1;">
-          <div style="font-size:14px; color:var(--accent); font-weight:800;">فريقنا</div>
-          <div id="scoreTeam1" style="font-size:28px; font-weight:900; margin:6px 0;">0</div>
-          <div style="display:flex; gap:4px; justify-content:center;">
-            <button class="btn-step btn-step-plus" style="width:28px; height:28px; font-size:14px;" onclick="addScore(1, 25)">+25</button>
-            <button class="btn-step btn-step-plus" style="width:28px; height:28px; font-size:14px;" onclick="addScore(1, 50)">+50</button>
+
+      <div class="sheet-body" style="overflow-y:auto; flex:1; padding-bottom:14px;">
+        
+        <!-- Editable Names & Big Total Scores -->
+        <div style="display:flex; gap:10px; margin-bottom:12px;">
+          <!-- Team 1 -->
+          <div style="flex:1; background:#1C1714; border:1.5px solid var(--accent); border-radius:14px; padding:10px; text-align:center;">
+            <input type="text" id="gameTeam1Name" value="فريق 1" oninput="updateScoresView()" 
+              style="width:100%; background:transparent; border:none; border-bottom:1px solid #3A2F28; color:var(--accent); font-weight:800; font-size:14px; text-align:center; padding:3px; outline:none;" placeholder="اسم الفريق 1">
+            <div id="scoreTeam1" style="font-size:32px; font-weight:900; color:#FFFFFF; margin:6px 0;">0</div>
+            <div style="font-size:11px; color:var(--text-dim);">المجموع الكلي</div>
+          </div>
+
+          <!-- Team 2 -->
+          <div style="flex:1; background:#1C1714; border:1.5px solid #3B82F6; border-radius:14px; padding:10px; text-align:center;">
+            <input type="text" id="gameTeam2Name" value="فريق 2" oninput="updateScoresView()"
+              style="width:100%; background:transparent; border:none; border-bottom:1px solid #23354E; color:#60A5FA; font-weight:800; font-size:14px; text-align:center; padding:3px; outline:none;" placeholder="اسم الفريق 2">
+            <div id="scoreTeam2" style="font-size:32px; font-weight:900; color:#FFFFFF; margin:6px 0;">0</div>
+            <div style="font-size:11px; color:var(--text-dim);">المجموع الكلي</div>
           </div>
         </div>
-        <div style="background:#251D18; padding:12px; border-radius:14px; flex:1;">
-          <div style="font-size:14px; color:#60A5FA; font-weight:800;">فريقهم</div>
-          <div id="scoreTeam2" style="font-size:28px; font-weight:900; margin:6px 0;">0</div>
-          <div style="display:flex; gap:4px; justify-content:center;">
-            <button class="btn-step btn-step-plus" style="width:28px; height:28px; font-size:14px; background:#3B82F6; color:#fff;" onclick="addScore(2, 25)">+25</button>
-            <button class="btn-step btn-step-plus" style="width:28px; height:28px; font-size:14px; background:#3B82F6; color:#fff;" onclick="addScore(2, 50)">+50</button>
+
+        <!-- Automatic Points Difference Banner -->
+        <div id="scoreDiffBanner" style="background:#251D18; border:1px solid var(--bg-card-border); border-radius:12px; padding:8px 12px; text-align:center; font-size:13px; font-weight:800; margin-bottom:14px; color:#F59E0B;">
+          ⚖️ تعادل في النقاط (0)
+        </div>
+
+        <!-- Add Round Section -->
+        <div style="background:#181310; border:1px solid var(--bg-card-border); border-radius:14px; padding:12px; margin-bottom:14px;">
+          <div style="font-size:12px; font-weight:800; color:var(--text-sub); margin-bottom:8px; display:flex; justify-content:space-between;">
+            <span>نقاط الجولة الحالية:</span>
+            <span style="font-size:11px; color:var(--text-dim);">اكتب النقاط أو اختر زيادة سريعة</span>
+          </div>
+
+          <div style="display:flex; gap:10px; margin-bottom:8px;">
+            <div style="flex:1;">
+              <input type="number" id="roundPts1" placeholder="0" class="sheet-input" style="text-align:center; font-size:16px; font-weight:800; padding:8px;" onkeypress="if(event.key==='Enter') addCurrentRound()">
+              <div style="display:flex; gap:4px; margin-top:4px; justify-content:center;">
+                <button type="button" class="btn-step btn-step-plus" style="width:auto; padding:2px 6px; font-size:11px; border-radius:6px;" onclick="addQuickRoundPts(1, 10)">+10</button>
+                <button type="button" class="btn-step btn-step-plus" style="width:auto; padding:2px 6px; font-size:11px; border-radius:6px;" onclick="addQuickRoundPts(1, 25)">+25</button>
+                <button type="button" class="btn-step btn-step-plus" style="width:auto; padding:2px 6px; font-size:11px; border-radius:6px;" onclick="addQuickRoundPts(1, 50)">+50</button>
+                <button type="button" class="btn-step btn-step-plus" style="width:auto; padding:2px 6px; font-size:11px; border-radius:6px;" onclick="addQuickRoundPts(1, 100)">+100</button>
+              </div>
+            </div>
+
+            <div style="flex:1;">
+              <input type="number" id="roundPts2" placeholder="0" class="sheet-input" style="text-align:center; font-size:16px; font-weight:800; padding:8px;" onkeypress="if(event.key==='Enter') addCurrentRound()">
+              <div style="display:flex; gap:4px; margin-top:4px; justify-content:center;">
+                <button type="button" class="btn-step btn-step-plus" style="width:auto; padding:2px 6px; font-size:11px; border-radius:6px; background:#2563EB; color:#fff;" onclick="addQuickRoundPts(2, 10)">+10</button>
+                <button type="button" class="btn-step btn-step-plus" style="width:auto; padding:2px 6px; font-size:11px; border-radius:6px; background:#2563EB; color:#fff;" onclick="addQuickRoundPts(2, 25)">+25</button>
+                <button type="button" class="btn-step btn-step-plus" style="width:auto; padding:2px 6px; font-size:11px; border-radius:6px; background:#2563EB; color:#fff;" onclick="addQuickRoundPts(2, 50)">+50</button>
+                <button type="button" class="btn-step btn-step-plus" style="width:auto; padding:2px 6px; font-size:11px; border-radius:6px; background:#2563EB; color:#fff;" onclick="addQuickRoundPts(2, 100)">+100</button>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn-submit-order" style="padding:10px; font-size:13px; margin-top:6px;" onclick="addCurrentRound()">
+            <i class="fa-solid fa-plus"></i>
+            <span>تسجيل الجولة وحساب الفرق</span>
+          </button>
+        </div>
+
+        <!-- Rounds Log Table -->
+        <div style="background:#1C1714; border:1px solid var(--bg-card-border); border-radius:14px; padding:10px; margin-bottom:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid #2B221C; padding-bottom:6px;">
+            <span style="font-size:12px; font-weight:800; color:var(--text-sub);">سجل الجولات السابقة:</span>
+            <button onclick="undoLastRound()" style="background:transparent; border:none; color:#EF4444; font-size:11px; font-weight:700; cursor:pointer;">
+              <i class="fa-solid fa-rotate-left"></i> تراجع عن جولة
+            </button>
+          </div>
+          <div id="roundsHistoryList" style="max-height:160px; overflow-y:auto; font-size:12px;">
+            <div style="text-align:center; color:var(--text-dim); padding:16px 0;">لا توجد جولات مسجلة بعد</div>
           </div>
         </div>
+
+        <!-- Reset Button -->
+        <button class="btn-service" style="width:100%; border-color:#EF4444; color:#EF4444;" onclick="resetScores()">
+          <i class="fa-solid fa-trash-can" style="color:#EF4444;"></i>
+          <span>تصفير النشرة وبدء لعبة جديدة</span>
+        </button>
+
       </div>
-      <button class="btn-service" style="width:100%;" onclick="resetScores()">تصفير النقاط</button>
     </div>
   </div>
 
@@ -1619,29 +1685,132 @@
       }, 300);
     }
 
-    // 12. Domino / T-Chart Simple Tracker
-    let score1 = 0;
-    let score2 = 0;
+    // 12. Card Games Score Sheet Tracker
+    let gameRounds = []; // Array of { p1: number, p2: number, t1: number, t2: number }
 
     function openGameModal() {
       document.getElementById('gameModal').style.display = 'flex';
+      updateScoresView();
     }
+
     function closeGameModal() {
       document.getElementById('gameModal').style.display = 'none';
     }
-    function addScore(team, val) {
-      if (team === 1) score1 += val;
-      else score2 += val;
-      updateScores();
+
+    function addQuickRoundPts(team, val) {
+      const input = document.getElementById(team === 1 ? 'roundPts1' : 'roundPts2');
+      if (input) {
+        const cur = parseInt(input.value, 10) || 0;
+        input.value = cur + val;
+      }
     }
+
+    function addCurrentRound() {
+      const p1Input = document.getElementById('roundPts1');
+      const p2Input = document.getElementById('roundPts2');
+      const p1 = parseInt(p1Input.value, 10) || 0;
+      const p2 = parseInt(p2Input.value, 10) || 0;
+
+      if (p1 === 0 && p2 === 0) {
+        showToast('⚠️ يرجى إدخال نقاط لأحد الفريقين');
+        return;
+      }
+
+      const prevT1 = gameRounds.length > 0 ? gameRounds[gameRounds.length - 1].t1 : 0;
+      const prevT2 = gameRounds.length > 0 ? gameRounds[gameRounds.length - 1].t2 : 0;
+
+      gameRounds.push({
+        p1: p1,
+        p2: p2,
+        t1: prevT1 + p1,
+        t2: prevT2 + p2
+      });
+
+      p1Input.value = '';
+      p2Input.value = '';
+      updateScoresView();
+      showToast('✅ تم تسجيل الجولة وحساب الفرق');
+    }
+
+    function undoLastRound() {
+      if (gameRounds.length === 0) {
+        showToast('لا توجد جولات للتراجع عنها');
+        return;
+      }
+      gameRounds.pop();
+      updateScoresView();
+      showToast('↩️ تم التراجع عن آخر جولة');
+    }
+
     function resetScores() {
-      score1 = 0;
-      score2 = 0;
-      updateScores();
+      if (gameRounds.length > 0 && !confirm('هل أنت متأكد من تصفير كافة نقاط اللعبة وبدء نشرة جديدة؟')) {
+        return;
+      }
+      gameRounds = [];
+      const p1Input = document.getElementById('roundPts1');
+      const p2Input = document.getElementById('roundPts2');
+      if (p1Input) p1Input.value = '';
+      if (p2Input) p2Input.value = '';
+      updateScoresView();
+      showToast('🔄 تم تصفير النشرة وبدء لعبة جديدة');
     }
-    function updateScores() {
-      document.getElementById('scoreTeam1').innerText = score1;
-      document.getElementById('scoreTeam2').innerText = score2;
+
+    function updateScoresView() {
+      const t1 = gameRounds.length > 0 ? gameRounds[gameRounds.length - 1].t1 : 0;
+      const t2 = gameRounds.length > 0 ? gameRounds[gameRounds.length - 1].t2 : 0;
+
+      const score1El = document.getElementById('scoreTeam1');
+      const score2El = document.getElementById('scoreTeam2');
+      if (score1El) score1El.innerText = t1;
+      if (score2El) score2El.innerText = t2;
+
+      const name1 = (document.getElementById('gameTeam1Name')?.value || 'فريق 1').trim();
+      const name2 = (document.getElementById('gameTeam2Name')?.value || 'فريق 2').trim();
+
+      // Calculate Difference Automatically (حساب فرق النقاط تلقائياً)
+      const diff = Math.abs(t1 - t2);
+      const banner = document.getElementById('scoreDiffBanner');
+      if (banner) {
+        if (t1 > t2) {
+          banner.style.background = 'rgba(247, 160, 56, 0.15)';
+          banner.style.borderColor = 'var(--accent)';
+          banner.style.color = 'var(--accent)';
+          banner.innerHTML = `🔥 فارق النقاط: <strong>+${diff}</strong> لصالح <strong>${name1}</strong>`;
+        } else if (t2 > t1) {
+          banner.style.background = 'rgba(59, 130, 246, 0.15)';
+          banner.style.borderColor = '#3B82F6';
+          banner.style.color = '#60A5FA';
+          banner.innerHTML = `🔥 فارق النقاط: <strong>+${diff}</strong> لصالح <strong>${name2}</strong>`;
+        } else {
+          banner.style.background = '#251D18';
+          banner.style.borderColor = 'var(--bg-card-border)';
+          banner.style.color = '#A89B91';
+          banner.innerHTML = `⚖️ تعادل في النقاط (${t1} - ${t2})`;
+        }
+      }
+
+      // Render Rounds History
+      const hist = document.getElementById('roundsHistoryList');
+      if (hist) {
+        if (gameRounds.length === 0) {
+          hist.innerHTML = '<div style="text-align:center; color:var(--text-dim); padding:14px 0;">لا توجد جولات مسجلة بعد. أدخل النقاط واضغط تسجيل الجولة.</div>';
+        } else {
+          let html = '';
+          gameRounds.forEach((r, idx) => {
+            const roundDiff = r.t1 - r.t2;
+            const diffText = roundDiff > 0 ? `+${roundDiff} ${name1}` : (roundDiff < 0 ? `+${Math.abs(roundDiff)} ${name2}` : 'تعادل');
+            html += `
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 4px; border-bottom:1px dashed #241D17;">
+                <span style="font-weight:800; color:var(--text-dim);">جولة ${idx + 1}</span>
+                <span style="color:var(--accent); font-weight:700;">+${r.p1} (${r.t1})</span>
+                <span style="color:#60A5FA; font-weight:700;">+${r.p2} (${r.t2})</span>
+                <span style="font-size:10px; color:#F59E0B; background:rgba(245,158,11,0.1); padding:2px 6px; border-radius:6px;">${diffText}</span>
+              </div>
+            `;
+          });
+          hist.innerHTML = html;
+        }
+      }
     }
 
     // 13. Toast Notification Helper

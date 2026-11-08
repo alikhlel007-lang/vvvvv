@@ -141,67 +141,39 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f)
+                    // Back to Cashier button labeled "الكاشير"
+                    Surface(
+                        onClick = { viewModel.navigateTo(AppScreen.CASHIER_ORDERS) },
+                        shape = RoundedCornerShape(12.dp),
+                        color = CafeCyanPrimary,
+                        modifier = Modifier.padding(start = 4.dp)
                     ) {
-                        IconButton(onClick = { viewModel.navigateTo(AppScreen.CASHIER_ORDERS) }) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+                        ) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "العودة للكاشير",
-                                tint = CafeCyanPrimary
+                                contentDescription = null,
+                                tint = Color(0xFF032125),
+                                modifier = Modifier.size(16.dp)
                             )
-                        }
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    Icons.Default.Language,
-                                    contentDescription = null,
-                                    tint = CafeGold,
-                                    modifier = Modifier.size(15.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "صفحة المنيو للزبائن (الويب)",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                            }
+                            Spacer(modifier = Modifier.width(5.dp))
                             Text(
-                                text = "طاولة رقم: $selectedTableNumber • يمكنك الطلب لأي طاولة كزبون",
-                                fontSize = 11.sp,
-                                color = CafeCyanPrimary
+                                text = "الكاشير",
+                                color = Color(0xFF032125),
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 13.sp
                             )
                         }
                     }
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Refresh button
-                        IconButton(onClick = {
-                            isLoadingPage = true
-                            webViewInstance?.reload()
-                        }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "تحديث", tint = Color.White)
-                        }
-
-                        // Open in external browser (e.g. Chrome)
-                        IconButton(onClick = {
-                            val target = getTargetUrl(selectedTableNumber)
-                            try {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(target))
-                                context.startActivity(intent)
-                            } catch (_: Exception) {
-                                Toast.makeText(context, "تعذر فتح المتصفح الخارجي", Toast.LENGTH_SHORT).show()
-                            }
-                        }) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.OpenInNew,
-                                contentDescription = "فتح في المتصفح الخارجي",
-                                tint = CafeTextSecondary
-                            )
-                        }
+                    // Refresh button
+                    IconButton(onClick = {
+                        isLoadingPage = true
+                        webViewInstance?.reload()
+                    }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "تحديث المنيو", tint = CafeGold)
                     }
                 }
 
