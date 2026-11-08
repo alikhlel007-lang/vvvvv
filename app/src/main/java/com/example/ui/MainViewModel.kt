@@ -97,6 +97,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     repository.currentCafeteriaId = uid
                     repository.updateExistingTablesCafeteriaId()
                     repository.startFirestoreOrdersListener(viewModelScope, uid)
+                    repository.startCafeteriaStatusListener(uid)
                     repository.loadMenuForCafeteria(uid)
 
                     // 2. Refresh profile from Firestore in background
@@ -136,6 +137,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Current Logged In User
     private val _currentUser = MutableStateFlow<UserAccount?>(null)
     val currentUser: StateFlow<UserAccount?> = _currentUser.asStateFlow()
+
+    // Real-time Cafeteria Suspension State (Live lock)
+    val isCafeSuspended: StateFlow<Boolean> = repository.isCafeSuspended.asStateFlow()
+    val suspensionReason: StateFlow<String> = repository.cafeSuspensionReason.asStateFlow()
 
     // Real-time Data Streams from DB
     val categories: StateFlow<List<MenuCategory>> = repository.categories.stateIn(
@@ -655,6 +660,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
                         repository.updateExistingTablesCafeteriaId()
                         repository.startFirestoreOrdersListener(viewModelScope, user.id)
+                        repository.startCafeteriaStatusListener(user.id)
                         repository.loadMenuForCafeteria(user.id)
 
                         viewModelScope.launch(Dispatchers.IO) {
@@ -794,6 +800,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun logout() {
         repository.logout()
+        repository.stopCafeteriaStatusListener()
         viewModelScope.launch(Dispatchers.IO) {
             repository.clearLocalMenuAndOrders()
         }

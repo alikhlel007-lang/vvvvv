@@ -66,6 +66,38 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
     var currentCafeteriaId: String = "u_default"
 
     private var ordersListenerRegistration: com.google.firebase.firestore.ListenerRegistration? = null
+    private var cafeStatusListenerRegistration: com.google.firebase.firestore.ListenerRegistration? = null
+    val isCafeSuspended = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val cafeSuspensionReason = kotlinx.coroutines.flow.MutableStateFlow("")
+
+    fun startCafeteriaStatusListener(cafeId: String) {
+        cafeStatusListenerRegistration?.remove()
+        cafeStatusListenerRegistration = null
+
+        val targetId = cafeId.ifBlank { currentCafeteriaId }
+        if (targetId.isBlank() || targetId == "u_default") return
+
+        try {
+            cafeStatusListenerRegistration = firestore?.collection("cafeterias")?.document(targetId)
+                ?.addSnapshotListener { snapshot, error ->
+                    if (error != null || snapshot == null) return@addSnapshotListener
+                    if (snapshot.exists()) {
+                        val active = snapshot.getBoolean("isActive") ?: true
+                        val reason = snapshot.getString("suspensionReason")
+                            ?: "تم إيقاف عمل الكافتيريا من قِبل إدارة النظام لمراجعة الحسابات"
+                        isCafeSuspended.value = !active
+                        cafeSuspensionReason.value = reason
+                    }
+                }
+        } catch (_: Exception) {}
+    }
+
+    fun stopCafeteriaStatusListener() {
+        cafeStatusListenerRegistration?.remove()
+        cafeStatusListenerRegistration = null
+        isCafeSuspended.value = false
+        cafeSuspensionReason.value = ""
+    }
 
     fun buildTableQrUrl(baseUrl: String, tableNumber: Int, secToken: String): String {
         val clean = baseUrl.trim()

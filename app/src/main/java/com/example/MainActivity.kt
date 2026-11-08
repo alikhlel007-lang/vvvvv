@@ -57,6 +57,16 @@ class MainActivity : ComponentActivity() {
                         color = CafeDarkBg
                     ) {
                         CafeAppNavHost(viewModel = viewModel)
+
+                        val currentUser by viewModel.currentUser.collectAsState()
+                        val isSuspended by viewModel.isCafeSuspended.collectAsState()
+                        val suspensionReason by viewModel.suspensionReason.collectAsState()
+                        if (isSuspended && currentUser != null) {
+                            com.example.ui.components.CafeteriaSuspendedDialog(
+                                reason = suspensionReason,
+                                onLogout = { viewModel.logout() }
+                            )
+                        }
                     }
                 }
             }
