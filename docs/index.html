@@ -643,6 +643,49 @@
       box-shadow: 0 6px 20px rgba(0,0,0,0.6);
       white-space: nowrap;
     }
+
+    /* Orders History Styles */
+    .order-history-card {
+      background: #1C1714;
+      border: 1px solid var(--bg-card-border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .order-history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px dashed #2E2621;
+    }
+    .order-history-id {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--accent);
+    }
+    .order-history-time {
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+    .order-history-items {
+      font-size: 12px;
+      color: var(--text-main);
+      line-height: 1.6;
+      margin-bottom: 8px;
+    }
+    .order-history-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 800;
+      color: #FFFFFF;
+      padding-top: 6px;
+      border-top: 1px solid #28211C;
+    }
   </style>
 </head>
 <body>
@@ -675,15 +718,15 @@
   <!-- Main Content Container -->
   <div class="main-container">
     
-    <!-- Quick Service Call Actions -->
+    <!-- Quick Action Bar -->
     <div class="service-bar">
-      <button class="btn-service" onclick="callService('WAITER')">
-        <i class="fa-solid fa-bell"></i>
-        <span>نداء النادل</span>
+      <button class="btn-service" id="btnOffers" onclick="toggleOffers()">
+        <i class="fa-solid fa-fire" style="color:#F59E0B;"></i>
+        <span>العروض</span>
       </button>
-      <button class="btn-service" onclick="callService('BILL')">
-        <i class="fa-solid fa-receipt"></i>
-        <span>طلب الحساب</span>
+      <button class="btn-service" onclick="openOrdersListModal()">
+        <i class="fa-solid fa-clock-rotate-left" style="color:var(--accent);"></i>
+        <span>قائمة الطلبات</span>
       </button>
       <button class="btn-service" onclick="openGameModal()">
         <i class="fa-solid fa-table-list"></i>
@@ -813,6 +856,28 @@
     </div>
   </div>
 
+  <!-- Orders List Modal -->
+  <div class="modal-overlay" id="ordersListModal" style="align-items:flex-end;">
+    <div class="sheet-card" style="max-height:85vh; display:flex; flex-direction:column;">
+      <div class="sheet-header">
+        <div class="sheet-title">
+          <i class="fa-solid fa-clock-rotate-left" style="color:var(--accent);"></i>
+          <span>طلبات طاولة <span id="ordersModalTableNum">1</span></span>
+        </div>
+        <button class="btn-close-sheet" onclick="closeOrdersListModal()">&times;</button>
+      </div>
+
+      <div class="sheet-body" style="overflow-y:auto; flex:1; padding-bottom:16px;">
+        <div id="ordersListContainer">
+          <div style="text-align:center; padding:30px 10px; color:var(--text-dim);">
+            <i class="fa-solid fa-spinner fa-spin" style="font-size:24px; color:var(--accent);"></i>
+            <p style="margin-top:8px;">جاري تحميل طلبات الطاولة...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- JAVASCRIPT LOGIC -->
   <script>
     // 1. Firebase Initialization
@@ -874,6 +939,7 @@
     let allMenuItems = [];
     let categories = [];
     let activeCategory = 'ALL';
+    let showingOffersOnly = false;
     let cart = []; // Array of { item, qty }
 
     // 3. Load Cafeteria Profile & Menu from Firestore
@@ -981,8 +1047,40 @@
     }
 
     function selectCategory(catId) {
+      showingOffersOnly = false;
+      const btn = document.getElementById('btnOffers');
+      if (btn) {
+        btn.style.background = '';
+        btn.style.borderColor = '';
+        btn.style.color = '';
+      }
       activeCategory = catId;
       renderCategories();
+      filterMenuItems();
+    }
+
+    // Toggle Offers View
+    function toggleOffers() {
+      showingOffersOnly = !showingOffersOnly;
+      const btn = document.getElementById('btnOffers');
+      
+      if (showingOffersOnly) {
+        if (btn) {
+          btn.style.background = 'rgba(245, 158, 11, 0.22)';
+          btn.style.borderColor = '#F59E0B';
+          btn.style.color = '#F59E0B';
+        }
+        // Deselect active category highlight
+        document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+        showToast('🔥 عرض الخصومات والعروض الترويجية');
+      } else {
+        if (btn) {
+          btn.style.background = '';
+          btn.style.borderColor = '';
+          btn.style.color = '';
+        }
+        renderCategories();
+      }
       filterMenuItems();
     }
 
@@ -992,18 +1090,40 @@
       const list = document.getElementById('itemsList');
 
       let filtered = allMenuItems.filter(item => {
+        if (showingOffersOnly) {
+          const isOffer = item.isOffer === true || 
+            (item.offerDiscountPercent && Number(item.offerDiscountPercent) > 0) || 
+            item.offerTag || 
+            (item.badge && item.badge.length > 0) ||
+            (item.categoryId && item.categoryId.toLowerCase().includes('offer')) ||
+            (item.nameAr && (item.nameAr.includes('عرض') || item.nameAr.includes('خصم') || item.nameAr.includes('تخفيض')));
+          const matchQuery = !q || (item.nameAr && item.nameAr.toLowerCase().includes(q)) || (item.descriptionAr && item.descriptionAr.toLowerCase().includes(q));
+          return isOffer && matchQuery;
+        }
+
         const matchCat = (activeCategory === 'ALL' || item.categoryId === activeCategory);
         const matchQuery = !q || (item.nameAr && item.nameAr.toLowerCase().includes(q)) || (item.descriptionAr && item.descriptionAr.toLowerCase().includes(q));
         return matchCat && matchQuery;
       });
 
       if (filtered.length === 0) {
-        list.innerHTML = `
-          <div style="text-align:center; padding: 40px 10px; color: var(--text-dim);">
-            <i class="fa-solid fa-mug-hot" style="font-size:32px; color:var(--bg-card-border); margin-bottom:8px;"></i>
-            <p style="font-weight:700;">لا توجد أصناف متوفرة في هذا القسم حالياً</p>
-          </div>
-        `;
+        if (showingOffersOnly) {
+          list.innerHTML = `
+            <div style="text-align:center; padding: 40px 10px; color: var(--text-dim);">
+              <i class="fa-solid fa-fire" style="font-size:36px; color:#F59E0B; margin-bottom:10px;"></i>
+              <p style="font-weight:700; color:#fff; font-size:15px;">لا توجد عروض ترويجية نشطة حالياً</p>
+              <p style="font-size:12px; margin-top:4px;">يمكنك استكشاف الأصناف اللذيذة المتاحة في الأقسام الأخرى!</p>
+              <button onclick="toggleOffers()" class="cat-btn" style="margin-top:14px; background:var(--accent); color:#000; font-weight:800;">عرض كل الأصناف</button>
+            </div>
+          `;
+        } else {
+          list.innerHTML = `
+            <div style="text-align:center; padding: 40px 10px; color: var(--text-dim);">
+              <i class="fa-solid fa-mug-hot" style="font-size:32px; color:var(--bg-card-border); margin-bottom:8px;"></i>
+              <p style="font-weight:700;">لا توجد أصناف متوفرة في هذا القسم حالياً</p>
+            </div>
+          `;
+        }
         return;
       }
 
@@ -1014,10 +1134,12 @@
         const numPrice = Number(item.price) || 0;
         const priceFmt = numPrice.toLocaleString('ar-IQ') + ' ' + (item.currency || 'د.ع');
         const img = item.imageUrl || item.imageUri || item.customImageUri || item.bgImageUri || '';
+        const isOfferItem = item.isOffer === true || (item.offerDiscountPercent && Number(item.offerDiscountPercent) > 0) || item.offerTag;
 
         html += `
-          <div class="item-card">
-            <div class="item-img-wrap">
+          <div class="item-card" style="${isOfferItem ? 'border-color: rgba(245,158,11,0.45);' : ''}">
+            <div class="item-img-wrap" style="position:relative;">
+              ${isOfferItem ? `<span style="position:absolute; top:4px; right:4px; background:#F59E0B; color:#000; font-size:9px; font-weight:900; padding:2px 6px; border-radius:6px; z-index:2;">عرض 🔥</span>` : ''}
               ${img ? `<img src="${img}" alt="${item.nameAr}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><i class="fa-solid fa-mug-hot item-img-placeholder" style="display:none;"></i>` : `<i class="fa-solid fa-mug-hot item-img-placeholder"></i>`}
             </div>
             <div class="item-info">
@@ -1306,7 +1428,166 @@
       if (overlay) overlay.style.display = 'none';
     }
 
-    // 11. Quick Waiter / Bill Service Call
+    // 11. Orders List Modal Logic
+    let ordersListUnsub = null;
+
+    function openOrdersListModal() {
+      document.getElementById('ordersModalTableNum').innerText = tableNumber;
+      document.getElementById('ordersListModal').style.display = 'flex';
+      loadTableOrders();
+    }
+
+    function closeOrdersListModal() {
+      document.getElementById('ordersListModal').style.display = 'none';
+      if (ordersListUnsub) {
+        ordersListUnsub();
+        ordersListUnsub = null;
+      }
+    }
+
+    function getStatusBadgeHtml(status) {
+      switch (status) {
+        case 'PREPARING':
+          return '<span style="background:rgba(245,158,11,0.15); color:#F59E0B; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:800;">🍳 جاري التحضير</span>';
+        case 'READY':
+          return '<span style="background:rgba(16,185,129,0.15); color:#10B981; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:800;">🍽️ جاهز للتقديم</span>';
+        case 'DELIVERED':
+          return '<span style="background:rgba(16,185,129,0.15); color:#10B981; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:800;">✅ تم الاستلام</span>';
+        case 'PAID':
+          return '<span style="background:rgba(139,92,246,0.15); color:#A78BFA; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:800;">💵 تم التسديد</span>';
+        case 'CANCELLED':
+          return '<span style="background:rgba(239,68,68,0.15); color:#EF4444; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:800;">❌ ملغي</span>';
+        default:
+          return '<span style="background:rgba(59,130,246,0.15); color:#60A5FA; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:800;">🕒 قيد الانتظار</span>';
+      }
+    }
+
+    function formatTime(timestamp) {
+      if (!timestamp) return '';
+      try {
+        const d = new Date(timestamp);
+        return d.toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' });
+      } catch (_) {
+        return '';
+      }
+    }
+
+    function loadTableOrders() {
+      const container = document.getElementById('ordersListContainer');
+      if (!db || !cafeteriaId) {
+        container.innerHTML = `
+          <div style="text-align:center; padding:30px 10px; color:var(--text-dim);">
+            <i class="fa-solid fa-info-circle" style="font-size:28px; color:var(--accent); margin-bottom:8px;"></i>
+            <p>يرجى مسح باركود الطاولة المخصص لعرض الطلبات.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = `
+        <div style="text-align:center; padding:30px 10px; color:var(--text-dim);">
+          <i class="fa-solid fa-spinner fa-spin" style="font-size:24px; color:var(--accent);"></i>
+          <p style="margin-top:8px;">جاري تحميل طلبات الطاولة...</p>
+        </div>
+      `;
+
+      if (ordersListUnsub) ordersListUnsub();
+
+      const numTable = parseInt(tableNumber, 10);
+      ordersListUnsub = db.collection('cafeterias').doc(cafeteriaId).collection('orders')
+        .onSnapshot(snap => {
+          if (!snap || snap.empty) {
+            container.innerHTML = `
+              <div style="text-align:center; padding:40px 10px; color:var(--text-dim);">
+                <i class="fa-solid fa-receipt" style="font-size:36px; color:var(--bg-card-border); margin-bottom:10px;"></i>
+                <p style="font-weight:700; color:#fff; font-size:15px;">لا توجد طلبات مسجلة لهذه الطاولة بعد</p>
+                <p style="font-size:12px; margin-top:4px;">قم باختيار وجباتك ومشروباتك المفضلة وأرسل طلبك الآن!</p>
+              </div>
+            `;
+            return;
+          }
+
+          let orders = [];
+          snap.forEach(doc => {
+            const data = doc.data();
+            const orderTable = data.tableNumber;
+            if (orderTable == tableNumber || orderTable == numTable) {
+              orders.push({ id: doc.id, ...data });
+            }
+          });
+
+          // Sort descending by timestamp
+          orders.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+          if (orders.length === 0) {
+            container.innerHTML = `
+              <div style="text-align:center; padding:40px 10px; color:var(--text-dim);">
+                <i class="fa-solid fa-receipt" style="font-size:36px; color:var(--bg-card-border); margin-bottom:10px;"></i>
+                <p style="font-weight:700; color:#fff; font-size:15px;">لا توجد طلبات مسجلة لهذه الطاولة</p>
+                <p style="font-size:12px; margin-top:4px;">قم باختيار وجباتك ومشروباتك المفضلة وأرسل طلبك الآن!</p>
+              </div>
+            `;
+            return;
+          }
+
+          let html = '';
+          orders.forEach(order => {
+            const timeStr = formatTime(order.timestamp);
+            const statusBadge = getStatusBadgeHtml(order.status);
+            const totalFmt = (Number(order.totalPrice) || 0).toLocaleString('ar-IQ') + ' ' + (order.currency || 'د.ع');
+
+            let itemsSummary = '';
+            if (Array.isArray(order.items)) {
+              itemsSummary = order.items.map(it => {
+                const itName = it.nameAr || it.name || it.item?.nameAr || 'صنف';
+                const itQty = it.quantity || it.qty || 1;
+                const itPrice = Number(it.price || it.item?.price || 0) * itQty;
+                return `
+                  <div style="display:flex; justify-content:space-between; margin-bottom:3px;">
+                    <span>${itQty} × ${itName}</span>
+                    <span style="color:var(--text-dim);">${itPrice.toLocaleString('ar-IQ')} د.ع</span>
+                  </div>
+                `;
+              }).join('');
+            }
+
+            html += `
+              <div class="order-history-card">
+                <div class="order-history-header">
+                  <div>
+                    <span class="order-history-id">#${order.id.slice(-6)}</span>
+                    <span class="order-history-time" style="margin-right:8px;">${timeStr}</span>
+                  </div>
+                  <div>${statusBadge}</div>
+                </div>
+
+                <div class="order-history-items">
+                  ${itemsSummary || '<span style="color:var(--text-dim);">تفاصيل الطلب غير متوفرة</span>'}
+                </div>
+
+                ${order.notes ? `<div style="font-size:11px; color:#F59E0B; margin-bottom:6px; background:rgba(245,158,11,0.08); padding:4px 8px; border-radius:6px;">ملاحظة: ${order.notes}</div>` : ''}
+
+                <div class="order-history-footer">
+                  <span style="font-size:12px; color:var(--text-sub);">المجموع الإجمالي:</span>
+                  <span style="color:var(--accent); font-size:14px;">${totalFmt}</span>
+                </div>
+              </div>
+            `;
+          });
+
+          container.innerHTML = html;
+        }, err => {
+          console.error("Orders load error:", err);
+          container.innerHTML = `
+            <div style="text-align:center; padding:30px 10px; color:var(--danger);">
+              <i class="fa-solid fa-triangle-exclamation" style="font-size:28px; margin-bottom:8px;"></i>
+              <p>تعذر تحميل الطلبات في الوقت الحالي.</p>
+            </div>
+          `;
+        });
+    }
+
+    // 12. Quick Waiter / Bill Service Call
     function callService(type) {
       const typeLabel = type === 'WAITER' ? 'نداء النادل' : 'طلب الحساب';
       showToast(`⏳ جاري إرسال ${typeLabel}...`);
