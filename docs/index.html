@@ -2,7 +2,13 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="المنيو الذكي">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0F0D0C">
+  <link rel="manifest" href="manifest.json">
   <title>المنيو الإلكتروني الذكي | كافيه</title>
   
   <!-- Fonts & Icons -->
@@ -756,6 +762,11 @@
     </button>
   </div>
 
+  <!-- Floating Fullscreen Mode Button (إخفاء شريط المتصفح وملء الشاشة) -->
+  <button id="floatingFullscreenBtn" onclick="toggleFullScreen()" title="ملء الشاشة وإخفاء أشرطة المتصفح" style="position:fixed; bottom:24px; left:16px; z-index:900; background:#251D18; border:1.5px solid var(--accent); color:var(--accent); width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,0.6); cursor:pointer;">
+    <i class="fa-solid fa-expand" id="floatingFullscreenIcon" style="font-size:16px;"></i>
+  </button>
+
   <!-- Cart Modal / Bottom Sheet -->
   <div class="modal-overlay" id="cartModal">
     <div class="sheet-card">
@@ -1035,12 +1046,31 @@
 
           const isActive = data.isActive !== false;
           if (!isActive) {
-            showSuspendedOverlay(data.suspensionReason || 'عذراً، تم إيقاف استقبال الطلبات في هذه الكافتيريا مؤقتاً لمراجعة الحسابات.');
+            showSuspendedOverlay(data.suspensionReason || 'عذراً، تم ايقاف النضام في هذه الكافتيريا حالياً لمراجعة الحسابات.');
           } else {
             hideSuspendedOverlay();
           }
         }
       }, err => console.warn("Cafe profile load:", err));
+
+      // Real-time listener to check if the table QR barcode was renewed/regenerated
+      if (tableNumber) {
+        db.collection('cafeterias').doc(cafeteriaId).collection('tables').doc('table_' + tableNumber)
+          .onSnapshot(tblSnap => {
+            if (tblSnap && tblSnap.exists) {
+              const tblData = tblSnap.data();
+              const serverSec = (tblData.securityToken || '').trim();
+              if (serverSec) {
+                if (!secToken || secToken !== serverSec) {
+                  // Barcode was renewed! Invalidate old barcode immediately!
+                  showExpiredBarcodeOverlay();
+                  return;
+                }
+              }
+              hideExpiredBarcodeOverlay();
+            }
+          }, err => console.warn("Table QR validation:", err));
+      }
 
       // Load Categories
       db.collection('cafeterias').doc(cafeteriaId).collection('categories').get().then(snap => {
@@ -1464,27 +1494,67 @@
         overlay.style.alignItems = 'center';
         overlay.style.zIndex = '999999';
         overlay.innerHTML = `
-          <div class="center-dialog" style="border-color:#EF4444; max-width:400px; padding:28px 20px;">
-            <div class="success-icon-wrap" style="border-color:#EF4444; background:rgba(239,68,68,0.15); color:#EF4444; margin-bottom:12px;">
-              <i class="fa-solid fa-ban"></i>
+          <div class="center-dialog" style="border-color:#EF4444; max-width:400px; padding:28px 20px; text-align:center;">
+            <div class="success-icon-wrap" style="border-color:#EF4444; background:rgba(239,68,68,0.15); color:#EF4444; margin:0 auto 12px auto;">
+              <i class="fa-solid fa-ban" style="font-size:28px;"></i>
             </div>
-            <h2 style="font-size:18px; font-weight:900; color:#FFFFFF; margin-bottom:8px;">استقبال الطلبات متوقف</h2>
-            <p id="suspendedReasonText" style="font-size:13px; color:var(--text-sub); line-height:1.6; margin-bottom:14px;"></p>
-            <div style="font-size:11px; color:#A89B91; background:#1F1916; padding:10px; border-radius:12px; border:1px solid #382F2A;">
-              يرجى مراجعة إدارة الكافتيريا لإعادة تفعيل الخدمة واستئناف استقبال الطلبات.
+            <h2 style="font-size:20px; font-weight:900; color:#EF4444; margin-bottom:8px;">تم ايقاف النضام</h2>
+            <p id="suspendedReasonText" style="font-size:13px; color:var(--text-main); font-weight:700; line-height:1.6; margin-bottom:14px;"></p>
+            <div style="font-size:12px; color:#A89B91; background:#1F1916; padding:12px; border-radius:12px; border:1px solid #382F2A; line-height:1.6;">
+              تم ايقاف النضام في هذه الكافتيريا حالياً لمراجعة الحسابات. يرجى مراجعة إدارة الكافتيريا لإعادة التفعيل واستئناف الخدمة.
             </div>
           </div>
         `;
         document.body.appendChild(overlay);
       }
       const reasonEl = document.getElementById('suspendedReasonText');
-      if (reasonEl) reasonEl.innerText = reason;
+      if (reasonEl) reasonEl.innerText = reason || 'تم ايقاف النضام لمراجعة الحسابات';
       overlay.style.display = 'flex';
       closeCartModal();
+      const cartBar = document.getElementById('floatingCart');
+      if (cartBar) cartBar.style.display = 'none';
     }
 
     function hideSuspendedOverlay() {
       const overlay = document.getElementById('suspendedModal');
+      if (overlay) overlay.style.display = 'none';
+    }
+
+    // Expired / Regenerated Barcode Overlay Handlers
+    function showExpiredBarcodeOverlay() {
+      let overlay = document.getElementById('expiredBarcodeModal');
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'expiredBarcodeModal';
+        overlay.className = 'modal-overlay';
+        overlay.style.display = 'flex';
+        overlay.style.alignItems = 'center';
+        overlay.style.zIndex = '999998';
+        overlay.innerHTML = `
+          <div class="center-dialog" style="border-color:#F59E0B; max-width:400px; padding:28px 20px; text-align:center;">
+            <div class="success-icon-wrap" style="border-color:#F59E0B; background:rgba(245,158,11,0.15); color:#F59E0B; margin:0 auto 12px auto;">
+              <i class="fa-solid fa-qrcode" style="font-size:28px;"></i>
+            </div>
+            <h2 style="font-size:18px; font-weight:900; color:#FFFFFF; margin-bottom:8px;">تم تجديد باركود الطاولة</h2>
+            <p style="font-size:13px; color:var(--text-sub); line-height:1.6; margin-bottom:14px;">
+              عذراً، هذا الباركود قديم وغير صالح لأن إدارة الكافتيريا قامت بتجديد باركود الطاولة (طاولة رقم ${tableNumber}).
+            </p>
+            <div style="font-size:12px; color:#F59E0B; background:#241C12; padding:12px; border-radius:12px; border:1px solid #4D3B1C; margin-bottom:14px; line-height:1.6;">
+              <i class="fa-solid fa-circle-exclamation" style="margin-left:4px;"></i>
+              يرجى مسح الباركود الجديد المحدث الملصق على الطاولة لفتح المنيو وإرسال طلباتك.
+            </div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+      }
+      overlay.style.display = 'flex';
+      closeCartModal();
+      const cartBar = document.getElementById('floatingCart');
+      if (cartBar) cartBar.style.display = 'none';
+    }
+
+    function hideExpiredBarcodeOverlay() {
+      const overlay = document.getElementById('expiredBarcodeModal');
       if (overlay) overlay.style.display = 'none';
     }
 
@@ -1807,6 +1877,47 @@
       toastTimeout = setTimeout(() => {
         t.style.display = 'none';
       }, 1800);
+    }
+
+    // 14. Fullscreen & Mobile Browser Address Bar Auto-Collapse
+    function triggerMinimalChrome() {
+      try { window.scrollTo(0, 1); } catch (_) {}
+    }
+    window.addEventListener('load', () => {
+      setTimeout(triggerMinimalChrome, 120);
+      setTimeout(triggerMinimalChrome, 500);
+    });
+    window.addEventListener('orientationchange', () => {
+      setTimeout(triggerMinimalChrome, 150);
+    });
+    document.addEventListener('touchstart', function initScrollOnTouch() {
+      triggerMinimalChrome();
+    }, { once: true, passive: true });
+
+    function toggleFullScreen() {
+      const doc = window.document;
+      const docEl = doc.documentElement;
+      const req = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+      const exit = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+      const isFull = doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement;
+
+      if (!isFull) {
+        if (req) {
+          req.call(docEl).then(() => {
+            const ic = document.getElementById('floatingFullscreenIcon');
+            if (ic) ic.className = 'fa-solid fa-compress';
+          }).catch(() => triggerMinimalChrome());
+        } else {
+          triggerMinimalChrome();
+        }
+      } else {
+        if (exit) {
+          exit.call(doc).then(() => {
+            const ic = document.getElementById('floatingFullscreenIcon');
+            if (ic) ic.className = 'fa-solid fa-expand';
+          }).catch(() => {});
+        }
+      }
     }
 
     // Run On Load

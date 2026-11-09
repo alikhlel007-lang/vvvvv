@@ -13,6 +13,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -40,6 +41,8 @@ import androidx.compose.material.icons.filled.BakeryDining
 import androidx.compose.material.icons.filled.Cake
 import androidx.compose.material.icons.filled.Chair
 import androidx.compose.material.icons.filled.Fastfood
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.LocalCafe
 import androidx.compose.material.icons.filled.LocalDrink
@@ -102,6 +105,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
     var webViewInstance by remember { mutableStateOf<WebView?>(null) }
     var isLoadingPage by remember { mutableStateOf(true) }
     var pageTitle by remember { mutableStateOf("المنيو الذكي") }
+    var isFullscreenMode by remember { mutableStateOf(false) }
 
     // Helper to calculate target URL for the selected table
     fun getTargetUrl(tableNum: Int): String {
@@ -128,56 +132,66 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
             .background(Color(0xFF0A0908))
     ) {
         // --- 1. Top Control Bar for Cashier ---
-        Surface(
-            color = Color(0xFF14100E),
-            shadowElevation = 6.dp
-        ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                // Main Header Row
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Back to Cashier button labeled "الكاشير"
-                    Surface(
-                        onClick = { viewModel.navigateTo(AppScreen.CASHIER_ORDERS) },
-                        shape = RoundedCornerShape(12.dp),
-                        color = CafeCyanPrimary,
-                        modifier = Modifier.padding(start = 4.dp)
+        if (!isFullscreenMode) {
+            Surface(
+                color = Color(0xFF14100E),
+                shadowElevation = 6.dp
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    // Main Header Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+                        // Back to Cashier button labeled "الكاشير"
+                        Surface(
+                            onClick = { viewModel.navigateTo(AppScreen.CASHIER_ORDERS) },
+                            shape = RoundedCornerShape(12.dp),
+                            color = CafeCyanPrimary,
+                            modifier = Modifier.padding(start = 4.dp)
                         ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = null,
-                                tint = Color(0xFF032125),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(5.dp))
-                            Text(
-                                text = "الكاشير",
-                                color = Color(0xFF032125),
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 13.sp
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+                            ) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = null,
+                                    tint = Color(0xFF032125),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(5.dp))
+                                Text(
+                                    text = "الكاشير",
+                                    color = Color(0xFF032125),
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+
+                        // Right actions: Fullscreen toggle & Refresh
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { isFullscreenMode = true }) {
+                                Icon(
+                                    Icons.Default.Fullscreen,
+                                    contentDescription = "إخفاء الشريط / ملء الشاشة",
+                                    tint = CafeCyanPrimary
+                                )
+                            }
+                            IconButton(onClick = {
+                                isLoadingPage = true
+                                webViewInstance?.reload()
+                            }) {
+                                Icon(Icons.Default.Refresh, contentDescription = "تحديث المنيو", tint = CafeGold)
+                            }
                         }
                     }
 
-                    // Refresh button
-                    IconButton(onClick = {
-                        isLoadingPage = true
-                        webViewInstance?.reload()
-                    }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "تحديث المنيو", tint = CafeGold)
-                    }
-                }
-
-                // Table Selector Bar
+                    // Table Selector Bar
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -295,6 +309,7 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                 }
             }
         }
+    }
 
         // --- 2. In-App WebView displaying the real Web Menu ---
         Box(
@@ -365,6 +380,63 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                     webViewInstance = webView
                 }
             )
+
+            if (isFullscreenMode) {
+                // Floating Action Bar in fullscreen mode
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        onClick = { viewModel.navigateTo(AppScreen.CASHIER_ORDERS) },
+                        shape = RoundedCornerShape(12.dp),
+                        color = CafeCyanPrimary.copy(alpha = 0.95f),
+                        shadowElevation = 6.dp
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = null,
+                                tint = Color(0xFF032125),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "الكاشير",
+                                color = Color(0xFF032125),
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+
+                    Surface(
+                        onClick = { isFullscreenMode = false },
+                        shape = CircleShape,
+                        color = Color(0xDD1F1916),
+                        border = BorderStroke(1.dp, CafeCyanPrimary),
+                        shadowElevation = 6.dp
+                    ) {
+                        IconButton(
+                            onClick = { isFullscreenMode = false },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.FullscreenExit,
+                                contentDescription = "إظهار شريط التحكم",
+                                tint = CafeCyanPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 

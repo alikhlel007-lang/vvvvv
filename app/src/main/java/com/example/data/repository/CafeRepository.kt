@@ -104,18 +104,19 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
     }
 
     fun checkDebtAndBuildNotifications(cafeId: String, limit: Double, isSuspended: Boolean, suspendReason: String) {
-        if (firestore == null || cafeId.isBlank()) return
+        val fs = firestore ?: return
+        if (cafeId.isBlank()) return
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 // Calculate sales total from paid orders in local dao
-                val localPaidOrders = dao.getOrdersByStatus(OrderStatus.PAID)
+                val localPaidOrders = dao.getPaidOrdersSync()
                 val totalSales = localPaidOrders.sumOf { it.totalPrice }
                 val serviceFeeTotal = totalSales * 0.01
 
                 // Fetch fee collections
                 var collectedFees = 0.0
                 try {
-                    val collectionsSnap = firestore.collection("cafeterias").document(cafeId).collection("fee_collections").get().awaitTask()
+                    val collectionsSnap = fs.collection("cafeterias").document(cafeId).collection("fee_collections").get().awaitTask()
                     for (colDoc in collectionsSnap.documents) {
                         val amt = colDoc.getDouble("amount")
                             ?: (colDoc.getLong("amount")?.toDouble())
