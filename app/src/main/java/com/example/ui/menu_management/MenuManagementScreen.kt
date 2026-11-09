@@ -128,7 +128,18 @@ fun MenuManagementScreen(viewModel: MainViewModel) {
 
     val activeCatId = selectedCategory ?: categories.firstOrNull()?.id ?: "cat_burgers"
     val activeCat = categories.find { it.id == activeCatId } ?: categories.firstOrNull()
-    val filteredItems = allItems.filter { it.categoryId == activeCatId }
+
+    var showOnlyOffers by remember { mutableStateOf(false) }
+    val activeOffers = remember(allItems) {
+        allItems.filter { it.isOffer || it.offerDiscountPercent > 0 }
+    }
+    val displayedItems = remember(showOnlyOffers, allItems, activeCatId) {
+        if (showOnlyOffers) {
+            allItems.filter { it.isOffer || it.offerDiscountPercent > 0 }
+        } else {
+            allItems.filter { it.categoryId == activeCatId }
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -187,36 +198,37 @@ fun MenuManagementScreen(viewModel: MainViewModel) {
                 }
             }
 
-            // ACTION BUTTONS ROW: زر إضافة قسم + زر إضافة صنف (متساويان ومتناسقان كما في الصورة المطلوبة)
+            // ACTION BUTTONS ROW: زر إضافة قسم + زر إضافة صنف + خيار العروض
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // زر إضافة قسم
                 Button(
                     onClick = { showAddCategoryDialog = true },
                     modifier = Modifier
                         .weight(1f)
-                        .height(46.dp)
+                        .height(44.dp)
                         .testTag("open_add_category_dialog_btn"),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = CafeSurfaceVariant,
                         contentColor = CafeCyanPrimary
                     ),
-                    shape = RoundedCornerShape(14.dp),
-                    border = BorderStroke(1.2.dp, CafeCyanPrimary.copy(alpha = 0.5f))
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.2.dp, CafeCyanPrimary.copy(alpha = 0.5f)),
+                    contentPadding = PaddingValues(horizontal = 4.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "إضافة قسم",
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -226,23 +238,53 @@ fun MenuManagementScreen(viewModel: MainViewModel) {
                     onClick = { showAddItemDialog = true },
                     modifier = Modifier
                         .weight(1f)
-                        .height(46.dp)
+                        .height(44.dp)
                         .testTag("open_add_item_dialog_btn"),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = CafeCyanPrimary,
                         contentColor = Color(0xFF032125)
                     ),
-                    shape = RoundedCornerShape(14.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "إضافة صنف",
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                // خيار العروض حيث تظهر جميع العروض المفعلة فيه
+                val offersCount = activeOffers.size
+                Button(
+                    onClick = { showOnlyOffers = !showOnlyOffers },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .testTag("open_offers_filter_btn"),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (showOnlyOffers) CafeGold else CafeSurfaceVariant,
+                        contentColor = if (showOnlyOffers) Color(0xFF032125) else CafeGold
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.2.dp, if (showOnlyOffers) CafeGold else CafeGold.copy(alpha = 0.5f)),
+                    contentPadding = PaddingValues(horizontal = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocalFireDepartment,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (offersCount > 0) "العروض ($offersCount)" else "العروض",
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -299,13 +341,16 @@ fun MenuManagementScreen(viewModel: MainViewModel) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(categories) { category ->
-                    val isSelected = category.id == activeCatId
+                    val isSelected = !showOnlyOffers && (category.id == activeCatId)
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(14.dp))
                             .background(if (isSelected) CafeCyanPrimary else CafeSurface)
                             .border(1.dp, if (isSelected) CafeCyanPrimary else CafeCardBorder, RoundedCornerShape(14.dp))
-                            .clickable { viewModel.selectCategory(category.id) }
+                            .clickable {
+                                showOnlyOffers = false
+                                viewModel.selectCategory(category.id)
+                            }
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -348,13 +393,13 @@ fun MenuManagementScreen(viewModel: MainViewModel) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "${filteredItems.size} صنف في ${activeCat?.nameAr ?: ""}",
+                    text = if (showOnlyOffers) "جميع العروض المفعلة (${displayedItems.size} عرض نشط)" else "${displayedItems.size} صنف في ${activeCat?.nameAr ?: ""}",
                     fontSize = 12.sp,
-                    color = CafeCyanPrimary,
-                    fontWeight = FontWeight.Medium
+                    color = if (showOnlyOffers) CafeGold else CafeCyanPrimary,
+                    fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "اضغط على الترس ⚙️ أمام أي صنف للخيارات الشاملة",
+                    text = if (showOnlyOffers) "قائمة العروض الترويجية الحالية 🔥" else "اضغط على الترس ⚙️ أمام أي صنف للخيارات الشاملة",
                     fontSize = 11.sp,
                     color = CafeTextSecondary
                 )
@@ -369,12 +414,53 @@ fun MenuManagementScreen(viewModel: MainViewModel) {
                 contentPadding = PaddingValues(top = 4.dp, bottom = 40.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(filteredItems) { item ->
-                    ManageItemCard(
-                        item = item,
-                        onOpenGear = { itemToConfigure = item },
-                        onToggleAvailability = { viewModel.toggleItemAvailability(item) }
-                    )
+                if (showOnlyOffers && displayedItems.isEmpty()) {
+                    item {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            colors = CardDefaults.cardColors(containerColor = CafeSurfaceVariant),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, CafeGold.copy(alpha = 0.4f))
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.LocalFireDepartment,
+                                    contentDescription = null,
+                                    tint = CafeGold,
+                                    modifier = Modifier.size(44.dp)
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(
+                                    text = "لا توجد عروض ترويجية مفعلة حالياً",
+                                    color = CafeTextPrimary,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "يمكنك تفعيل أي عرض بالضغط على أيقونة الترس ⚙️ بجانب أي صنف وتفعيل خيار (عرض ترويجي خاص).",
+                                    color = CafeTextSecondary,
+                                    fontSize = 12.sp,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    items(displayedItems, key = { it.id }) { item ->
+                        ManageItemCard(
+                            item = item,
+                            onOpenGear = { itemToConfigure = item },
+                            onToggleAvailability = { viewModel.toggleItemAvailability(item) }
+                        )
+                    }
                 }
             }
         }

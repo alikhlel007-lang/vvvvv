@@ -328,6 +328,125 @@
       color: var(--accent);
     }
 
+    .badge-gallery-count {
+      position: absolute;
+      bottom: 4px;
+      right: 4px;
+      background: rgba(0,0,0,0.8);
+      border: 0.8px solid var(--accent);
+      color: var(--accent);
+      font-size: 9px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 6px;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .item-details-link {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+    }
+    .item-details-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Item Details & Gallery Modal */
+    .details-modal-body {
+      max-height: 80vh;
+      overflow-y: auto;
+      padding-bottom: 20px;
+    }
+    .gallery-viewer {
+      width: 100%;
+      height: 220px;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #181412;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--bg-card-border);
+      margin-bottom: 10px;
+    }
+    .gallery-viewer img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .gallery-counter-pill {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.75);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .gallery-thumbs-row {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      margin-bottom: 12px;
+    }
+    .gallery-thumb {
+      width: 62px;
+      height: 62px;
+      border-radius: 10px;
+      overflow: hidden;
+      flex-shrink: 0;
+      border: 2px solid transparent;
+      cursor: pointer;
+      opacity: 0.65;
+      background: #251D18;
+      transition: all 0.2s;
+    }
+    .gallery-thumb.active {
+      border-color: var(--accent);
+      opacity: 1;
+      transform: scale(1.05);
+    }
+    .gallery-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .details-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 6px;
+      margin-left: 6px;
+      margin-bottom: 8px;
+    }
+    .details-badge.cat {
+      background: rgba(245,158,11,0.15);
+      color: var(--accent);
+      border: 1px solid rgba(245,158,11,0.3);
+    }
+    .details-badge.offer {
+      background: #F59E0B;
+      color: #000;
+    }
+    .details-badge.discount {
+      background: rgba(239,68,68,0.2);
+      color: #F87171;
+      border: 1px solid rgba(239,68,68,0.4);
+    }
+
     /* DIRECT STEPPER (+ / -) ON EVERY CARD */
     .card-stepper {
       display: inline-flex;
@@ -767,6 +886,51 @@
     <i class="fa-solid fa-expand" id="floatingFullscreenIcon" style="font-size:16px;"></i>
   </button>
 
+  <!-- Item Details & Multi-Image Gallery Modal (تفاصيل ومزيد من الصور للصنف) -->
+  <div class="modal-overlay" id="itemDetailsModal">
+    <div class="sheet-card" style="max-height: 88vh; display:flex; flex-direction:column;">
+      <div class="sheet-header">
+        <div class="sheet-title">
+          <i class="fa-solid fa-circle-info" style="color:var(--accent);"></i>
+          <span id="detailsTitle">تفاصيل ومزيد من الصور</span>
+        </div>
+        <button class="btn-close-sheet" onclick="closeItemDetailsModal()">&times;</button>
+      </div>
+
+      <div class="sheet-body details-modal-body" style="flex:1; overflow-y:auto;">
+        <!-- Featured Gallery Main Viewer -->
+        <div class="gallery-viewer" id="detailsGalleryViewer">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Thumbnails Row -->
+        <div class="gallery-thumbs-row" id="detailsThumbsRow">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Badges (Category + Offer + Discount) -->
+        <div id="detailsBadges" style="margin-bottom:6px;"></div>
+
+        <!-- Price -->
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+          <span style="font-size:13px; color:var(--text-dim); font-weight:700;">السعر:</span>
+          <span id="detailsPrice" style="font-size:20px; font-weight:900; color:var(--accent);">0 د.ع</span>
+        </div>
+
+        <!-- Description -->
+        <div style="background:#181412; border:1px solid var(--bg-card-border); border-radius:12px; padding:12px; margin-bottom:16px;">
+          <h4 style="font-size:12px; font-weight:800; color:var(--text-dim); margin-bottom:6px;">الوصف والتفاصيل:</h4>
+          <p id="detailsDesc" style="font-size:13px; color:var(--text-main); line-height:1.6; margin:0;"></p>
+        </div>
+
+        <!-- Stepper / Add to Cart Action Row -->
+        <div id="detailsActionRow" style="margin-top:8px;">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Cart Modal / Bottom Sheet -->
   <div class="modal-overlay" id="cartModal">
     <div class="sheet-card">
@@ -1156,12 +1320,10 @@
         if (tabMenuBtn) tabMenuBtn.classList.add('active');
         if (tabOffersBtn) tabOffersBtn.classList.remove('active');
         if (catTabs) catTabs.style.display = 'flex';
-        if (triggerToast) showToast('📋 قائمة الطلب (المنيو الكامل)');
       } else if (tab === 'OFFERS') {
         if (tabOffersBtn) tabOffersBtn.classList.add('active');
         if (tabMenuBtn) tabMenuBtn.classList.remove('active');
         if (catTabs) catTabs.style.display = 'none'; // Offers are displayed directly
-        if (triggerToast) showToast('🔥 العروض الخاصة والتخفيضات');
       }
       filterMenuItems();
     }
@@ -1223,10 +1385,23 @@
         const tagText = item.offerTag || 'عرض خاص';
         const disc = Number(item.offerDiscountPercent) || 0;
 
+        let gallery = [];
+        if (Array.isArray(item.galleryImages)) {
+          gallery = item.galleryImages.filter(Boolean);
+        } else if (typeof item.galleryImages === 'string' && item.galleryImages.length > 0) {
+          gallery = item.galleryImages.split('|||').filter(Boolean);
+        }
+        const allImgs = [];
+        if (img) allImgs.push(img);
+        gallery.forEach(g => {
+          if (g && !allImgs.includes(g)) allImgs.push(g);
+        });
+
         html += `
-          <div class="item-card" style="${isOfferItem ? 'border-color: rgba(245,158,11,0.5);' : ''}">
+          <div class="item-card" onclick="openItemDetails('${item.id}')" style="${isOfferItem ? 'border-color: rgba(245,158,11,0.5);' : ''}">
             <div class="item-img-wrap" style="position:relative;">
               ${isOfferItem ? `<span style="position:absolute; top:4px; right:4px; background:#F59E0B; color:#000; font-size:9px; font-weight:900; padding:2px 6px; border-radius:6px; z-index:2;">${tagText} 🔥</span>` : ''}
+              ${allImgs.length > 1 ? `<span class="badge-gallery-count"><i class="fa-solid fa-camera"></i> ${allImgs.length} صور</span>` : ''}
               ${img ? `<img src="${img}" alt="${item.nameAr}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><i class="fa-solid fa-mug-hot item-img-placeholder" style="display:none;"></i>` : `<i class="fa-solid fa-mug-hot item-img-placeholder"></i>`}
             </div>
             <div class="item-info">
@@ -1235,13 +1410,14 @@
                 ${disc > 0 ? `<span style="font-size:10px; background:rgba(239,68,68,0.2); color:#F87171; border:1px solid rgba(239,68,68,0.4); padding:1px 5px; border-radius:4px; margin-right:6px; font-weight:800;">خصم ${disc}%</span>` : ''}
               </div>
               <div class="item-desc">${item.descriptionAr || ''}</div>
+              <div class="item-details-link"><i class="fa-solid fa-circle-info"></i> مزيد من الصور والتفاصيل ${allImgs.length > 1 ? `(${allImgs.length} صور)` : ''}</div>
               <div class="item-bottom">
                 <div class="item-price">${priceFmt}</div>
                 <!-- Stepper (+ / -) directly on card -->
-                <div class="card-stepper">
-                  <button type="button" class="btn-step btn-step-minus" onclick="changeQty('${item.id}', -1)">−</button>
+                <div class="card-stepper" onclick="event.stopPropagation();">
+                  <button type="button" class="btn-step btn-step-minus" onclick="event.stopPropagation(); changeQty('${item.id}', -1)">−</button>
                   <span id="qty_${item.id}" class="card-qty-label">${qty}</span>
-                  <button type="button" class="btn-step btn-step-plus" onclick="changeQty('${item.id}', 1)">+</button>
+                  <button type="button" class="btn-step btn-step-plus" onclick="event.stopPropagation(); changeQty('${item.id}', 1)">+</button>
                 </div>
               </div>
             </div>
@@ -1250,6 +1426,155 @@
       });
 
       list.innerHTML = html;
+    }
+
+    // Item Details & Multi-Image Gallery Logic
+    let currentDetailsItemId = null;
+    let currentDetailsImgIndex = 0;
+    let currentDetailsImgs = [];
+
+    function openItemDetails(itemId) {
+      const item = allMenuItems.find(i => i.id === itemId);
+      if (!item) return;
+
+      currentDetailsItemId = itemId;
+      currentDetailsImgIndex = 0;
+
+      const mainImg = item.imageUrl || item.imageUri || item.customImageUri || item.bgImageUri || '';
+      let gallery = [];
+      if (Array.isArray(item.galleryImages)) {
+        gallery = item.galleryImages.filter(Boolean);
+      } else if (typeof item.galleryImages === 'string' && item.galleryImages.length > 0) {
+        gallery = item.galleryImages.split('|||').filter(Boolean);
+      }
+
+      currentDetailsImgs = [];
+      if (mainImg) currentDetailsImgs.push(mainImg);
+      gallery.forEach(g => {
+        if (g && !currentDetailsImgs.includes(g)) currentDetailsImgs.push(g);
+      });
+
+      renderItemDetailsModal(item);
+      document.getElementById('itemDetailsModal').style.display = 'flex';
+    }
+
+    function closeItemDetailsModal() {
+      document.getElementById('itemDetailsModal').style.display = 'none';
+      currentDetailsItemId = null;
+    }
+
+    function selectGalleryImage(idx) {
+      if (idx < 0 || idx >= currentDetailsImgs.length) return;
+      currentDetailsImgIndex = idx;
+      const mainImgElem = document.getElementById('detailsMainImg');
+      const counterElem = document.getElementById('detailsImgCounter');
+      if (mainImgElem) mainImgElem.src = currentDetailsImgs[idx];
+      if (counterElem) counterElem.innerText = `الصورة ${idx + 1} من ${currentDetailsImgs.length}`;
+
+      const thumbs = document.querySelectorAll('.gallery-thumb');
+      thumbs.forEach((th, i) => {
+        if (i === idx) th.classList.add('active');
+        else th.classList.remove('active');
+      });
+    }
+
+    function renderItemDetailsModal(item) {
+      const titleElem = document.getElementById('detailsTitle');
+      const galleryViewer = document.getElementById('detailsGalleryViewer');
+      const thumbsContainer = document.getElementById('detailsThumbsRow');
+      const priceElem = document.getElementById('detailsPrice');
+      const badgesElem = document.getElementById('detailsBadges');
+      const descElem = document.getElementById('detailsDesc');
+
+      if (titleElem) titleElem.innerText = item.nameAr;
+
+      const numPrice = Number(item.price) || 0;
+      const priceFmt = numPrice.toLocaleString('ar-IQ') + ' ' + (item.currency || 'د.ع');
+      if (priceElem) priceElem.innerText = priceFmt;
+
+      // Badges
+      let badgesHtml = '';
+      const cat = categories.find(c => c.id === item.categoryId);
+      if (cat) {
+        badgesHtml += `<span class="details-badge cat">${cat.nameAr}</span>`;
+      }
+      const isOffer = item.isOffer === true || item.isOffer === "true" || (item.offerDiscountPercent && Number(item.offerDiscountPercent) > 0);
+      if (isOffer) {
+        const disc = Number(item.offerDiscountPercent) || 0;
+        const tag = item.offerTag || 'عرض خاص';
+        badgesHtml += `<span class="details-badge offer">${tag} 🔥</span>`;
+        if (disc > 0) {
+          badgesHtml += `<span class="details-badge discount">خصم ${disc}%</span>`;
+        }
+      }
+      if (badgesElem) badgesElem.innerHTML = badgesHtml;
+
+      // Description
+      if (descElem) {
+        descElem.innerText = item.descriptionAr || 'لا يوجد وصف إضافي متوفر لهذا الصنف.';
+      }
+
+      // Gallery Images
+      if (currentDetailsImgs.length > 0) {
+        galleryViewer.style.display = 'flex';
+        galleryViewer.innerHTML = `
+          <img id="detailsMainImg" src="${currentDetailsImgs[0]}" alt="${item.nameAr}" onerror="this.src=''; this.style.display='none';">
+          ${currentDetailsImgs.length > 1 ? `<span id="detailsImgCounter" class="gallery-counter-pill">الصورة 1 من ${currentDetailsImgs.length}</span>` : ''}
+        `;
+
+        if (currentDetailsImgs.length > 1) {
+          thumbsContainer.style.display = 'flex';
+          let thumbsHtml = '';
+          currentDetailsImgs.forEach((imgUri, idx) => {
+            thumbsHtml += `
+              <div class="gallery-thumb ${idx === 0 ? 'active' : ''}" onclick="selectGalleryImage(${idx})">
+                <img src="${imgUri}" alt="صورة ${idx + 1}">
+              </div>
+            `;
+          });
+          thumbsContainer.innerHTML = thumbsHtml;
+        } else {
+          thumbsContainer.style.display = 'none';
+        }
+      } else {
+        galleryViewer.style.display = 'flex';
+        galleryViewer.innerHTML = `<i class="fa-solid fa-mug-hot" style="font-size:48px; color:var(--accent);"></i>`;
+        thumbsContainer.style.display = 'none';
+      }
+
+      updateDetailsModalStepper(item.id);
+    }
+
+    function updateDetailsModalStepper(itemId) {
+      const actionElem = document.getElementById('detailsActionRow');
+      if (!actionElem) return;
+      const inCart = cart.find(c => c.item.id === itemId);
+      const qty = inCart ? inCart.qty : 0;
+
+      if (qty === 0) {
+        actionElem.innerHTML = `
+          <button type="button" class="btn-submit-order" onclick="changeQtyFromModal('${itemId}', 1)" style="margin-top:0;">
+            <i class="fa-solid fa-cart-plus"></i>
+            <span>إضافة إلى الطلب</span>
+          </button>
+        `;
+      } else {
+        actionElem.innerHTML = `
+          <div style="display:flex; align-items:center; justify-content:space-between; width:100%; background:#181412; border:1px solid var(--accent); border-radius:14px; padding:8px 14px;">
+            <span style="font-size:13px; font-weight:800; color:var(--accent);">تمت الإضافة للطلب (${qty}) ✅</span>
+            <div class="card-stepper" style="transform:scale(1.15);">
+              <button type="button" class="btn-step btn-step-minus" onclick="changeQtyFromModal('${itemId}', -1)">−</button>
+              <span id="modal_qty_${itemId}" class="card-qty-label" style="min-width:28px;">${qty}</span>
+              <button type="button" class="btn-step btn-step-plus" onclick="changeQtyFromModal('${itemId}', 1)">+</button>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function changeQtyFromModal(itemId, delta) {
+      changeQty(itemId, delta);
+      updateDetailsModalStepper(itemId);
     }
 
     // 6. Direct & Immediate Quantity Change
@@ -1268,17 +1593,14 @@
           cart.push({ item: item, qty: 1 });
           newQty = 1;
         }
-        showToast(`✅ ${item.nameAr} [${newQty}]`);
       } else if (delta < 0) {
         if (idx >= 0) {
           cart[idx].qty += delta;
           if (cart[idx].qty <= 0) {
             cart.splice(idx, 1);
             newQty = 0;
-            showToast(`🗑️ تم الحذف: ${item.nameAr}`);
           } else {
             newQty = cart[idx].qty;
-            showToast(`➖ ${item.nameAr} [${newQty}]`);
           }
         }
       }
@@ -1288,6 +1610,11 @@
       if (lbl) {
         lbl.innerText = newQty;
         lbl.style.color = newQty > 0 ? 'var(--accent)' : '#FFFFFF';
+      }
+
+      // If details modal is open for this item, sync its stepper
+      if (currentDetailsItemId === itemId) {
+        updateDetailsModalStepper(itemId);
       }
 
       updateFloatingCart();
