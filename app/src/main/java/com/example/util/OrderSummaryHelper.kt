@@ -28,7 +28,11 @@ object OrderSummaryHelper {
      * تفكيك وتجميع الأصناف في كائنات مهيكلة لعرضها كصفوف منسقة عند الكاشير
      * [اسم الصنف]   [عدد X]   [السعر X]
      */
-    fun parseOrderItems(summaries: List<String>): List<ParsedOrderItem> {
+    fun parseOrderItems(
+        summaries: List<String>,
+        menuItems: List<com.example.data.model.MenuItem> = emptyList(),
+        totalOrderPrice: Double = 0.0
+    ): List<ParsedOrderItem> {
         if (summaries.isEmpty()) return emptyList()
         val itemMap = linkedMapOf<String, ItemData>()
 
@@ -42,15 +46,19 @@ object OrderSummaryHelper {
                 // تجاهل أي شظايا رقمية أو عملات متبقية مثل "000 د.ع"
                 if (token.matches(Regex("""^[\d,\.]+\s*(د\.ع|\$|USD)?$"""))) continue
 
-                // البحث عن نمط يحتوي على السعر: "2x برجر كلاسيك بسعر 14,000 د.ع"
+                // 1. البحث عن نمط يحتوي على كلمة "بسعر": "2x برجر كلاسيك بسعر 14,000 د.ع"
                 val matchWithPrice = Regex("""^(\d+)\s*[xX×*]?\s*(.+?)\s+بسعر\s+([\d,.]+)\s*(د\.ع|\$|USD)?$""").find(token)
-                if (matchWithPrice != null) {
-                    val count = matchWithPrice.groupValues[1].toIntOrNull() ?: 1
-                    val name = matchWithPrice.groupValues[2].trim()
+                // 2. نمط بديل يحتوي على شرطة أو أقواس: "2x برجر كلاسيك - 14000 د.ع" أو "2x برجر (14000 د.ع)"
+                val matchWithDash = Regex("""^(\d+)\s*[xX×*]?\s*(.+?)\s*[-–(]\s*([\d,.]+)\s*(د\.ع|\$|USD)?\)?$""").find(token)
+
+                val matched = matchWithPrice ?: matchWithDash
+                if (matched != null) {
+                    val count = matched.groupValues[1].toIntOrNull() ?: 1
+                    val name = matched.groupValues[2].trim()
                     if (name.isBlank() || name.matches(Regex("""^[\d,\.]+\s*(د\.ع|\$|USD)?$"""))) continue
-                    val priceStr = matchWithPrice.groupValues[3].replace(",", "").trim()
+                    val priceStr = matched.groupValues[3].replace(",", "").trim()
                     val priceVal = priceStr.toDoubleOrNull() ?: 0.0
-                    val curr = matchWithPrice.groupValues[4].ifBlank { "د.ع" }
+                    val curr = matched.groupValues[4].ifBlank { "د.ع" }
 
                     val existing = itemMap[name]
                     if (existing != null) {
@@ -60,7 +68,7 @@ object OrderSummaryHelper {
                         itemMap[name] = ItemData(count, priceVal, curr)
                     }
                 } else {
-                    // نمط بديل بدون سعر: "2x برجر كلاسيك"
+                    // نمط بديل بدون سعر: "2x برجر كلاسيك" أو "2× برجر كلاسيك"
                     val matchNoPrice = Regex("""^(\d+)\s*[xX×*]\s*(.+)$""").find(token)
                     if (matchNoPrice != null) {
                         val count = matchNoPrice.groupValues[1].toIntOrNull() ?: 1
@@ -85,6 +93,49 @@ object OrderSummaryHelper {
             }
         }
 
+        // استكمال وتصحيح الأسعار تلقائياً إذا كانت 0 من قائمة الأصناف المسجلة
+        fun normalizeAr(s: String) = s.trim().lowercase()
+            .replace(Regex("[أإآ]"), "ا")
+            .replace("ة", "ه")
+            .replace("ى", "ي")
+            .replace(Regex("\\s+"), " ")
+
+        itemMap.forEach { (name, data) ->
+            if (data.totalPrice <= 0.0 && menuItems.isNotEmpty()) {
+                val cleanName = normalizeAr(name)
+                val found = menuItems.find { m ->
+                    val cleanAr = normalizeAr(m.nameAr)
+                    val cleanEn = m.nameEn.trim().lowercase()
+                    cleanAr == cleanName ||
+                    cleanEn == cleanName ||
+                    cleanName.contains(cleanAr) ||
+                    cleanAr.contains(cleanName)
+                }
+                if (found != null && found.price > 0.0) {
+                    data.totalPrice = found.price * data.quantity
+                    data.currency = found.currency
+                }
+            }
+        }
+
+        // إذا كان هناك صنف واحد فقط وكان سعره ما زال 0 ولديه سعر كلي للفاتورة
+        if (itemMap.size == 1 && totalOrderPrice > 0.0) {
+            val single = itemMap.values.first()
+            if (single.totalPrice <= 0.0) {
+                single.totalPrice = totalOrderPrice
+            }
+        } else if (itemMap.size > 1 && totalOrderPrice > 0.0) {
+            // إذا كان هناك عدة أصناف وبعضها سعره 0، وكان هناك صنف واحد فقط مجهول السعر
+            val zeroItems = itemMap.values.filter { it.totalPrice <= 0.0 }
+            if (zeroItems.size == 1) {
+                val knownSum = itemMap.values.filter { it.totalPrice > 0.0 }.sumOf { it.totalPrice }
+                val remaining = totalOrderPrice - knownSum
+                if (remaining > 0.0) {
+                    zeroItems.first().totalPrice = remaining
+                }
+            }
+        }
+
         return itemMap.map { (name, data) ->
             ParsedOrderItem(name, data.quantity, data.totalPrice, data.currency)
         }
@@ -94,8 +145,11 @@ object OrderSummaryHelper {
      * تجميع الأصناف وضرب الكميات والأسعار المتكررة لنفس الزبون تلقائياً
      * مثال: "1x برجر كلاسيك بسعر 7,000 د.ع" + "1x برجر كلاسيك بسعر 7,000 د.ع" => "2x برجر كلاسيك بسعر 14,000 د.ع"
      */
-    fun combineAndMultiplySummaries(summaries: List<String>): String {
-        val items = parseOrderItems(summaries)
+    fun combineAndMultiplySummaries(
+        summaries: List<String>,
+        menuItems: List<com.example.data.model.MenuItem> = emptyList()
+    ): String {
+        val items = parseOrderItems(summaries, menuItems)
         if (items.isEmpty()) return ""
         return items.joinToString("، ") { item ->
             if (item.totalPrice > 0.0) {

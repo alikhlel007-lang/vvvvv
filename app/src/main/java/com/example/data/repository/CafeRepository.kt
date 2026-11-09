@@ -73,6 +73,7 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
     val cafeRemainingFee = kotlinx.coroutines.flow.MutableStateFlow(0.0)
     val isOverDebtLimit = kotlinx.coroutines.flow.MutableStateFlow(false)
     val cafeNotifications = kotlinx.coroutines.flow.MutableStateFlow<List<com.example.data.model.CafeNotificationItem>>(emptyList())
+    private val deletedOrderIds = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
     fun startCafeteriaStatusListener(cafeId: String) {
         cafeStatusListenerRegistration?.remove()
@@ -282,7 +283,31 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
             ordersListenerRegistration = firestore?.collection("cafeterias")?.document(targetCafeId)?.collection("orders")
                 ?.addSnapshotListener { snapshot, error ->
                     if (error != null || snapshot == null) return@addSnapshotListener
+
+                    // 1. حذف أي طلب تم حذفه من فايربيس فوراً من Room
+                    for (change in snapshot.documentChanges) {
+                        if (change.type == com.google.firebase.firestore.DocumentChange.Type.REMOVED) {
+                            val removedId = change.document.id
+                            deletedOrderIds.add(removedId)
+                            scope.launch(Dispatchers.IO) {
+                                try {
+                                    dao.deleteOrderById(removedId)
+                                } catch (_: Exception) {}
+                            }
+                        }
+                    }
+
+                    // 2. معالجة المستندات النشطة مع استبعاد وحذف أي طلب تم حذفه أو دمجه
                     for (doc in snapshot.documents) {
+                        if (deletedOrderIds.contains(doc.id)) {
+                            scope.launch(Dispatchers.IO) {
+                                try {
+                                    dao.deleteOrderById(doc.id)
+                                    doc.reference.delete()
+                                } catch (_: Exception) {}
+                            }
+                            continue
+                        }
                         parseOrderDoc(doc)
                     }
                 }
@@ -1003,8 +1028,24 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
         if (orders.size <= 1) return
         val targetOrder = orders.first()
         val otherOrders = orders.drop(1)
+        val otherIds = otherOrders.map { it.id }
 
-        val combinedSummary = com.example.util.OrderSummaryHelper.combineAndMultiplySummaries(orders.map { it.itemsSummary })
+        // إضافة المعرفات المحذوفة فوراً لمنع snapshot listener من إعادة إضافتها
+        deletedOrderIds.addAll(otherIds)
+        try {
+            dao.deleteOrdersByIds(otherIds)
+        } catch (_: Exception) {}
+
+        val menuItemsList = try {
+            dao.getAllMenuItemsSync().map { it.toDomain() }
+        } catch (_: Exception) {
+            emptyList()
+        }
+
+        val combinedSummary = com.example.util.OrderSummaryHelper.combineAndMultiplySummaries(
+            orders.map { it.itemsSummary },
+            menuItemsList
+        )
         val combinedCount = orders.sumOf { it.itemsCount }
         val combinedSubtotal = orders.sumOf { it.subtotal }
         val currency = targetOrder.currency
@@ -1036,11 +1077,10 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
             firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")?.document(targetOrder.id)?.update(map)
         } catch (_: Exception) {}
 
-        // حذف الطلبات المكررة التي تم دمجها
-        otherOrders.forEach { other ->
-            dao.deleteOrder(other.toEntity())
+        // حذف الطلبات المكررة التي تم دمجها من فايربيس
+        otherIds.forEach { otherId ->
             try {
-                firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")?.document(other.id)?.delete()
+                firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")?.document(otherId)?.delete()
             } catch (_: Exception) {}
         }
     }
@@ -1053,7 +1093,6 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
         val targetPreparingOrder = preparingOrders.first()
         val allOrders = listOf(targetPreparingOrder, newOrder)
         mergeOrdersIntoOne(allOrders)
-        updateOrderStatus(targetPreparingOrder.id, targetPreparingOrder, OrderStatus.PREPARING)
     }
 
     /**
@@ -1123,7 +1162,10 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
             // حماية صارمة: لا يمكن حذف الفواتير المسددة من داخل تطبيق أندرويد بدون كود موافقة الإدارة
             return
         }
-        dao.deleteOrder(order.toEntity())
+        deletedOrderIds.add(order.id)
+        try {
+            dao.deleteOrderById(order.id)
+        } catch (_: Exception) {}
         try {
             firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")?.document(order.id)?.delete()
         } catch (e: Exception) {
@@ -1135,7 +1177,10 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
         if (!com.example.util.InvoiceSecurity.verifyCode(order.id, approvalCode)) {
             return false
         }
-        dao.deleteOrder(order.toEntity())
+        deletedOrderIds.add(order.id)
+        try {
+            dao.deleteOrderById(order.id)
+        } catch (_: Exception) {}
         try {
             firestore?.collection("cafeterias")?.document(currentCafeteriaId)?.collection("orders")?.document(order.id)?.delete()
         } catch (e: Exception) {

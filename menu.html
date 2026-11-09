@@ -1395,7 +1395,11 @@
       const totalSum = cart.reduce((sum, c) => sum + ((Number(c.item.price) || 0) * c.qty), 0);
       const currency = cart[0]?.item.currency || 'د.ع';
       const notes = (document.getElementById('orderNotes')?.value || '').trim();
-      const summary = cart.map(c => `${c.qty}× ${c.item.nameAr}`).join('، ');
+      const summary = cart.map(c => {
+        const linePrice = (Number(c.item.price) || 0) * c.qty;
+        const formattedPrice = linePrice.toLocaleString('en-US');
+        return `${c.qty}x ${c.item.nameAr} بسعر ${formattedPrice} ${currency}`;
+      }).join('، ');
 
       const orderId = 'ord_' + Math.floor(100000 + Math.random() * 900000);
 

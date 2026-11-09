@@ -105,68 +105,12 @@ fun CafeteriaSuspendedDialog(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = "⛔ تم إيقاف عمل الكافتيريا فوراً",
-                        fontSize = 20.sp,
+                        text = "تم ايقاف عمل الكافتيريا مؤقتاً",
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                         textAlign = TextAlign.Center
                     )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "تم إيقاف هذه الكافتيريا من قِبل إدارة النظام / المطور. تم تعليق استقبال الطلبات وإدارة الطاولات حتى يتم تسوية الحساب وإعادة التفعيل.",
-                        fontSize = 13.sp,
-                        color = CafeTextSecondary,
-                        textAlign = TextAlign.Center,
-                        lineHeight = 18.sp
-                    )
-
-                    if (reason.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Surface(
-                            color = Color(0xFF261210),
-                            shape = RoundedCornerShape(12.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF8A2323)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.Info,
-                                    contentDescription = null,
-                                    tint = Color(0xFFFF8A80),
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "السبب: $reason",
-                                    color = Color(0xFFFF8A80),
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Surface(
-                        color = Color(0xFF1B1614),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "💡 بمجرد قيام المطور بإلغاء الإيقاف من لوحته، ستُفتح هذه الشاشة تلقائياً في نفس اللحظة وتستأنف عملك دون الحاجة لإعادة التشغيل.",
-                            color = CafeGold,
-                            fontSize = 11.sp,
-                            modifier = Modifier.padding(10.dp),
-                            textAlign = TextAlign.Center,
-                            lineHeight = 16.sp
-                        )
-                    }
 
                     Spacer(modifier = Modifier.height(20.dp))
 

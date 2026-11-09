@@ -114,6 +114,7 @@ data class TableSession(
 fun CashierOrdersScreen(viewModel: MainViewModel) {
     val context = LocalContext.current
     val orders by viewModel.orders.collectAsState()
+    val menuItems by viewModel.menuItems.collectAsState()
     val activeFilter by viewModel.orderStatusFilter.collectAsState()
 
     // تجميع الطلبات في جلسات موحدة حسب المراحل المستقلة لكل طاولة
@@ -441,7 +442,11 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                                     }
 
                                     // تفكيك واستخراج جميع المواد والأسعار المطلوبة لهذه الطاولة
-                                    val parsedItems = com.example.util.OrderSummaryHelper.parseOrderItems(tableActiveOrders.map { it.itemsSummary })
+                                    val parsedItems = com.example.util.OrderSummaryHelper.parseOrderItems(
+                                        summaries = tableActiveOrders.map { it.itemsSummary },
+                                        menuItems = menuItems,
+                                        totalOrderPrice = tableActiveOrders.sumOf { it.totalPrice }
+                                    )
                                     val combinedNotes = com.example.util.OrderSummaryHelper.combineNotes(tableActiveOrders.map { it.notes })
 
                                     Card(
@@ -838,6 +843,7 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                             CompactPaidInvoiceCard(
                                 session = session,
                                 cafeName = cafeName,
+                                menuItems = menuItems,
                                 onRequestDeletePaidOrder = { order ->
                                     orderForAuthorizedDeletion = order
                                 }
@@ -846,6 +852,7 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                             UnifiedTableSessionCard(
                                 session = session,
                                 cafeName = cafeName,
+                                menuItems = menuItems,
                                 onAdvanceSession = { nextStatus ->
                                     viewModel.advanceTableSession(session.orders, nextStatus)
                                     Toast.makeText(
@@ -1016,6 +1023,7 @@ fun StatusFilterChip(
 fun CompactPaidInvoiceCard(
     session: TableSession,
     cafeName: String,
+    menuItems: List<com.example.data.model.MenuItem> = emptyList(),
     onRequestDeletePaidOrder: ((OrderRecord) -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -1030,8 +1038,12 @@ fun CompactPaidInvoiceCard(
         session.orders.map { it.customerName }.filter { it.isNotBlank() }.distinct()
     }
 
-    val parsedItems = remember(session.orders) {
-        com.example.util.OrderSummaryHelper.parseOrderItems(session.orders.map { it.itemsSummary })
+    val parsedItems = remember(session.orders, menuItems) {
+        com.example.util.OrderSummaryHelper.parseOrderItems(
+            summaries = session.orders.map { it.itemsSummary },
+            menuItems = menuItems,
+            totalOrderPrice = paidTotal
+        )
     }
 
     val combinedNotes = remember(session.orders) {
@@ -1263,6 +1275,7 @@ fun CompactPaidInvoiceCard(
 fun UnifiedTableSessionCard(
     session: TableSession,
     cafeName: String,
+    menuItems: List<com.example.data.model.MenuItem> = emptyList(),
     onAdvanceSession: (OrderStatus) -> Unit,
     onMergeCustomerOrders: (List<OrderRecord>) -> Unit,
     onMergeWithPreparing: (OrderRecord, List<OrderRecord>) -> Unit,
@@ -1470,8 +1483,13 @@ fun UnifiedTableSessionCard(
                         Spacer(modifier = Modifier.height(4.dp))
 
                         // عرض كل صنف وأمامه كميته وسعره بشكل منسق ومفصل: [اسم الصنف] [عدد X] [السعر X]
-                        val parsedItems = remember(customerOrders) {
-                            com.example.util.OrderSummaryHelper.parseOrderItems(customerOrders.map { it.itemsSummary })
+                        val customerTotal = remember(customerOrders) { customerOrders.sumOf { it.totalPrice } }
+                        val parsedItems = remember(customerOrders, menuItems) {
+                            com.example.util.OrderSummaryHelper.parseOrderItems(
+                                summaries = customerOrders.map { it.itemsSummary },
+                                menuItems = menuItems,
+                                totalOrderPrice = customerTotal
+                            )
                         }
 
                         if (parsedItems.isNotEmpty()) {
