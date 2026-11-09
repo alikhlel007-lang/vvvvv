@@ -75,3 +75,13 @@ data class OrderRecord(
     val timestamp: Long,
     val notes: String = ""
 )
+
+data class CafeNotificationItem(
+    val id: String,
+    val title: String,
+    val message: String,
+    val type: String, // DEBT_EXCEEDED, DEBT_WARNING, SYSTEM_SUSPENDED, NEW_ORDER, QR_RENEWED
+    val timestamp: Long,
+    val isUrgent: Boolean = false,
+    val isRead: Boolean = false
+)

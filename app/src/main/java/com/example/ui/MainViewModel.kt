@@ -141,6 +141,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Real-time Cafeteria Suspension State (Live lock)
     val isCafeSuspended: StateFlow<Boolean> = repository.isCafeSuspended.asStateFlow()
     val suspensionReason: StateFlow<String> = repository.cafeSuspensionReason.asStateFlow()
+    val cafeMaxDebtLimit: StateFlow<Double> = repository.cafeMaxDebtLimit.asStateFlow()
+    val cafeRemainingFee: StateFlow<Double> = repository.cafeRemainingFee.asStateFlow()
+    val isOverDebtLimit: StateFlow<Boolean> = repository.isOverDebtLimit.asStateFlow()
+    val cafeNotifications: StateFlow<List<com.example.data.model.CafeNotificationItem>> = repository.cafeNotifications.asStateFlow()
+
+    fun setNotificationPref(key: String, enabled: Boolean) {
+        repository.setNotificationPref(key, enabled)
+    }
+
+    fun getNotificationPref(key: String, defaultVal: Boolean = true): Boolean {
+        return repository.getNotificationPref(key, defaultVal)
+    }
+
+    fun refreshDebtAndNotifications() {
+        val uid = _currentUser.value?.id ?: repository.currentCafeteriaId
+        repository.checkDebtAndBuildNotifications(
+            cafeId = uid,
+            limit = repository.cafeMaxDebtLimit.value,
+            isSuspended = repository.isCafeSuspended.value,
+            suspendReason = repository.cafeSuspensionReason.value
+        )
+    }
 
     // Real-time Data Streams from DB
     val categories: StateFlow<List<MenuCategory>> = repository.categories.stateIn(

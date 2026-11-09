@@ -69,6 +69,10 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
     private var cafeStatusListenerRegistration: com.google.firebase.firestore.ListenerRegistration? = null
     val isCafeSuspended = kotlinx.coroutines.flow.MutableStateFlow(false)
     val cafeSuspensionReason = kotlinx.coroutines.flow.MutableStateFlow("")
+    val cafeMaxDebtLimit = kotlinx.coroutines.flow.MutableStateFlow(50000.0)
+    val cafeRemainingFee = kotlinx.coroutines.flow.MutableStateFlow(0.0)
+    val isOverDebtLimit = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val cafeNotifications = kotlinx.coroutines.flow.MutableStateFlow<List<com.example.data.model.CafeNotificationItem>>(emptyList())
 
     fun startCafeteriaStatusListener(cafeId: String) {
         cafeStatusListenerRegistration?.remove()
@@ -85,11 +89,112 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
                         val active = snapshot.getBoolean("isActive") ?: true
                         val reason = snapshot.getString("suspensionReason")
                             ?: "تم إيقاف عمل الكافتيريا من قِبل إدارة النظام لمراجعة الحسابات"
+                        val limit = snapshot.getDouble("maxDebtLimit")
+                            ?: (snapshot.getLong("maxDebtLimit")?.toDouble())
+                            ?: 50000.0
+                        
+                        cafeMaxDebtLimit.value = limit
                         isCafeSuspended.value = !active
                         cafeSuspensionReason.value = reason
+
+                        checkDebtAndBuildNotifications(targetId, limit, !active, reason)
                     }
                 }
         } catch (_: Exception) {}
+    }
+
+    fun checkDebtAndBuildNotifications(cafeId: String, limit: Double, isSuspended: Boolean, suspendReason: String) {
+        if (firestore == null || cafeId.isBlank()) return
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // Calculate sales total from paid orders in local dao
+                val localPaidOrders = dao.getOrdersByStatus(OrderStatus.PAID)
+                val totalSales = localPaidOrders.sumOf { it.totalPrice }
+                val serviceFeeTotal = totalSales * 0.01
+
+                // Fetch fee collections
+                var collectedFees = 0.0
+                try {
+                    val collectionsSnap = firestore.collection("cafeterias").document(cafeId).collection("fee_collections").get().awaitTask()
+                    for (colDoc in collectionsSnap.documents) {
+                        val amt = colDoc.getDouble("amount")
+                            ?: (colDoc.getLong("amount")?.toDouble())
+                            ?: (colDoc.getString("amount")?.toDoubleOrNull())
+                            ?: 0.0
+                        collectedFees += amt
+                    }
+                } catch (_: Exception) {}
+
+                val remaining = (serviceFeeTotal - collectedFees).coerceAtLeast(0.0)
+                cafeRemainingFee.value = remaining
+                val overLimit = limit > 0.0 && remaining >= limit
+                isOverDebtLimit.value = overLimit
+
+                val notifs = mutableListOf<com.example.data.model.CafeNotificationItem>()
+
+                if (overLimit) {
+                    notifs.add(
+                        com.example.data.model.CafeNotificationItem(
+                            id = "debt_exceeded",
+                            title = "🚨 بلاغ عاجل: تم الوصول للحد الأقصى للديون",
+                            message = "وصلت الديون غير المسددة إلى ${remaining.toLong()} د.ع وتجاوزت سقف ${limit.toLong()} د.ع المسموح به. يرجى تسديد الرسوم للإدارة.",
+                            type = "DEBT_EXCEEDED",
+                            timestamp = System.currentTimeMillis(),
+                            isUrgent = true
+                        )
+                    )
+                } else if (limit > 0.0 && remaining >= limit * 0.75) {
+                    notifs.add(
+                        com.example.data.model.CafeNotificationItem(
+                            id = "debt_warning",
+                            title = "⚠️ تنبيه مالي: اقتراب من سقف الديون المحدد",
+                            message = "بلغت الديون ${remaining.toLong()} د.ع من أصل سقف ${limit.toLong()} د.ع (${(remaining / limit * 100).toInt()}%). يرجى المبادرة بالتسديد لتجنب إيقاف النظام.",
+                            type = "DEBT_WARNING",
+                            timestamp = System.currentTimeMillis(),
+                            isUrgent = false
+                        )
+                    )
+                }
+
+                if (isSuspended) {
+                    notifs.add(
+                        com.example.data.model.CafeNotificationItem(
+                            id = "system_suspended",
+                            title = "⛔ بلاغ إداري: تم ايقاف النضام",
+                            message = suspendReason.ifBlank { "تم ايقاف النضام في هذه الكافتيريا حالياً لمراجعة الحسابات" },
+                            type = "SYSTEM_SUSPENDED",
+                            timestamp = System.currentTimeMillis(),
+                            isUrgent = true
+                        )
+                    )
+                }
+
+                if (notifs.isEmpty()) {
+                    notifs.add(
+                        com.example.data.model.CafeNotificationItem(
+                            id = "debt_status_ok",
+                            title = "✅ الحالة المالية ممتازة",
+                            message = "الديون الحالية (${remaining.toLong()} د.ع) تقع ضمن السقف المسموح (${limit.toLong()} د.ع).",
+                            type = "SYSTEM_STATUS",
+                            timestamp = System.currentTimeMillis(),
+                            isUrgent = false
+                        )
+                    )
+                }
+
+                cafeNotifications.value = notifs
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun setNotificationPref(key: String, enabled: Boolean) {
+        context?.getSharedPreferences("cafe_notifications_prefs", android.content.Context.MODE_PRIVATE)
+            ?.edit()?.putBoolean(key, enabled)?.apply()
+    }
+
+    fun getNotificationPref(key: String, defaultVal: Boolean = true): Boolean {
+        return context?.getSharedPreferences("cafe_notifications_prefs", android.content.Context.MODE_PRIVATE)
+            ?.getBoolean(key, defaultVal) ?: defaultVal
     }
 
     fun stopCafeteriaStatusListener() {

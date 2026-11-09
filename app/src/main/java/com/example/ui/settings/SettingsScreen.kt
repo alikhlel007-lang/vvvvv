@@ -58,6 +58,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Notifications
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -1217,7 +1218,248 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 }
 
                 // ==========================================
-                // 6. تسجيل الخروج
+                // 6. خيار الإشعارات والبلاغات (تنبيهات الديون وسقف الحسابات)
+                // ==========================================
+                item {
+                    val isExpanded = expandedSection == "notifications_alerts"
+                    val maxDebtLimit by viewModel.cafeMaxDebtLimit.collectAsState()
+                    val remainingFee by viewModel.cafeRemainingFee.collectAsState()
+                    val isOverLimit by viewModel.isOverDebtLimit.collectAsState()
+                    val notifications by viewModel.cafeNotifications.collectAsState()
+                    val isCafeSuspended by viewModel.isCafeSuspended.collectAsState()
+
+                    var notifyDebtLimit by remember {
+                        mutableStateOf(viewModel.getNotificationPref("notify_debt_limit", true))
+                    }
+                    var notifyNewOrders by remember {
+                        mutableStateOf(viewModel.getNotificationPref("notify_new_orders", true))
+                    }
+                    var notifyTableCalls by remember {
+                        mutableStateOf(viewModel.getNotificationPref("notify_table_calls", true))
+                    }
+                    var notifySound by remember {
+                        mutableStateOf(viewModel.getNotificationPref("notify_sound", true))
+                    }
+
+                    val hasDebtWarning = maxDebtLimit > 0 && remainingFee >= maxDebtLimit * 0.75
+                    val hasUrgentAlert = isOverLimit || isCafeSuspended || hasDebtWarning
+                    val cardAccent = if (isOverLimit || isCafeSuspended) Color(0xFFFF5252)
+                                     else if (hasDebtWarning) CafeGold
+                                     else CafeCyanPrimary
+
+                    SettingsOptionCard(
+                        title = "الإشعارات والبلاغات",
+                        subtitle = if (isOverLimit) "🚨 بلاغ عاجل: تم الوصول للحد الأعلى من الديون غير المسددة!"
+                                   else if (hasDebtWarning) "⚠️ تنبيه مالي: اقتراب من سقف الديون المحدد"
+                                   else "خيارات الإشعارات، تنبيهات سقف الديون، وسجل البلاغات",
+                        icon = Icons.Default.Notifications,
+                        accentColor = cardAccent,
+                        isExpanded = isExpanded,
+                        onHeaderClick = {
+                            expandedSection = if (isExpanded) null else "notifications_alerts"
+                        }
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                            // 1. Debt Status & Ceiling Banner
+                            Surface(
+                                color = if (isOverLimit) Color(0xFF2E1010) else if (hasDebtWarning) Color(0xFF2A200F) else Color(0xFF14241B),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (isOverLimit) Color(0xFFFF5252) else if (hasDebtWarning) CafeGold else Color(0xFF4CAF50)
+                                )
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = if (isOverLimit) Icons.Default.Warning else Icons.Default.Security,
+                                                contentDescription = null,
+                                                tint = if (isOverLimit) Color(0xFFFF5252) else if (hasDebtWarning) CafeGold else Color(0xFF4CAF50),
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = if (isOverLimit) "🚨 بلاغ عاجل: تجاوز سقف الديون!"
+                                                       else if (hasDebtWarning) "⚠️ تنبيه: اقتراب من سقف الديون"
+                                                       else "✅ حالة الديون وسقف الحسابات",
+                                                fontWeight = FontWeight.ExtraBold,
+                                                fontSize = 14.sp,
+                                                color = if (isOverLimit) Color(0xFFFF5252) else if (hasDebtWarning) CafeGold else Color(0xFF81C784)
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Column {
+                                            Text("الديون غير المسددة:", fontSize = 12.sp, color = CafeTextSecondary)
+                                            Text(
+                                                text = OrderFeeCalculator.formatPrice(remainingFee, "د.ع"),
+                                                fontSize = 16.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isOverLimit) Color(0xFFFF5252) else if (hasDebtWarning) CafeGold else Color.White
+                                            )
+                                        }
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            Text("سقف الديون المسموح به:", fontSize = 12.sp, color = CafeTextSecondary)
+                                            Text(
+                                                text = OrderFeeCalculator.formatPrice(maxDebtLimit, "د.ع"),
+                                                fontSize = 16.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = CafeCyanPrimary
+                                            )
+                                        }
+                                    }
+
+                                    if (isOverLimit) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = "تم الوصول للحد الأعلى من الديون غير المسددة (${maxDebtLimit.toLong()} د.ع). تم إيقاف استقبال الطلبات حتى يتم تسديد الرسوم للإدارة.",
+                                            fontSize = 12.sp,
+                                            color = Color(0xFFFF8A80),
+                                            lineHeight = 18.sp
+                                        )
+                                    } else if (hasDebtWarning) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = "اقتربت الكافتيريا من سقف الديون المحدد (${(remainingFee / maxDebtLimit.coerceAtLeast(1.0) * 100).toInt()}%). يرجى المبادرة بالسداد لتجنب توقف النظام.",
+                                            fontSize = 12.sp,
+                                            color = Color(0xFFFFD54F),
+                                            lineHeight = 18.sp
+                                        )
+                                    }
+                                }
+                            }
+
+                            // 2. Notification Preferences Toggles
+                            Text(
+                                text = "خيارات استقبال الإشعارات والتنبيهات:",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CafeTextPrimary
+                            )
+
+                            NotificationSettingRow(
+                                title = "تنبيهات تجاوز سقف الديون والمطالبات المالية",
+                                subtitle = "إشعار فوري عند وصول الديون أو اقترابها من الحد الأعلى المحدد",
+                                checked = notifyDebtLimit,
+                                onCheckedChange = {
+                                    notifyDebtLimit = it
+                                    viewModel.setNotificationPref("notify_debt_limit", it)
+                                }
+                            )
+
+                            NotificationSettingRow(
+                                title = "إشعارات الطلبات الجديدة الواردة",
+                                subtitle = "تنبيه فوري عند إرسال الزبائن طلبات جديدة من الطاولات",
+                                checked = notifyNewOrders,
+                                onCheckedChange = {
+                                    notifyNewOrders = it
+                                    viewModel.setNotificationPref("notify_new_orders", it)
+                                }
+                            )
+
+                            NotificationSettingRow(
+                                title = "تنبيهات نداء النادل وخدمات الطاولات",
+                                subtitle = "إشعار عند طلب المساعدة أو طلب الحساب من الطاولة",
+                                checked = notifyTableCalls,
+                                onCheckedChange = {
+                                    notifyTableCalls = it
+                                    viewModel.setNotificationPref("notify_table_calls", it)
+                                }
+                            )
+
+                            NotificationSettingRow(
+                                title = "التنبيه الصوتي والاهتزاز",
+                                subtitle = "تشغيل صوت واهتزاز الهاتف عند وصول بلاغ جديد",
+                                checked = notifySound,
+                                onCheckedChange = {
+                                    notifySound = it
+                                    viewModel.setNotificationPref("notify_sound", it)
+                                }
+                            )
+
+                            // 3. Log of Recent System Alerts
+                            HorizontalDivider(color = CafeCardBorder)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "سجل البلاغات الإدارية والتنبيهات:",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CafeTextPrimary
+                                )
+                                TextButton(onClick = { viewModel.refreshDebtAndNotifications() }) {
+                                    Text("تحديث", color = CafeCyanPrimary, fontSize = 12.sp)
+                                }
+                            }
+
+                            if (notifications.isEmpty()) {
+                                Surface(
+                                    color = Color(0xFF161210),
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "لا توجد بلاغات معلقة حالياً.",
+                                        color = CafeTextSecondary,
+                                        fontSize = 12.sp,
+                                        modifier = Modifier.padding(14.dp)
+                                    )
+                                }
+                            } else {
+                                notifications.forEach { notif ->
+                                    Surface(
+                                        color = if (notif.isUrgent) Color(0xFF261210) else Color(0xFF1B1614),
+                                        shape = RoundedCornerShape(12.dp),
+                                        border = BorderStroke(1.dp, if (notif.isUrgent) Color(0xFFFF5252) else CafeCardBorder),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
+                                            Icon(
+                                                imageVector = if (notif.isUrgent) Icons.Default.Warning else Icons.Default.Notifications,
+                                                contentDescription = null,
+                                                tint = if (notif.isUrgent) Color(0xFFFF5252) else CafeGold,
+                                                modifier = Modifier.size(20.dp).padding(top = 2.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(10.dp))
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = notif.title,
+                                                    fontSize = 13.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (notif.isUrgent) Color(0xFFFF8A80) else Color.White
+                                                )
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                Text(
+                                                    text = notif.message,
+                                                    fontSize = 12.sp,
+                                                    color = CafeTextSecondary,
+                                                    lineHeight = 17.sp
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ==========================================
+                // 7. تسجيل الخروج
                 // ==========================================
                 item {
                     val isExpanded = expandedSection == "logout"
@@ -1509,5 +1751,38 @@ fun SettingsOptionCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun NotificationSettingRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF1A1412))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+            Text(text = title, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text(text = subtitle, fontSize = 11.sp, color = CafeTextSecondary, lineHeight = 15.sp)
+        }
+        androidx.compose.material3.Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = androidx.compose.material3.SwitchDefaults.colors(
+                checkedThumbColor = Color(0xFF032125),
+                checkedTrackColor = CafeCyanPrimary,
+                uncheckedThumbColor = CafeTextSecondary,
+                uncheckedTrackColor = Color(0xFF2C2420)
+            )
+        )
     }
 }
