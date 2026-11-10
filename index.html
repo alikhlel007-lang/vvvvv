@@ -1230,12 +1230,10 @@
             if (tblSnap && tblSnap.exists) {
               const tblData = tblSnap.data();
               const serverSec = (tblData.securityToken || '').trim();
-              if (serverSec) {
-                if (!secToken || secToken !== serverSec) {
-                  // Barcode was renewed! Invalidate old barcode immediately!
-                  showExpiredBarcodeOverlay();
-                  return;
-                }
+              if (serverSec && secToken && secToken !== serverSec) {
+                // Barcode was renewed with a new token! Invalidate old barcode
+                showExpiredBarcodeOverlay();
+                return;
               }
               hideExpiredBarcodeOverlay();
             }

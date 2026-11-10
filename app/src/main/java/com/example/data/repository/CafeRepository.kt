@@ -477,6 +477,14 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
                     val offerDiscountPercent = doc.getLong("offerDiscountPercent")?.toInt() ?: 0
                     val offerTag = doc.getString("offerTag") ?: "عرض خاص"
 
+                    val galleryRaw = doc.get("galleryImages")
+                    val galleryList = when (galleryRaw) {
+                        is List<*> -> galleryRaw.mapNotNull { it?.toString() }
+                        is String -> if (galleryRaw.contains("|||")) galleryRaw.split("|||") else if (galleryRaw.isNotBlank()) listOf(galleryRaw) else emptyList()
+                        else -> emptyList()
+                    }
+                    val galleryImagesStr = galleryList.joinToString("|||")
+
                     MenuItemEntity(
                         id = id,
                         categoryId = categoryId,
@@ -490,7 +498,7 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
                         isAvailable = isAvailable,
                         imageUri = imageUri,
                         bgImageUri = bgImageUri,
-                        galleryImagesStr = "",
+                        galleryImagesStr = galleryImagesStr,
                         isOffer = isOffer,
                         offerDiscountPercent = offerDiscountPercent,
                         offerTag = offerTag
@@ -503,6 +511,29 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
                 dao.deleteAllCategories()
                 dao.deleteAllMenuItems()
                 seedInitialMenuForCafeteria(cafeId)
+            }
+
+            // Sync tables from Firestore so barcodes and security tokens persist permanently across app updates
+            val tableDocs = firestore?.collection("cafeterias")?.document(cafeId)?.collection("tables")?.get()?.awaitTask()
+            if (tableDocs != null && !tableDocs.isEmpty) {
+                val loadedTables = tableDocs.documents.mapNotNull { doc ->
+                    val tableNum = doc.getLong("tableNumber")?.toInt() ?: doc.id.substringAfter("table_").toIntOrNull() ?: return@mapNotNull null
+                    val label = doc.getString("label") ?: "طاولة $tableNum"
+                    val capacity = doc.getLong("capacity")?.toInt() ?: 4
+                    val secToken = doc.getString("securityToken") ?: ""
+                    val qrPayload = doc.getString("qrPayload") ?: buildTableQrUrl(baseWebMenuUrl, tableNum, secToken)
+                    TableEntity(
+                        id = "table_$tableNum",
+                        tableNumber = tableNum,
+                        label = label,
+                        capacity = capacity,
+                        qrPayload = qrPayload,
+                        securityToken = secToken
+                    )
+                }
+                if (loadedTables.isNotEmpty()) {
+                    dao.insertTables(loadedTables)
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()

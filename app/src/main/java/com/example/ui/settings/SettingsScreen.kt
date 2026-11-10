@@ -372,7 +372,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                     ) {
                                         if (!editLogoUri.isNullOrEmpty()) {
                                             AsyncImage(
-                                                model = editLogoUri,
+                                                model = com.example.util.ImageCompressor.resolveImageModel(editLogoUri),
                                                 contentDescription = "شعار الكافتيريا",
                                                 modifier = Modifier
                                                     .size(56.dp)

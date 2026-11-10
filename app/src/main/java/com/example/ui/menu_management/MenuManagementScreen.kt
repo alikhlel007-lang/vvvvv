@@ -95,6 +95,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.R
+import com.example.util.ImageCompressor
 import com.example.data.model.MenuCategory
 import com.example.data.model.MenuItem
 import com.example.ui.AppScreen
@@ -357,7 +358,7 @@ fun MenuManagementScreen(viewModel: MainViewModel) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             if (!category.customImageUri.isNullOrEmpty()) {
                                 AsyncImage(
-                                    model = category.customImageUri,
+                                    model = ImageCompressor.resolveImageModel(category.customImageUri),
                                     contentDescription = category.nameAr,
                                     modifier = Modifier
                                         .size(20.dp)
@@ -628,7 +629,7 @@ fun ManageItemCard(
             ) {
                 if (!item.imageUri.isNullOrEmpty()) {
                     AsyncImage(
-                        model = item.imageUri,
+                        model = ImageCompressor.resolveImageModel(item.imageUri),
                         contentDescription = item.nameAr,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -989,7 +990,7 @@ fun ItemGearSettingsDialog(
                         ) {
                             if (!itemImageUri.isNullOrEmpty()) {
                                 AsyncImage(
-                                    model = itemImageUri,
+                                    model = ImageCompressor.resolveImageModel(itemImageUri),
                                     contentDescription = null,
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop
@@ -1067,7 +1068,7 @@ fun ItemGearSettingsDialog(
                         ) {
                             if (!itemBgImageUri.isNullOrEmpty()) {
                                 AsyncImage(
-                                    model = itemBgImageUri,
+                                    model = ImageCompressor.resolveImageModel(itemBgImageUri),
                                     contentDescription = null,
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop
@@ -1346,7 +1347,7 @@ fun ItemGearSettingsDialog(
                                         .border(1.dp, CafeInputBorder, RoundedCornerShape(8.dp))
                                 ) {
                                     AsyncImage(
-                                        model = uri,
+                                        model = ImageCompressor.resolveImageModel(uri),
                                         contentDescription = null,
                                         modifier = Modifier.fillMaxSize(),
                                         contentScale = androidx.compose.ui.layout.ContentScale.Crop
@@ -1719,7 +1720,7 @@ fun AddItemDialog(
                                         .border(1.dp, CafeInputBorder, RoundedCornerShape(8.dp))
                                 ) {
                                     AsyncImage(
-                                        model = uri,
+                                        model = ImageCompressor.resolveImageModel(uri),
                                         contentDescription = null,
                                         modifier = Modifier.fillMaxSize(),
                                         contentScale = androidx.compose.ui.layout.ContentScale.Crop
@@ -2072,7 +2073,7 @@ fun CategoryFormDialog(
                         ) {
                             if (!customImageUri.isNullOrEmpty()) {
                                 AsyncImage(
-                                    model = customImageUri,
+                                    model = ImageCompressor.resolveImageModel(customImageUri),
                                     contentDescription = null,
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop

@@ -15,6 +15,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -37,6 +38,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Air
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.BakeryDining
 import androidx.compose.material.icons.filled.Cake
 import androidx.compose.material.icons.filled.Chair
@@ -56,6 +59,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -87,6 +92,7 @@ import com.example.ui.AppScreen
 import com.example.ui.MainViewModel
 import com.example.ui.theme.CafeCyanPrimary
 import com.example.ui.theme.CafeGold
+import com.example.ui.theme.CafeInputBorder
 import com.example.ui.theme.CafeTextSecondary
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -191,112 +197,128 @@ fun CustomerMenuScreen(viewModel: MainViewModel) {
                         }
                     }
 
-                    // Table Selector Bar
+                // Table Selector Dropdown (قائمة منسدلة لاختيار الطاولة)
+                var tableDropdownExpanded by remember { mutableStateOf(false) }
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(Color(0xFF0F0C0A))
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        .padding(horizontal = 14.dp, vertical = 7.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(end = 4.dp)
-                    ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            Icons.Default.TableRestaurant,
+                            imageVector = Icons.Default.TableRestaurant,
                             contentDescription = null,
                             tint = CafeGold,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(18.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "اختر الطاولة:",
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = CafeTextSecondary
                         )
                     }
 
-                    // Display all registered tables
-                    if (registeredTables.isNotEmpty()) {
-                        registeredTables.forEach { table ->
-                            val isSelected = selectedTableNumber == table.tableNumber
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = {
-                                    if (selectedTableNumber != table.tableNumber) {
-                                        selectedTableNumber = table.tableNumber
-                                        isLoadingPage = true
-                                        webViewInstance?.loadUrl(getTargetUrl(table.tableNumber))
-                                    }
-                                },
-                                label = {
-                                    Text(
-                                        text = "طاولة ${table.tableNumber}",
-                                        fontSize = 11.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                    )
-                                },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = CafeCyanPrimary,
-                                    selectedLabelColor = Color(0xFF051B20),
-                                    containerColor = Color(0xFF1B1512),
-                                    labelColor = Color.White
-                                ),
-                                shape = RoundedCornerShape(16.dp)
-                            )
+                    Box {
+                        Surface(
+                            onClick = { tableDropdownExpanded = true },
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFF1B1512),
+                            border = BorderStroke(1.dp, CafeCyanPrimary.copy(alpha = 0.6f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "طاولة $selectedTableNumber",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CafeCyanPrimary
+                                )
+                                Icon(
+                                    imageVector = if (tableDropdownExpanded) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
+                                    contentDescription = null,
+                                    tint = CafeCyanPrimary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
-                    } else {
-                        // Preset default tables 1 to 10 if none configured yet
-                        (1..10).forEach { num ->
-                            val isSelected = selectedTableNumber == num
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = {
-                                    if (selectedTableNumber != num) {
-                                        selectedTableNumber = num
-                                        isLoadingPage = true
-                                        webViewInstance?.loadUrl(getTargetUrl(num))
+
+                        DropdownMenu(
+                            expanded = tableDropdownExpanded,
+                            onDismissRequest = { tableDropdownExpanded = false },
+                            modifier = Modifier
+                                .background(Color(0xFF181310))
+                                .border(1.dp, CafeInputBorder, RoundedCornerShape(8.dp))
+                        ) {
+                            val tableNumbers = if (registeredTables.isNotEmpty()) {
+                                registeredTables.map { it.tableNumber }
+                            } else {
+                                (1..10).toList()
+                            }
+                            tableNumbers.forEach { num ->
+                                val isSelected = selectedTableNumber == num
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = "طاولة $num",
+                                            color = if (isSelected) CafeCyanPrimary else Color.White,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            fontSize = 13.sp
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.TableRestaurant,
+                                            contentDescription = null,
+                                            tint = if (isSelected) CafeCyanPrimary else CafeTextSecondary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    },
+                                    onClick = {
+                                        tableDropdownExpanded = false
+                                        if (selectedTableNumber != num) {
+                                            selectedTableNumber = num
+                                            isLoadingPage = true
+                                            webViewInstance?.loadUrl(getTargetUrl(num))
+                                        }
                                     }
-                                },
-                                label = {
+                                )
+                            }
+
+                            // خيار إدخال طاولة أخرى مخصصة
+                            DropdownMenuItem(
+                                text = {
                                     Text(
-                                        text = "طاولة $num",
-                                        fontSize = 11.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        text = "+ طاولة أخرى...",
+                                        color = CafeGold,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp
                                     )
                                 },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = CafeCyanPrimary,
-                                    selectedLabelColor = Color(0xFF051B20),
-                                    containerColor = Color(0xFF1B1512),
-                                    labelColor = Color.White
-                                ),
-                                shape = RoundedCornerShape(16.dp)
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = null,
+                                        tint = CafeGold,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                },
+                                onClick = {
+                                    tableDropdownExpanded = false
+                                    customTableInput = selectedTableNumber.toString()
+                                    showCustomTableDialog = true
+                                }
                             )
                         }
                     }
-
-                    // Button to manually enter any custom table number (e.g. Takeaway 99, Table 45)
-                    FilterChip(
-                        selected = false,
-                        onClick = {
-                            customTableInput = selectedTableNumber.toString()
-                            showCustomTableDialog = true
-                        },
-                        leadingIcon = {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
-                        },
-                        label = { Text("طاولة أخرى...", fontSize = 11.sp) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            containerColor = Color(0xFF261D18),
-                            labelColor = CafeGold
-                        ),
-                        shape = RoundedCornerShape(16.dp)
-                    )
                 }
 
                 // Loading progress indicator

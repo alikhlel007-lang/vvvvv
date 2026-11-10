@@ -77,4 +77,41 @@ object ImageCompressor {
             uriString
         }
     }
+
+    private val base64Cache = android.util.LruCache<String, Bitmap>(60)
+
+    /**
+     * Decodes a Base64 data URL string ("data:image/jpeg;base64,...") into an Android Bitmap
+     * so it can be rendered by Coil's AsyncImage or Compose Image without failing.
+     */
+    fun base64ToBitmap(dataUri: String?): Bitmap? {
+        if (dataUri.isNullOrBlank() || !dataUri.startsWith("data:image")) return null
+        val cached = base64Cache.get(dataUri)
+        if (cached != null && !cached.isRecycled) return cached
+        return try {
+            val base64 = dataUri.substringAfter("base64,")
+            val bytes = Base64.decode(base64, Base64.DEFAULT)
+            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            if (bitmap != null) {
+                base64Cache.put(dataUri, bitmap)
+            }
+            bitmap
+        } catch (t: Throwable) {
+            android.util.Log.e("ImageCompressor", "Failed to decode base64 bitmap", t)
+            null
+        }
+    }
+
+    /**
+     * Resolves the model parameter for Coil's AsyncImage:
+     * If uri is a Base64 data URI, returns the decoded Bitmap.
+     * Otherwise returns the uri string (e.g. content://, file://, http://).
+     */
+    fun resolveImageModel(uriString: String?): Any? {
+        if (uriString.isNullOrBlank()) return null
+        if (uriString.startsWith("data:image")) {
+            return base64ToBitmap(uriString) ?: uriString
+        }
+        return uriString
+    }
 }
