@@ -254,6 +254,7 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
                         ?: doc.getString("serviceFee")?.toDoubleOrNull()
                         ?: 0.0
                     val currency = doc.getString("currency") ?: "د.ع"
+                    val customerPhone = doc.getString("customerPhone") ?: doc.getString("phone") ?: ""
                     val statusStr = doc.getString("status") ?: "NEW"
                     val timestamp = doc.getLong("timestamp") ?: System.currentTimeMillis()
                     val notes = doc.getString("notes") ?: ""
@@ -262,6 +263,7 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
                         id = id,
                         tableNumber = tableNumber,
                         customerName = customerName,
+                        customerPhone = customerPhone,
                         itemsSummary = itemsSummary,
                         itemsCount = itemsCount,
                         totalPrice = totalPrice,
@@ -941,7 +943,8 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
         tableNumber: Int,
         customerName: String,
         cartItems: List<CartItem>,
-        notes: String
+        notes: String,
+        customerPhone: String = ""
     ): String {
         val currency = cartItems.firstOrNull()?.menuItem?.currency ?: "د.ع"
         val summary = cartItems.joinToString("، ") {
@@ -1015,6 +1018,7 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
             id = orderId,
             tableNumber = tableNumber,
             customerName = cleanedCustomerName,
+            customerPhone = customerPhone,
             itemsSummary = summary,
             itemsCount = count,
             totalPrice = total,
@@ -1034,6 +1038,7 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
                 "cafeteriaId" to currentCafeteriaId,
                 "tableNumber" to tableNumber,
                 "customerName" to cleanedCustomerName,
+                "customerPhone" to customerPhone,
                 "itemsSummary" to summary,
                 "itemsCount" to count,
                 "totalPrice" to total,
@@ -1553,6 +1558,7 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
         id = id,
         tableNumber = tableNumber,
         customerName = customerName,
+        customerPhone = customerPhone,
         itemsSummary = itemsSummary,
         itemsCount = itemsCount,
         totalPrice = totalPrice,
@@ -1575,6 +1581,7 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
         id = id,
         tableNumber = tableNumber,
         customerName = customerName,
+        customerPhone = customerPhone,
         itemsSummary = itemsSummary,
         itemsCount = itemsCount,
         totalPrice = totalPrice,

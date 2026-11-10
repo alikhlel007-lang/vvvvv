@@ -1,11 +1,15 @@
 package com.example.util
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.print.PrintAttributes
 import android.print.PrintManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Toast
 import com.example.data.model.OrderRecord
+import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -201,5 +205,89 @@ object ReceiptPrinter {
             </body>
             </html>
         """.trimIndent()
+    }
+
+    /**
+     * تنظيف وضبط صيغة رقم الهاتف الدولي لدعم واتساب
+     */
+    fun normalizePhoneNumber(rawPhone: String): String {
+        val digits = rawPhone.replace(Regex("[^0-9+]"), "")
+        return when {
+            digits.startsWith("+964") -> digits.removePrefix("+")
+            digits.startsWith("00964") -> digits.removePrefix("00")
+            digits.startsWith("07") && digits.length >= 10 -> "964" + digits.removePrefix("0")
+            digits.startsWith("7") && digits.length == 10 -> "964$digits"
+            digits.startsWith("+") -> digits.removePrefix("+")
+            else -> digits
+        }
+    }
+
+    /**
+     * تجهيز نص الفاتورة مرتب ومنسق برسالة نصية للواتساب
+     */
+    fun buildInvoiceTextMessage(
+        tableNumber: Int,
+        orders: List<OrderRecord>,
+        cafeName: String
+    ): String {
+        val currency = orders.firstOrNull()?.currency ?: "د.ع"
+        val subtotal = orders.sumOf { it.subtotal }
+        val settlementFee = OrderFeeCalculator.calculateSettlementFee(subtotal, currency)
+        val settlementTotal = OrderFeeCalculator.calculateSettlementTotal(subtotal, currency)
+
+        val parsedItems = OrderSummaryHelper.parseOrderItems(orders.map { it.itemsSummary })
+        val customerNames = orders.map { it.customerName }.distinct().joinToString("، ")
+        val timeStr = SimpleDateFormat("yyyy/MM/dd - hh:mm a", Locale.getDefault()).format(Date())
+
+        val itemsBuilder = StringBuilder()
+        parsedItems.forEachIndexed { index, item ->
+            val priceStr = if (item.totalPrice > 0.0) OrderFeeCalculator.formatPrice(item.totalPrice, item.currency) else "-"
+            itemsBuilder.append("${index + 1}. *${item.name}* (عدد ${item.quantity}) ⇦ $priceStr\n")
+        }
+
+        return """
+            🧾 *فاتورة حساب - $cafeName*
+            ━━━━━━━━━━━━━━━━━━
+            📍 *طاولة رقم:* $tableNumber
+            👤 *الزبون:* $customerNames
+            📅 *التاريخ:* $timeStr
+            ━━━━━━━━━━━━━━━━━━
+            📋 *تفاصيل الطلبات:*
+            $itemsBuilder━━━━━━━━━━━━━━━━━━
+            💵 *مجموع الطلبات:* ${OrderFeeCalculator.formatPrice(subtotal, currency)}
+            🏷️ *رسوم الخدمة عند التسديد:* ${OrderFeeCalculator.formatPrice(settlementFee, currency)}
+            ✨ *الإجمالي النهائي المسدد:* ${OrderFeeCalculator.formatPrice(settlementTotal, currency)}
+            ━━━━━━━━━━━━━━━━━━
+            شكراً لزيارتكم الكريمة! نتشرف بحضوركم دائماً ☕✨
+        """.trimIndent()
+    }
+
+    /**
+     * إرسال الفاتورة عبر تطبيق واتساب مباشرة إلى رقم الزبون
+     */
+    fun sendWhatsAppInvoice(
+        context: Context,
+        rawPhone: String,
+        tableNumber: Int,
+        orders: List<OrderRecord>,
+        cafeName: String
+    ) {
+        val cleanPhone = normalizePhoneNumber(rawPhone)
+        val message = buildInvoiceTextMessage(tableNumber, orders, cafeName)
+
+        try {
+            val encodedMessage = URLEncoder.encode(message, "UTF-8")
+            val uriString = if (cleanPhone.isNotBlank()) {
+                "https://api.whatsapp.com/send?phone=$cleanPhone&text=$encodedMessage"
+            } else {
+                "https://api.whatsapp.com/send?text=$encodedMessage"
+            }
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uriString)).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(context, "تعذر فتح تطبيق واتساب: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 }

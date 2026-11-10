@@ -962,6 +962,14 @@
         </div>
 
         <div class="input-group">
+          <label class="input-label">
+            <i class="fa-brands fa-whatsapp" style="color:#25D366; margin-left:4px;"></i>
+            رقم الهاتف (واتساب) لاستلام الفاتورة:
+          </label>
+          <input type="tel" id="customerPhone" class="sheet-input" placeholder="مثال: 07801234567 (اختياري)" maxlength="20" dir="ltr" style="text-align:right;">
+        </div>
+
+        <div class="input-group">
           <label class="input-label">ملاحظات للمطبخ (اختياري):</label>
           <input type="text" id="orderNotes" class="sheet-input" placeholder="مثال: بدون سكر، حار زيادة...">
         </div>
@@ -1011,83 +1019,91 @@
 
       <div class="sheet-body" style="overflow-y:auto; flex:1; padding-bottom:14px;">
         
-        <!-- Editable Names & Big Total Scores -->
-        <div style="display:flex; gap:10px; margin-bottom:12px;">
-          <!-- Team 1 -->
-          <div style="flex:1; background:#1C1714; border:1.5px solid var(--accent); border-radius:14px; padding:10px; text-align:center;">
-            <input type="text" id="gameTeam1Name" value="فريق 1" oninput="updateScoresView()" 
-              style="width:100%; background:transparent; border:none; border-bottom:1px solid #3A2F28; color:var(--accent); font-weight:800; font-size:14px; text-align:center; padding:3px; outline:none;" placeholder="اسم الفريق 1">
-            <div id="scoreTeam1" style="font-size:32px; font-weight:900; color:#FFFFFF; margin:6px 0;">0</div>
-            <div style="font-size:11px; color:var(--text-dim);">المجموع الكلي</div>
-          </div>
-
-          <!-- Team 2 -->
-          <div style="flex:1; background:#1C1714; border:1.5px solid #3B82F6; border-radius:14px; padding:10px; text-align:center;">
-            <input type="text" id="gameTeam2Name" value="فريق 2" oninput="updateScoresView()"
-              style="width:100%; background:transparent; border:none; border-bottom:1px solid #23354E; color:#60A5FA; font-weight:800; font-size:14px; text-align:center; padding:3px; outline:none;" placeholder="اسم الفريق 2">
-            <div id="scoreTeam2" style="font-size:32px; font-weight:900; color:#FFFFFF; margin:6px 0;">0</div>
-            <div style="font-size:11px; color:var(--text-dim);">المجموع الكلي</div>
-          </div>
-        </div>
-
-        <!-- Automatic Points Difference Banner -->
-        <div id="scoreDiffBanner" style="background:#251D18; border:1px solid var(--bg-card-border); border-radius:12px; padding:8px 12px; text-align:center; font-size:13px; font-weight:800; margin-bottom:14px; color:#F59E0B;">
-          ⚖️ تعادل في النقاط (0)
-        </div>
-
-        <!-- Add Round Section -->
-        <div style="background:#181310; border:1px solid var(--bg-card-border); border-radius:14px; padding:12px; margin-bottom:14px;">
-          <div style="font-size:12px; font-weight:800; color:var(--text-sub); margin-bottom:8px; display:flex; justify-content:space-between;">
-            <span>نقاط الجولة الحالية:</span>
-            <span style="font-size:11px; color:var(--text-dim);">اكتب النقاط أو اختر زيادة سريعة</span>
-          </div>
-
-          <div style="display:flex; gap:10px; margin-bottom:8px;">
-            <div style="flex:1;">
-              <input type="number" id="roundPts1" placeholder="0" class="sheet-input" style="text-align:center; font-size:16px; font-weight:800; padding:8px;" onkeypress="if(event.key==='Enter') addCurrentRound()">
-              <div style="display:flex; gap:4px; margin-top:4px; justify-content:center;">
-                <button type="button" class="btn-step btn-step-plus" style="width:auto; padding:2px 6px; font-size:11px; border-radius:6px;" onclick="addQuickRoundPts(1, 10)">+10</button>
-                <button type="button" class="btn-step btn-step-plus" style="width:auto; padding:2px 6px; font-size:11px; border-radius:6px;" onclick="addQuickRoundPts(1, 25)">+25</button>
-                <button type="button" class="btn-step btn-step-plus" style="width:auto; padding:2px 6px; font-size:11px; border-radius:6px;" onclick="addQuickRoundPts(1, 50)">+50</button>
-                <button type="button" class="btn-step btn-step-plus" style="width:auto; padding:2px 6px; font-size:11px; border-radius:6px;" onclick="addQuickRoundPts(1, 100)">+100</button>
-              </div>
+        <!-- 2-Column Table for Card Game -->
+        <div style="background:#15110E; border:1.5px solid var(--bg-card-border); border-radius:14px; overflow:hidden; margin-bottom:12px;">
+          <!-- Team Header Row -->
+          <div style="display:flex; background:#1C1714; border-bottom:1.5px solid #2B221C; text-align:center;">
+            <!-- Team 1 Header -->
+            <div style="flex:1; padding:10px 8px; border-left:1px solid #2B221C;">
+              <input type="text" id="gameTeam1Name" value="الفريق الأول"
+                onfocus="clearTeamDefaultName(this, 'الفريق الأول')"
+                onclick="clearTeamDefaultName(this, 'الفريق الأول')"
+                onblur="restoreTeamDefaultName(this, 'الفريق الأول')"
+                oninput="updateScoresView()"
+                style="width:100%; background:transparent; border:none; border-bottom:1.5px dashed var(--accent); color:var(--accent); font-weight:800; font-size:14px; text-align:center; padding:3px; outline:none;" placeholder="اسم الفريق الأول">
+              <div id="scoreTeam1" style="font-size:28px; font-weight:900; color:#FFFFFF; margin:4px 0 2px 0;">0</div>
+              <div style="font-size:10px; color:var(--text-dim);">المجموع الكلي</div>
             </div>
 
-            <div style="flex:1;">
-              <input type="number" id="roundPts2" placeholder="0" class="sheet-input" style="text-align:center; font-size:16px; font-weight:800; padding:8px;" onkeypress="if(event.key==='Enter') addCurrentRound()">
-              <div style="display:flex; gap:4px; margin-top:4px; justify-content:center;">
-                <button type="button" class="btn-step btn-step-plus" style="width:auto; padding:2px 6px; font-size:11px; border-radius:6px; background:#2563EB; color:#fff;" onclick="addQuickRoundPts(2, 10)">+10</button>
-                <button type="button" class="btn-step btn-step-plus" style="width:auto; padding:2px 6px; font-size:11px; border-radius:6px; background:#2563EB; color:#fff;" onclick="addQuickRoundPts(2, 25)">+25</button>
-                <button type="button" class="btn-step btn-step-plus" style="width:auto; padding:2px 6px; font-size:11px; border-radius:6px; background:#2563EB; color:#fff;" onclick="addQuickRoundPts(2, 50)">+50</button>
-                <button type="button" class="btn-step btn-step-plus" style="width:auto; padding:2px 6px; font-size:11px; border-radius:6px; background:#2563EB; color:#fff;" onclick="addQuickRoundPts(2, 100)">+100</button>
-              </div>
+            <!-- Team 2 Header -->
+            <div style="flex:1; padding:10px 8px;">
+              <input type="text" id="gameTeam2Name" value="الفريق الثاني"
+                onfocus="clearTeamDefaultName(this, 'الفريق الثاني')"
+                onclick="clearTeamDefaultName(this, 'الفريق الثاني')"
+                onblur="restoreTeamDefaultName(this, 'الفريق الثاني')"
+                oninput="updateScoresView()"
+                style="width:100%; background:transparent; border:none; border-bottom:1.5px dashed #3B82F6; color:#60A5FA; font-weight:800; font-size:14px; text-align:center; padding:3px; outline:none;" placeholder="اسم الفريق الثاني">
+              <div id="scoreTeam2" style="font-size:28px; font-weight:900; color:#FFFFFF; margin:4px 0 2px 0;">0</div>
+              <div style="font-size:10px; color:var(--text-dim);">المجموع الكلي</div>
             </div>
           </div>
 
-          <button class="btn-submit-order" style="padding:10px; font-size:13px; margin-top:6px;" onclick="addCurrentRound()">
-            <i class="fa-solid fa-plus"></i>
-            <span>تسجيل الجولة وحساب الفرق</span>
+          <!-- Score Difference Banner -->
+          <div id="scoreDiffBanner" style="background:#1B1512; border-bottom:1px solid #2B221C; padding:6px 12px; text-align:center; font-size:12px; font-weight:800; color:#F59E0B;">
+            ⚖️ تعادل في النقاط (0 - 0)
+          </div>
+
+          <!-- Saved Rounds List Table (يتم كتابة النتيجة تحته مباشرة) -->
+          <div id="savedRoundsList" style="max-height:220px; overflow-y:auto;">
+            <div style="text-align:center; color:var(--text-dim); padding:18px 10px; font-size:12px;">
+              لا توجد جولات مسجلة بعد. اكتب النتيجة واضغط الجولة التالية.
+            </div>
+          </div>
+
+          <!-- Current Round Input Row (مباشرة تحت قائمة الجولات) -->
+          <div style="background:#181310; border-top:1.5px solid #2B221C; padding:10px 12px;">
+            <div style="font-size:11px; font-weight:800; color:var(--text-sub); text-align:center; margin-bottom:6px;">
+              الجولة الحالية (<span id="currentRoundNumberLabel">1</span>)
+            </div>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <!-- Team 1 input -->
+              <div style="flex:1;">
+                <input type="text" id="roundPts1" inputmode="numeric" placeholder="النتيجة"
+                  oninput="handleRoundInput(1)"
+                  onkeypress="if(event.key==='Enter') nextRound()"
+                  style="width:100%; text-align:center; font-size:18px; font-weight:900; background:#0E0B09; border:1.5px solid var(--accent); color:var(--accent); border-radius:10px; padding:8px; outline:none;">
+              </div>
+
+              <!-- VS divider -->
+              <div style="color:var(--text-dim); font-weight:900; font-size:12px;">VS</div>
+
+              <!-- Team 2 input -->
+              <div style="flex:1;">
+                <input type="text" id="roundPts2" inputmode="numeric" placeholder="النتيجة"
+                  oninput="handleRoundInput(2)"
+                  onkeypress="if(event.key==='Enter') nextRound()"
+                  style="width:100%; text-align:center; font-size:18px; font-weight:900; background:#0E0B09; border:1.5px solid #3B82F6; color:#60A5FA; border-radius:10px; padding:8px; outline:none;">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- زر الجولة التالية وتحفظ الجولة الأولى وهكذا مهما زاد عدد الجولات -->
+        <button type="button" class="btn-submit-order" onclick="nextRound()" style="padding:12px; font-size:14px; font-weight:900; margin-bottom:10px; border-radius:12px; display:flex; align-items:center; justify-content:center; gap:8px;">
+          <span>الجولة التالية</span>
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+
+        <!-- أدوات التحكم: تراجع وتصفير -->
+        <div style="display:flex; gap:8px;">
+          <button type="button" onclick="undoLastRound()" style="flex:1; background:#1C1714; border:1px solid var(--bg-card-border); color:var(--text-sub); border-radius:10px; padding:8px; font-size:12px; font-weight:700; cursor:pointer;">
+            <i class="fa-solid fa-rotate-left"></i> تراجع عن جولة
+          </button>
+          <button type="button" class="btn-service" style="flex:1; border-color:#EF4444; color:#EF4444; padding:8px; font-size:12px; border-radius:10px;" onclick="resetScores()">
+            <i class="fa-solid fa-trash-can" style="color:#EF4444;"></i>
+            <span>تصفير النشرة</span>
           </button>
         </div>
-
-        <!-- Rounds Log Table -->
-        <div style="background:#1C1714; border:1px solid var(--bg-card-border); border-radius:14px; padding:10px; margin-bottom:12px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid #2B221C; padding-bottom:6px;">
-            <span style="font-size:12px; font-weight:800; color:var(--text-sub);">سجل الجولات السابقة:</span>
-            <button onclick="undoLastRound()" style="background:transparent; border:none; color:#EF4444; font-size:11px; font-weight:700; cursor:pointer;">
-              <i class="fa-solid fa-rotate-left"></i> تراجع عن جولة
-            </button>
-          </div>
-          <div id="roundsHistoryList" style="max-height:160px; overflow-y:auto; font-size:12px;">
-            <div style="text-align:center; color:var(--text-dim); padding:16px 0;">لا توجد جولات مسجلة بعد</div>
-          </div>
-        </div>
-
-        <!-- Reset Button -->
-        <button class="btn-service" style="width:100%; border-color:#EF4444; color:#EF4444;" onclick="resetScores()">
-          <i class="fa-solid fa-trash-can" style="color:#EF4444;"></i>
-          <span>تصفير النشرة وبدء لعبة جديدة</span>
-        </button>
 
       </div>
     </div>
@@ -1167,10 +1183,12 @@
     const tablePill = document.getElementById('tablePillText');
     if (tablePill) tablePill.innerText = 'طاولة رقم ' + tableNumber;
 
-    // Load Saved Customer Name
+    // Load Saved Customer Name & Phone
     try {
       const savedName = localStorage.getItem('cafe_customer_name');
       if (savedName) document.getElementById('customerName').value = savedName;
+      const savedPhone = localStorage.getItem('cafe_customer_phone');
+      if (savedPhone) document.getElementById('customerPhone').value = savedPhone;
     } catch (_) {}
 
     // State
@@ -1703,6 +1721,8 @@
 
       const nameInput = document.getElementById('customerName');
       const custName = (nameInput ? nameInput.value.trim() : '') || '';
+      const phoneInput = document.getElementById('customerPhone');
+      const custPhone = (phoneInput ? phoneInput.value.trim() : '') || '';
       
       if (!custName) {
         const err = document.getElementById('nameError');
@@ -1716,6 +1736,9 @@
 
       try {
         localStorage.setItem('cafe_customer_name', custName);
+        if (custPhone) {
+          localStorage.setItem('cafe_customer_phone', custPhone);
+        }
       } catch (_) {}
 
       const numTable = parseInt(tableNumber, 10) || 1;
@@ -1736,6 +1759,7 @@
         cafeteriaId: cafeteriaId,
         tableNumber: numTable,
         customerName: custName,
+        customerPhone: custPhone,
         itemsSummary: summary,
         itemsCount: totalQty,
         totalPrice: totalSum,
@@ -2072,7 +2096,7 @@
     }
 
     // 12. Card Games Score Sheet Tracker
-    let gameRounds = []; // Array of { p1: number, p2: number, t1: number, t2: number }
+    let gameRounds = []; // Array of { p1: number, p2: number, d1: string, d2: string, t1: number, t2: number }
 
     function openGameModal() {
       document.getElementById('gameModal').style.display = 'flex';
@@ -2083,24 +2107,64 @@
       document.getElementById('gameModal').style.display = 'none';
     }
 
-    function addQuickRoundPts(team, val) {
-      const input = document.getElementById(team === 1 ? 'roundPts1' : 'roundPts2');
-      if (input) {
-        const cur = parseInt(input.value, 10) || 0;
-        input.value = cur + val;
+    // Auto-clear team default name when tapped/clicked so user types immediately without backspacing
+    function clearTeamDefaultName(input, defaultVal) {
+      const cur = (input.value || '').trim();
+      if (cur === defaultVal || cur === 'الفريق الأول' || cur === 'الفريق الثاني' || cur === 'فريق 1' || cur === 'فريق 2') {
+        input.value = '';
       }
     }
 
-    function addCurrentRound() {
-      const p1Input = document.getElementById('roundPts1');
-      const p2Input = document.getElementById('roundPts2');
-      const p1 = parseInt(p1Input.value, 10) || 0;
-      const p2 = parseInt(p2Input.value, 10) || 0;
+    function restoreTeamDefaultName(input, defaultVal) {
+      if (!(input.value || '').trim()) {
+        input.value = defaultVal;
+      }
+      updateScoresView();
+    }
 
-      if (p1 === 0 && p2 === 0) {
-        showToast('⚠️ يرجى إدخال نقاط لأحد الفريقين');
+    // Auto-fill X in opposite team input when a number is entered
+    function handleRoundInput(team) {
+      const in1 = document.getElementById('roundPts1');
+      const in2 = document.getElementById('roundPts2');
+      if (!in1 || !in2) return;
+
+      if (team === 1) {
+        const v1 = in1.value.trim();
+        if (v1 && v1.toUpperCase() !== 'X' && v1 !== '×') {
+          in2.value = 'X';
+        } else if (!v1 && (in2.value.toUpperCase() === 'X' || in2.value === '×')) {
+          in2.value = '';
+        }
+      } else {
+        const v2 = in2.value.trim();
+        if (v2 && v2.toUpperCase() !== 'X' && v2 !== '×') {
+          in1.value = 'X';
+        } else if (!v2 && (in1.value.toUpperCase() === 'X' || in1.value === '×')) {
+          in1.value = '';
+        }
+      }
+    }
+
+    // Next Round handler (الجولة التالية وتحفظ الجولة الأولى وهكذا مهما زاد عدد الجولات)
+    function nextRound() {
+      const in1 = document.getElementById('roundPts1');
+      const in2 = document.getElementById('roundPts2');
+      const v1 = (in1?.value || '').trim();
+      const v2 = (in2?.value || '').trim();
+
+      if (!v1 && !v2) {
+        showToast('⚠️ يرجى إدخال نتيجة الجولة');
         return;
       }
+
+      const isX1 = v1.toUpperCase() === 'X' || v1 === '×';
+      const isX2 = v2.toUpperCase() === 'X' || v2 === '×';
+
+      const p1 = isX1 ? 0 : (parseInt(v1, 10) || 0);
+      const p2 = isX2 ? 0 : (parseInt(v2, 10) || 0);
+
+      const d1 = isX1 ? 'X' : p1.toString();
+      const d2 = isX2 ? 'X' : p2.toString();
 
       const prevT1 = gameRounds.length > 0 ? gameRounds[gameRounds.length - 1].t1 : 0;
       const prevT2 = gameRounds.length > 0 ? gameRounds[gameRounds.length - 1].t2 : 0;
@@ -2108,14 +2172,24 @@
       gameRounds.push({
         p1: p1,
         p2: p2,
+        d1: d1,
+        d2: d2,
         t1: prevT1 + p1,
         t2: prevT2 + p2
       });
 
-      p1Input.value = '';
-      p2Input.value = '';
+      if (in1) in1.value = '';
+      if (in2) in2.value = '';
+
       updateScoresView();
-      showToast('✅ تم تسجيل الجولة وحساب الفرق');
+
+      // Scroll to bottom of rounds
+      const roundsList = document.getElementById('savedRoundsList');
+      if (roundsList) {
+        roundsList.scrollTop = roundsList.scrollHeight;
+      }
+
+      if (in1) in1.focus();
     }
 
     function undoLastRound() {
@@ -2150,10 +2224,13 @@
       if (score1El) score1El.innerText = t1;
       if (score2El) score2El.innerText = t2;
 
-      const name1 = (document.getElementById('gameTeam1Name')?.value || 'فريق 1').trim();
-      const name2 = (document.getElementById('gameTeam2Name')?.value || 'فريق 2').trim();
+      const name1 = (document.getElementById('gameTeam1Name')?.value || 'الفريق الأول').trim();
+      const name2 = (document.getElementById('gameTeam2Name')?.value || 'الفريق الثاني').trim();
 
-      // Calculate Difference Automatically (حساب فرق النقاط تلقائياً)
+      const roundNumEl = document.getElementById('currentRoundNumberLabel');
+      if (roundNumEl) roundNumEl.innerText = (gameRounds.length + 1).toString();
+
+      // Calculate Difference Automatically
       const diff = Math.abs(t1 - t2);
       const banner = document.getElementById('scoreDiffBanner');
       if (banner) {
@@ -2168,29 +2245,32 @@
           banner.style.color = '#60A5FA';
           banner.innerHTML = `🔥 فارق النقاط: <strong>+${diff}</strong> لصالح <strong>${name2}</strong>`;
         } else {
-          banner.style.background = '#251D18';
-          banner.style.borderColor = 'var(--bg-card-border)';
+          banner.style.background = '#1B1512';
+          banner.style.borderColor = '#2B221C';
           banner.style.color = '#A89B91';
           banner.innerHTML = `⚖️ تعادل في النقاط (${t1} - ${t2})`;
         }
       }
 
-      // Render Rounds History
-      const hist = document.getElementById('roundsHistoryList');
+      // Render Saved Rounds Table directly underneath
+      const hist = document.getElementById('savedRoundsList');
       if (hist) {
         if (gameRounds.length === 0) {
-          hist.innerHTML = '<div style="text-align:center; color:var(--text-dim); padding:14px 0;">لا توجد جولات مسجلة بعد. أدخل النقاط واضغط تسجيل الجولة.</div>';
+          hist.innerHTML = '<div style="text-align:center; color:var(--text-dim); padding:18px 10px; font-size:12px;">لا توجد جولات مسجلة بعد. اكتب النتيجة واضغط الجولة التالية.</div>';
         } else {
           let html = '';
           gameRounds.forEach((r, idx) => {
-            const roundDiff = r.t1 - r.t2;
-            const diffText = roundDiff > 0 ? `+${roundDiff} ${name1}` : (roundDiff < 0 ? `+${Math.abs(roundDiff)} ${name2}` : 'تعادل');
             html += `
-              <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 4px; border-bottom:1px dashed #241D17;">
-                <span style="font-weight:800; color:var(--text-dim);">جولة ${idx + 1}</span>
-                <span style="color:var(--accent); font-weight:700;">+${r.p1} (${r.t1})</span>
-                <span style="color:#60A5FA; font-weight:700;">+${r.p2} (${r.t2})</span>
-                <span style="font-size:10px; color:#F59E0B; background:rgba(245,158,11,0.1); padding:2px 6px; border-radius:6px;">${diffText}</span>
+              <div style="display:flex; align-items:center; border-bottom:1px solid #231C17; padding:8px 6px; background:${idx % 2 === 0 ? '#15110E' : '#191410'};">
+                <div style="width:36px; font-size:10px; font-weight:800; color:var(--text-dim); text-align:center;">
+                  #${idx + 1}
+                </div>
+                <div style="flex:1; text-align:center; font-size:16px; font-weight:900; color:${r.d1 === 'X' ? '#EF4444' : 'var(--accent)'}; border-left:1px solid #231C17;">
+                  ${r.d1}
+                </div>
+                <div style="flex:1; text-align:center; font-size:16px; font-weight:900; color:${r.d2 === 'X' ? '#EF4444' : '#60A5FA'};">
+                  ${r.d2}
+                </div>
               </div>
             `;
           });

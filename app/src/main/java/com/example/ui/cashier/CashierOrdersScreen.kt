@@ -1117,8 +1117,9 @@ fun CompactPaidInvoiceCard(
                         modifier = Modifier.size(13.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
+                    val sessionPhone = session.orders.mapNotNull { it.customerPhone.ifBlank { null } }.firstOrNull() ?: ""
                     Text(
-                        text = "الزبون: ${customerNames.joinToString("، ")}",
+                        text = if (sessionPhone.isNotBlank()) "الزبون: ${customerNames.joinToString("، ")} (📱 $sessionPhone)" else "الزبون: ${customerNames.joinToString("، ")}",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = CafeTextPrimary
@@ -1235,6 +1236,30 @@ fun CompactPaidInvoiceCard(
                         modifier = Modifier.height(32.dp)
                     ) {
                         Text("طباعة 🖨️", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
+                    }
+
+                    val sessionPhone = session.orders.mapNotNull { it.customerPhone.ifBlank { null } }.firstOrNull() ?: ""
+                    if (sessionPhone.isNotBlank()) {
+                        Button(
+                            onClick = {
+                                com.example.util.ReceiptPrinter.sendWhatsAppInvoice(
+                                    context = context,
+                                    rawPhone = sessionPhone,
+                                    tableNumber = session.tableNumber,
+                                    orders = session.orders,
+                                    cafeName = cafeName
+                                )
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF25D366),
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 9.dp, vertical = 4.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Text("واتساب 💬", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
+                        }
                     }
 
                     // طلب حذف
@@ -1414,6 +1439,7 @@ fun UnifiedTableSessionCard(
                     val notesCombined = com.example.util.OrderSummaryHelper.combineNotes(
                         customerOrders.map { it.notes }
                     )
+                    val custPhone = customerOrders.mapNotNull { it.customerPhone.ifBlank { null } }.firstOrNull() ?: ""
 
                     Column(
                         modifier = Modifier
@@ -1441,7 +1467,7 @@ fun UnifiedTableSessionCard(
                                 )
                                 Spacer(modifier = Modifier.width(5.dp))
                                 Text(
-                                    text = "الزبون: $customerName",
+                                    text = if (custPhone.isNotBlank()) "الزبون: $customerName (📱 $custPhone)" else "الزبون: $customerName",
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = CafeTextPrimary
@@ -1612,25 +1638,51 @@ fun UnifiedTableSessionCard(
                                 color = if (isCustFullyPaid) CafeCyanPrimary else CafeGold
                             )
 
-                            // زر التسديد الفردي لهذا الشخص (متاح حصراً في مرحلة تسديد حساب الطاولة)
-                            if (session.stage == OrderStatus.DELIVERED && !isCustFullyPaid) {
-                                Button(
-                                    onClick = {
-                                        val unpaidCustOrders = customerOrders.filter { it.status != OrderStatus.PAID }
-                                        onPayAllSession(unpaidCustOrders)
-                                    },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = CafeCyanPrimary,
-                                        contentColor = Color(0xFF032125)
-                                    ),
-                                    shape = RoundedCornerShape(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                                ) {
-                                    Text(
-                                        text = "تسديد حساب $customerName 💵",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (custPhone.isNotBlank() && (isCustFullyPaid || session.stage == OrderStatus.DELIVERED)) {
+                                    Button(
+                                        onClick = {
+                                            com.example.util.ReceiptPrinter.sendWhatsAppInvoice(
+                                                context = context,
+                                                rawPhone = custPhone,
+                                                tableNumber = session.tableNumber,
+                                                orders = customerOrders,
+                                                cafeName = cafeName
+                                            )
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFF25D366),
+                                            contentColor = Color.White
+                                        ),
+                                        shape = RoundedCornerShape(8.dp),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                        modifier = Modifier.height(30.dp)
+                                    ) {
+                                        Text("واتساب 💬", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                }
+
+                                // زر التسديد الفردي لهذا الشخص (متاح حصراً في مرحلة تسديد حساب الطاولة)
+                                if (session.stage == OrderStatus.DELIVERED && !isCustFullyPaid) {
+                                    Button(
+                                        onClick = {
+                                            val unpaidCustOrders = customerOrders.filter { it.status != OrderStatus.PAID }
+                                            onPayAllSession(unpaidCustOrders)
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = CafeCyanPrimary,
+                                            contentColor = Color(0xFF032125)
+                                        ),
+                                        shape = RoundedCornerShape(8.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                                    ) {
+                                        Text(
+                                            text = "تسديد حساب $customerName 💵",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -1976,6 +2028,30 @@ fun UnifiedTableSessionCard(
                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                             ) {
                                 Text("طباعة الفاتورة 🖨️", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
+                            }
+
+                            val sessionPhone = session.orders.mapNotNull { it.customerPhone.ifBlank { null } }.firstOrNull() ?: ""
+                            if (sessionPhone.isNotBlank()) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Button(
+                                    onClick = {
+                                        com.example.util.ReceiptPrinter.sendWhatsAppInvoice(
+                                            context = context,
+                                            rawPhone = sessionPhone,
+                                            tableNumber = session.tableNumber,
+                                            orders = session.orders,
+                                            cafeName = cafeName
+                                        )
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF25D366),
+                                        contentColor = Color.White
+                                    ),
+                                    shape = RoundedCornerShape(10.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Text("واتساب 💬", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
+                                }
                             }
                         }
 

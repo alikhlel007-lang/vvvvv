@@ -65,6 +65,7 @@ data class OrderRecord(
     val id: String,
     val tableNumber: Int,
     val customerName: String,
+    val customerPhone: String = "",
     val itemsSummary: String,
     val itemsCount: Int,
     val totalPrice: Double,
