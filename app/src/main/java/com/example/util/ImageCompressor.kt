@@ -13,7 +13,7 @@ object ImageCompressor {
      * Web browsers (like the Customer Menu in index.html) and Android Coil can render
      * this data URL immediately without needing external storage uploads.
      */
-    fun uriToCompressedBase64(context: Context?, uriString: String?, maxDimension: Int = 400, quality: Int = 75): String? {
+    fun uriToCompressedBase64(context: Context?, uriString: String?, maxDimension: Int = 850, quality: Int = 85): String? {
         if (uriString.isNullOrBlank()) return null
         // If already a web URL or data URL, return as is
         if (uriString.startsWith("http://") || uriString.startsWith("https://") || uriString.startsWith("data:image")) {
