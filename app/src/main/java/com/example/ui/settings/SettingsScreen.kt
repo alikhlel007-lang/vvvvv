@@ -14,6 +14,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -59,6 +61,9 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.TableRestaurant
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -67,6 +72,7 @@ import com.example.data.model.OrderStatus
 import com.example.ui.components.BulkInvoiceDeletionDialog
 import com.example.ui.components.InvoiceDeletionDialog
 import com.example.util.OrderFeeCalculator
+import com.example.util.OrderSummaryHelper
 import com.example.util.ReceiptPrinter
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -924,6 +930,11 @@ fun SettingsScreen(viewModel: MainViewModel) {
                     val paidOrders = remember(orders) {
                         orders.filter { it.status == OrderStatus.PAID }.sortedByDescending { it.timestamp }
                     }
+                    val paidTables = remember(paidOrders) {
+                        paidOrders.map { it.tableNumber }.distinct().sorted()
+                    }
+                    var selectedArchiveTable by remember { mutableStateOf<Int?>(null) }
+
                     val filteredPaidOrders = remember(paidOrders, invoiceSearchQuery) {
                         if (invoiceSearchQuery.isBlank()) {
                             paidOrders
@@ -933,9 +944,50 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                 "طاولة ${it.tableNumber}".lowercase().contains(q) ||
                                 it.tableNumber.toString().contains(q) ||
                                 it.customerName.lowercase().contains(q) ||
-                                it.itemsSummary.lowercase().contains(q)
+                                it.itemsSummary.lowercase().contains(q) ||
+                                it.customerPhone.contains(q)
                             }
                         }
+                    }
+
+                    // تصفية الفواتير حسب الطاولة المحددة إن وجدت
+                    val tableSpecificOrders = remember(filteredPaidOrders, selectedArchiveTable) {
+                        if (selectedArchiveTable != null) {
+                            filteredPaidOrders.filter { it.tableNumber == selectedArchiveTable }
+                        } else {
+                            filteredPaidOrders
+                        }
+                    }
+
+                    // تجميع الفواتير في جلسات مسددة ومرتبة من الأحدث إلى الأقدم
+                    val archiveSessions = remember(tableSpecificOrders) {
+                        tableSpecificOrders
+                            .groupBy { "${it.tableNumber}_${it.timestamp / 900_000L}" }
+                            .map { (key, batch) ->
+                                val sortedBatch = batch.sortedByDescending { it.timestamp }
+                                val latestTime = sortedBatch.maxOf { it.timestamp }
+                                val tableNum = sortedBatch.first().tableNumber
+                                val total = sortedBatch.sumOf { it.totalPrice }
+                                val fee = sortedBatch.sumOf { it.serviceFee }
+                                val curr = sortedBatch.firstOrNull()?.currency ?: "د.ع"
+                                val names = sortedBatch.map { it.customerName }.filter { it.isNotBlank() }.distinct()
+                                val phones = sortedBatch.map { it.customerPhone }.filter { it.isNotBlank() }.distinct()
+                                val combinedNotes = OrderSummaryHelper.combineNotes(sortedBatch.map { it.notes })
+
+                                ArchiveSession(
+                                    sessionId = key,
+                                    tableNumber = tableNum,
+                                    orders = sortedBatch,
+                                    timestamp = latestTime,
+                                    totalAmount = total,
+                                    totalServiceFee = fee,
+                                    currency = curr,
+                                    customerNames = names,
+                                    customerPhones = phones,
+                                    notes = combinedNotes
+                                )
+                            }
+                            .sortedByDescending { it.timestamp } // من الأحدث إلى الأقدم حصراً
                     }
 
                     val totalPaidAmount = remember(paidOrders) { paidOrders.sumOf { it.totalPrice } }
@@ -1062,8 +1114,102 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                 )
                             )
 
-                            // 4. قائمة الفواتير
-                            if (filteredPaidOrders.isEmpty()) {
+                            // 4. اختيار الطاولة لعرض جلساتها
+                            if (paidTables.isNotEmpty()) {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "اختر الطاولة لعرض جلساتها المسددة:",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = CafeTextPrimary
+                                        )
+                                        if (selectedArchiveTable != null) {
+                                            TextButton(
+                                                onClick = { selectedArchiveTable = null },
+                                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                                            ) {
+                                                Text("عرض جميع الطاولات", fontSize = 11.sp, color = CafeCyanPrimary)
+                                            }
+                                        }
+                                    }
+
+                                    // شريط الطاولات للتنقل السريع
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .horizontalScroll(rememberScrollState()),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        val isAllSelected = selectedArchiveTable == null
+                                        FilterChip(
+                                            selected = isAllSelected,
+                                            onClick = { selectedArchiveTable = null },
+                                            label = {
+                                                Text(
+                                                    text = "جميع الطاولات (${paidTables.size})",
+                                                    fontSize = 11.sp,
+                                                    fontWeight = if (isAllSelected) FontWeight.ExtraBold else FontWeight.Medium
+                                                )
+                                            },
+                                            colors = FilterChipDefaults.filterChipColors(
+                                                selectedContainerColor = CafeCyanPrimary,
+                                                selectedLabelColor = Color(0xFF032125),
+                                                containerColor = CafeSurfaceVariant,
+                                                labelColor = CafeTextPrimary
+                                            ),
+                                            border = BorderStroke(
+                                                width = 1.dp,
+                                                color = if (isAllSelected) CafeCyanPrimary else CafeCardBorder
+                                            ),
+                                            shape = RoundedCornerShape(10.dp)
+                                        )
+
+                                        paidTables.forEach { tableNum ->
+                                            val isSelected = selectedArchiveTable == tableNum
+                                            val tableSessionsCount = paidOrders.count { it.tableNumber == tableNum }
+                                            FilterChip(
+                                                selected = isSelected,
+                                                onClick = { selectedArchiveTable = tableNum },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        imageVector = Icons.Default.TableRestaurant,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(15.dp),
+                                                        tint = if (isSelected) Color(0xFF1E1400) else CafeGold
+                                                    )
+                                                },
+                                                label = {
+                                                    Text(
+                                                        text = "طاولة $tableNum ($tableSessionsCount)",
+                                                        fontSize = 11.sp,
+                                                        fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium
+                                                    )
+                                                },
+                                                colors = FilterChipDefaults.filterChipColors(
+                                                    selectedContainerColor = CafeGold,
+                                                    selectedLabelColor = Color(0xFF1E1400),
+                                                    containerColor = CafeSurfaceVariant,
+                                                    labelColor = CafeTextPrimary
+                                                ),
+                                                border = BorderStroke(
+                                                    width = 1.dp,
+                                                    color = if (isSelected) CafeGold else CafeCardBorder
+                                                ),
+                                                shape = RoundedCornerShape(10.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 5. قائمة الجلسات المسددة مرتبة من الأحدث إلى الأقدم
+                            if (archiveSessions.isEmpty()) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -1081,7 +1227,13 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                         )
                                         Spacer(modifier = Modifier.height(8.dp))
                                         Text(
-                                            text = if (paidOrders.isEmpty()) "لا توجد فواتير مسددة محفوظة حتى الآن" else "لا توجد نتائج مطابقة للبحث",
+                                            text = if (paidOrders.isEmpty()) {
+                                                "لا توجد فواتير مسددة محفوظة حتى الآن"
+                                            } else if (selectedArchiveTable != null) {
+                                                "لا توجد جلسات مسددة لطاولة $selectedArchiveTable"
+                                            } else {
+                                                "لا توجد نتائج مطابقة للبحث"
+                                            },
                                             fontSize = 12.sp,
                                             color = CafeTextSecondary
                                         )
@@ -1089,15 +1241,36 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                 }
                             } else {
                                 val dateFormat = remember { SimpleDateFormat("yyyy/MM/dd • hh:mm a", Locale("ar")) }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    val targetLabel = if (selectedArchiveTable != null) "طاولة $selectedArchiveTable" else "جميع الطاولات"
+                                    Text(
+                                        text = "جلسات $targetLabel (${archiveSessions.size} جلسة):",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = CafeTextSecondary
+                                    )
+                                    Text(
+                                        text = "مرتبة من الأحدث إلى الأقدم ⬇️",
+                                        fontSize = 10.sp,
+                                        color = CafeGold
+                                    )
+                                }
+
                                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    filteredPaidOrders.forEach { invoice ->
+                                    archiveSessions.forEach { session ->
                                         Card(
                                             modifier = Modifier.fillMaxWidth(),
-                                            shape = RoundedCornerShape(12.dp),
+                                            shape = RoundedCornerShape(14.dp),
                                             colors = CardDefaults.cardColors(containerColor = CafeSurfaceVariant),
                                             border = BorderStroke(1.dp, CafeCardBorder)
                                         ) {
                                             Column(modifier = Modifier.padding(12.dp)) {
+                                                // رأس بطاقة الجلسة
                                                 Row(
                                                     modifier = Modifier.fillMaxWidth(),
                                                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -1111,15 +1284,17 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                                                 .padding(horizontal = 8.dp, vertical = 3.dp)
                                                         ) {
                                                             Text(
-                                                                text = "طاولة ${invoice.tableNumber}",
+                                                                text = "طاولة ${session.tableNumber}",
                                                                 fontSize = 11.sp,
                                                                 fontWeight = FontWeight.ExtraBold,
                                                                 color = Color(0xFF032125)
                                                             )
                                                         }
                                                         Spacer(modifier = Modifier.width(8.dp))
+                                                        val custName = session.customerNames.joinToString("، ").ifBlank { "زبون" }
+                                                        val custPhone = session.customerPhones.firstOrNull() ?: ""
                                                         Text(
-                                                            text = invoice.customerName.ifBlank { "زبون" },
+                                                            text = if (custPhone.isNotBlank()) "$custName (📱 $custPhone)" else custName,
                                                             fontSize = 12.sp,
                                                             fontWeight = FontWeight.Bold,
                                                             color = CafeTextPrimary
@@ -1127,24 +1302,85 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                                     }
 
                                                     Text(
-                                                        text = dateFormat.format(Date(invoice.timestamp)),
+                                                        text = dateFormat.format(Date(session.timestamp)),
                                                         fontSize = 10.sp,
                                                         color = CafeTextSecondary
                                                     )
                                                 }
 
-                                                Spacer(modifier = Modifier.height(6.dp))
-                                                Text(
-                                                    text = invoice.itemsSummary.ifBlank { "تفاصيل الطلب المسدد" },
-                                                    fontSize = 11.sp,
-                                                    color = CafeTextSecondary,
-                                                    lineHeight = 15.sp
-                                                )
+                                                Spacer(modifier = Modifier.height(8.dp))
+
+                                                // تفاصيل المواد مفككة بدقة [اسم الصنف] [عدد X] [السعر X]
+                                                val parsedItems = remember(session.orders, menuItems) {
+                                                    OrderSummaryHelper.parseOrderItems(
+                                                        summaries = session.orders.map { it.itemsSummary },
+                                                        menuItems = menuItems,
+                                                        totalOrderPrice = session.totalAmount
+                                                    )
+                                                }
+
+                                                if (parsedItems.isNotEmpty()) {
+                                                    Column(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .clip(RoundedCornerShape(8.dp))
+                                                            .background(Color(0xFF031619))
+                                                            .border(0.6.dp, CafeCardBorder.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                                    ) {
+                                                        parsedItems.forEach { item ->
+                                                            Row(
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                                verticalAlignment = Alignment.CenterVertically
+                                                            ) {
+                                                                Text(
+                                                                    text = "${item.name} × ${item.quantity}",
+                                                                    fontSize = 11.sp,
+                                                                    fontWeight = FontWeight.Bold,
+                                                                    color = CafeTextPrimary,
+                                                                    modifier = Modifier.weight(1.8f)
+                                                                )
+                                                                val priceStr = if (item.totalPrice > 0.0) {
+                                                                    OrderFeeCalculator.formatPrice(item.totalPrice, item.currency)
+                                                                } else {
+                                                                    "0 ${item.currency}"
+                                                                }
+                                                                Text(
+                                                                    text = priceStr,
+                                                                    fontSize = 11.sp,
+                                                                    fontWeight = FontWeight.Bold,
+                                                                    color = CafeGold
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+                                                } else {
+                                                    session.orders.forEach { ord ->
+                                                        Text(
+                                                            text = ord.itemsSummary.ifBlank { "تفاصيل الطلب المسدد" },
+                                                            fontSize = 11.sp,
+                                                            color = CafeTextSecondary,
+                                                            lineHeight = 15.sp
+                                                        )
+                                                    }
+                                                }
+
+                                                if (session.notes.isNotBlank()) {
+                                                    Spacer(modifier = Modifier.height(4.dp))
+                                                    Text(
+                                                        text = "ملاحظات: ${session.notes}",
+                                                        fontSize = 10.sp,
+                                                        color = CafeGold
+                                                    )
+                                                }
 
                                                 Spacer(modifier = Modifier.height(8.dp))
                                                 HorizontalDivider(color = CafeCardBorder, thickness = 0.5.dp)
                                                 Spacer(modifier = Modifier.height(8.dp))
 
+                                                // سطر المجاميع وأزرار الإجراءات (طباعة + واتساب + طلب حذف)
                                                 Row(
                                                     modifier = Modifier.fillMaxWidth(),
                                                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -1152,29 +1388,32 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                                 ) {
                                                     Column {
                                                         Row(verticalAlignment = Alignment.CenterVertically) {
-                                                            Text("المجموع: ", fontSize = 11.sp, color = CafeTextSecondary)
+                                                            Text("المجموع المسدد: ", fontSize = 11.sp, color = CafeTextSecondary)
                                                             Text(
-                                                                text = OrderFeeCalculator.formatPrice(invoice.totalPrice, invoice.currency),
+                                                                text = OrderFeeCalculator.formatPrice(session.totalAmount, session.currency),
                                                                 fontSize = 13.sp,
                                                                 fontWeight = FontWeight.ExtraBold,
                                                                 color = Color(0xFF4CAF50)
                                                             )
                                                         }
                                                         Text(
-                                                            text = "رسوم الخدمة (1%): ${OrderFeeCalculator.formatPrice(invoice.serviceFee, invoice.currency)}",
+                                                            text = "رسوم الخدمة (1%): ${OrderFeeCalculator.formatPrice(session.totalServiceFee, session.currency)}",
                                                             fontSize = 10.sp,
                                                             color = CafeGold
                                                         )
                                                     }
 
-                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                    ) {
                                                         // زر طباعة الفاتورة
                                                         Button(
                                                             onClick = {
                                                                 ReceiptPrinter.printInvoice(
                                                                     context = context,
-                                                                    tableNumber = invoice.tableNumber,
-                                                                    orders = listOf(invoice),
+                                                                    tableNumber = session.tableNumber,
+                                                                    orders = session.orders,
                                                                     cafeName = cafeName
                                                                 )
                                                                 Toast.makeText(context, "جاري إرسال الفاتورة إلى الطابعة 🖨️", Toast.LENGTH_SHORT).show()
@@ -1184,28 +1423,54 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                                                 contentColor = Color(0xFF032125)
                                                             ),
                                                             shape = RoundedCornerShape(8.dp),
-                                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 5.dp)
+                                                            contentPadding = PaddingValues(horizontal = 9.dp, vertical = 5.dp),
+                                                            modifier = Modifier.height(32.dp)
                                                         ) {
-                                                            Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(14.dp))
-                                                            Spacer(modifier = Modifier.width(4.dp))
+                                                            Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(13.dp))
+                                                            Spacer(modifier = Modifier.width(3.dp))
                                                             Text("طباعة", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                                         }
 
-                                                        Spacer(modifier = Modifier.width(6.dp))
+                                                        // زر واتساب (إذا توفر رقم هاتف للزبون)
+                                                        val custPhone = session.customerPhones.firstOrNull() ?: ""
+                                                        if (custPhone.isNotBlank()) {
+                                                            Button(
+                                                                onClick = {
+                                                                    ReceiptPrinter.sendWhatsAppInvoice(
+                                                                        context = context,
+                                                                        rawPhone = custPhone,
+                                                                        tableNumber = session.tableNumber,
+                                                                        orders = session.orders,
+                                                                        cafeName = cafeName
+                                                                    )
+                                                                },
+                                                                colors = ButtonDefaults.buttonColors(
+                                                                    containerColor = Color(0xFF25D366),
+                                                                    contentColor = Color.White
+                                                                ),
+                                                                shape = RoundedCornerShape(8.dp),
+                                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 5.dp),
+                                                                modifier = Modifier.height(32.dp)
+                                                            ) {
+                                                                Text("واتساب 💬", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                            }
+                                                        }
 
+                                                        // زر طلب حذف
                                                         Button(
-                                                            onClick = { orderToDelete = invoice },
+                                                            onClick = { orderToDelete = session.orders.firstOrNull() },
                                                             colors = ButtonDefaults.buttonColors(
                                                                 containerColor = Color(0xFF2A1515),
                                                                 contentColor = Color(0xFFFF6B6B)
                                                             ),
                                                             shape = RoundedCornerShape(8.dp),
                                                             border = BorderStroke(1.dp, Color(0xFFFF6B6B).copy(alpha = 0.5f)),
-                                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 5.dp)
+                                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 5.dp),
+                                                            modifier = Modifier.height(32.dp)
                                                         ) {
                                                             Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(11.dp))
                                                             Spacer(modifier = Modifier.width(3.dp))
-                                                            Text("طلب حذف 🔒", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                                            Text("حذف 🔒", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                                         }
                                                     }
                                                 }
@@ -1787,3 +2052,19 @@ private fun NotificationSettingRow(
         )
     }
 }
+
+/**
+ * نموذج يمثل جلسة حساب مسددة لطاولة معينة في الأرشيف (تجمع طلبات نفس الجلسة)
+ */
+data class ArchiveSession(
+    val sessionId: String,
+    val tableNumber: Int,
+    val orders: List<OrderRecord>,
+    val timestamp: Long,
+    val totalAmount: Double,
+    val totalServiceFee: Double,
+    val currency: String,
+    val customerNames: List<String>,
+    val customerPhones: List<String>,
+    val notes: String
+)

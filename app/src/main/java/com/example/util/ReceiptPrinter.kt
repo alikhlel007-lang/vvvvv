@@ -236,29 +236,43 @@ object ReceiptPrinter {
         val settlementTotal = OrderFeeCalculator.calculateSettlementTotal(subtotal, currency)
 
         val parsedItems = OrderSummaryHelper.parseOrderItems(orders.map { it.itemsSummary })
-        val customerNames = orders.map { it.customerName }.distinct().joinToString("، ")
-        val timeStr = SimpleDateFormat("yyyy/MM/dd - hh:mm a", Locale.getDefault()).format(Date())
+        val customerNames = orders.map { it.customerName }.filter { it.isNotBlank() }.distinct().joinToString("، ")
+        val finalCustomerName = customerNames.ifBlank { "زبون" }
+
+        val latestTime = orders.maxOfOrNull { it.timestamp } ?: System.currentTimeMillis()
+        val timeStr = SimpleDateFormat("yyyy/MM/dd | hh:mm a", Locale("ar")).format(Date(latestTime))
 
         val itemsBuilder = StringBuilder()
-        parsedItems.forEachIndexed { index, item ->
-            val priceStr = if (item.totalPrice > 0.0) OrderFeeCalculator.formatPrice(item.totalPrice, item.currency) else "-"
-            itemsBuilder.append("${index + 1}. *${item.name}* (عدد ${item.quantity}) ⇦ $priceStr\n")
+        if (parsedItems.isNotEmpty()) {
+            parsedItems.forEach { item ->
+                val priceStr = if (item.totalPrice > 0.0) OrderFeeCalculator.formatPrice(item.totalPrice, item.currency) else "-"
+                itemsBuilder.append("• ${item.name} | العدد: ${item.quantity} | السعر: $priceStr\n")
+            }
+        } else {
+            orders.forEach { ord ->
+                itemsBuilder.append("• ${ord.itemsSummary} | السعر: ${OrderFeeCalculator.formatPrice(ord.totalPrice, ord.currency)}\n")
+            }
         }
 
+        val formattedSubtotal = OrderFeeCalculator.formatPrice(subtotal, currency)
+        val formattedFee = OrderFeeCalculator.formatPrice(settlementFee, currency)
+        val formattedTotal = OrderFeeCalculator.formatPrice(settlementTotal, currency)
+
         return """
-            🧾 *فاتورة حساب - $cafeName*
-            ━━━━━━━━━━━━━━━━━━
-            📍 *طاولة رقم:* $tableNumber
-            👤 *الزبون:* $customerNames
-            📅 *التاريخ:* $timeStr
-            ━━━━━━━━━━━━━━━━━━
-            📋 *تفاصيل الطلبات:*
-            $itemsBuilder━━━━━━━━━━━━━━━━━━
-            💵 *مجموع الطلبات:* ${OrderFeeCalculator.formatPrice(subtotal, currency)}
-            🏷️ *رسوم الخدمة عند التسديد:* ${OrderFeeCalculator.formatPrice(settlementFee, currency)}
-            ✨ *الإجمالي النهائي المسدد:* ${OrderFeeCalculator.formatPrice(settlementTotal, currency)}
-            ━━━━━━━━━━━━━━━━━━
-            شكراً لزيارتكم الكريمة! نتشرف بحضوركم دائماً ☕✨
+🧾 فاتورة حساب - $cafeName
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 الزبون: $finalCustomerName
+📌 الطاولة: $tableNumber
+📅 التاريخ والوقت: $timeStr
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 تفاصيل الطلب:
+$itemsBuilder━━━━━━━━━━━━━━━━━━━━━━━━━━
+💵 الحساب:
+• مجموع الطلبات: $formattedSubtotal
+• رسوم الخدمة: $formattedFee
+💰 الإجمالي النهائي: $formattedTotal
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+✨ شكراً لزيارتكم الكريمة! نتشرف بكم دائماً. ✨
         """.trimIndent()
     }
 
