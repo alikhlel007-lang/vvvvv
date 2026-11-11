@@ -59,7 +59,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -99,6 +101,10 @@ fun DeveloperDashboardScreen(
 
     val statusMsg by viewModel.statusMessage.collectAsState()
     val errorMsg by viewModel.errorMessage.collectAsState()
+
+    var activeTab by remember { mutableStateOf("approved") }
+    val pendingCafes = remember(cafeterias) { cafeterias.filter { it.isPendingApproval || !it.isApproved } }
+    val approvedCafes = remember(cafeterias) { cafeterias.filter { !it.isPendingApproval && it.isApproved } }
 
     LaunchedEffect(statusMsg, errorMsg) {
         val msg = statusMsg ?: errorMsg
@@ -271,13 +277,88 @@ fun DeveloperDashboardScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
+                    // Tabs between Approved Cafeterias and Registration Requests
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFF041417), RoundedCornerShape(12.dp))
+                            .padding(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        // Tab 1: الكافتيريات المعتمدة
+                        Surface(
+                            onClick = { activeTab = "approved" },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (activeTab == "approved") CafeCyanPrimary else Color.Transparent
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Storefront,
+                                    contentDescription = null,
+                                    tint = if (activeTab == "approved") Color.Black else CafeTextSecondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "الكافتيريات المعتمدة (${approvedCafes.size})",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (activeTab == "approved") Color.Black else CafeTextSecondary
+                                )
+                            }
+                        }
+
+                        // Tab 2: طلبات التسجيل
+                        Surface(
+                            onClick = { activeTab = "pending" },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (activeTab == "pending") CafeGold else Color.Transparent
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = if (activeTab == "pending") Color.Black else if (pendingCafes.isNotEmpty()) Color(0xFFFF5252) else CafeTextSecondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "طلبات التسجيل (${pendingCafes.size})",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (activeTab == "pending") Color.Black else if (pendingCafes.isNotEmpty()) Color(0xFFFF8A80) else CafeTextSecondary
+                                )
+                                if (pendingCafes.isNotEmpty() && activeTab != "pending") {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .background(Color(0xFFFF5252), CircleShape)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "قائمة الكافتيريات (${cafeterias.size})",
+                            text = if (activeTab == "approved") "قائمة الكافتيريات المعتمدة (${approvedCafes.size})" else "طلبات التسجيل الجديدة (${pendingCafes.size})",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
@@ -294,82 +375,162 @@ fun DeveloperDashboardScreen(
                     Spacer(modifier = Modifier.height(10.dp))
                 }
 
-                if (cafeterias.isEmpty() && !isLoading) {
-                    item {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 24.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF051E23)),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Column(
+                if (activeTab == "approved") {
+                    if (approvedCafes.isEmpty() && !isLoading) {
+                        item {
+                            Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(32.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
+                                    .padding(vertical = 24.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF051E23)),
+                                shape = RoundedCornerShape(16.dp)
                             ) {
-                                Icon(
-                                    Icons.Default.Storefront,
-                                    contentDescription = null,
-                                    tint = CafeTextSecondary,
-                                    modifier = Modifier.size(48.dp)
-                                )
-                                Spacer(modifier = Modifier.height(10.dp))
-                                Text(
-                                    text = if (searchQuery.isBlank()) "لا توجد كافتيريات مسجلة حتى الآن" else "لم يتم العثور على نتائج للبحث",
-                                    color = Color.White,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = "عندما تسجل كافتيريا جديدة أو تبدأ طلباتها ستظهر هنا فوراً",
-                                    color = CafeTextSecondary,
-                                    fontSize = 12.sp
-                                )
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        Icons.Default.Storefront,
+                                        contentDescription = null,
+                                        tint = CafeTextSecondary,
+                                        modifier = Modifier.size(48.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Text(
+                                        text = if (searchQuery.isBlank()) "لا توجد كافتيريات معتمدة مسجلة حتى الآن" else "لم يتم العثور على نتائج للبحث",
+                                        color = Color.White,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "الكافتيريات المعتمدة والنشطة ستظهر هنا بجميع بياناتها ومبيعاتها",
+                                        color = CafeTextSecondary,
+                                        fontSize = 12.sp
+                                    )
+                                }
                             }
+                        }
+                    } else {
+                        items(approvedCafes, key = { it.id }) { cafe ->
+                            CafeteriaAdminCard(
+                                cafe = cafe,
+                                onOpenInvoices = { viewModel.openInvoices(cafe) },
+                                onCollectFee = { viewModel.openCollectDialog(cafe) },
+                                onSetDebtLimit = { viewModel.openDebtLimitDialog(cafe) },
+                                onOpenHistory = { viewModel.openHistoryDialog(cafe) },
+                                onToggleStatus = { viewModel.toggleCafeStatus(cafe) },
+                                onCopyId = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    val clip = ClipData.newPlainText("Cafeteria ID", "#${cafe.numericId}")
+                                    clipboard.setPrimaryClip(clip)
+                                    Toast.makeText(context, "تم نسخ الرقم التعريفي: #${cafe.numericId}", Toast.LENGTH_SHORT).show()
+                                },
+                                onWhatsApp = {
+                                    if (cafe.phone.isNotBlank()) {
+                                        val cleanPhone = cafe.phone.trim().removePrefix("+").removePrefix("00")
+                                        val formattedPhone = if (cleanPhone.startsWith("07")) "964" + cleanPhone.substring(1) else cleanPhone
+                                        val msg = "مرحباً إدارة ${cafe.cafeName} 👋\nنظام Q-Cafe لإدارة الكافتيريات."
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$formattedPhone?text=${Uri.encode(msg)}"))
+                                        try {
+                                            context.startActivity(intent)
+                                        } catch (_: Exception) {
+                                            Toast.makeText(context, "تطبيق واتساب غير مثبت", Toast.LENGTH_SHORT).show()
+                                        }
+                                    } else {
+                                        Toast.makeText(context, "رقم الهاتف غير مسجل", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                onCall = {
+                                    if (cafe.phone.isNotBlank()) {
+                                        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${cafe.phone.trim()}"))
+                                        context.startActivity(intent)
+                                    } else {
+                                        Toast.makeText(context, "رقم الهاتف غير مسجل", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            )
                         }
                     }
                 } else {
-                    items(cafeterias, key = { it.id }) { cafe ->
-                        CafeteriaAdminCard(
-                            cafe = cafe,
-                            onOpenInvoices = { viewModel.openInvoices(cafe) },
-                            onCollectFee = { viewModel.openCollectDialog(cafe) },
-                            onSetDebtLimit = { viewModel.openDebtLimitDialog(cafe) },
-                            onOpenHistory = { viewModel.openHistoryDialog(cafe) },
-                            onToggleStatus = { viewModel.toggleCafeStatus(cafe) },
-                            onCopyId = {
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                val clip = ClipData.newPlainText("Cafeteria ID", "#${cafe.numericId}")
-                                clipboard.setPrimaryClip(clip)
-                                Toast.makeText(context, "تم نسخ الرقم التعريفي: #${cafe.numericId}", Toast.LENGTH_SHORT).show()
-                            },
-                            onWhatsApp = {
-                                if (cafe.phone.isNotBlank()) {
-                                    val cleanPhone = cafe.phone.trim().removePrefix("+").removePrefix("00")
-                                    val formattedPhone = if (cleanPhone.startsWith("07")) "964" + cleanPhone.substring(1) else cleanPhone
-                                    val msg = "مرحباً إدارة ${cafe.cafeName} 👋\nنظام Q-Cafe لإدارة الكافتيريات."
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$formattedPhone?text=${Uri.encode(msg)}"))
-                                    try {
-                                        context.startActivity(intent)
-                                    } catch (_: Exception) {
-                                        Toast.makeText(context, "تطبيق واتساب غير مثبت", Toast.LENGTH_SHORT).show()
-                                    }
-                                } else {
-                                    Toast.makeText(context, "رقم الهاتف غير مسجل", Toast.LENGTH_SHORT).show()
-                                }
-                            },
-                            onCall = {
-                                if (cafe.phone.isNotBlank()) {
-                                    val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${cafe.phone.trim()}"))
-                                    context.startActivity(intent)
-                                } else {
-                                    Toast.makeText(context, "رقم الهاتف غير مسجل", Toast.LENGTH_SHORT).show()
+                    // Pending Registrations Tab
+                    if (pendingCafes.isEmpty() && !isLoading) {
+                        item {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 24.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF091F18)),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF2E7D32).copy(alpha = 0.5f)),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = Color(0xFF81C784),
+                                        modifier = Modifier.size(48.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Text(
+                                        text = "لا توجد طلبات تسجيل جديدة معلقة حالياً ✅",
+                                        color = Color.White,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "عندما تقوم كافتيريا جديدة بإنشاء حساب، ستكون متوقفة تلقائياً وتظهر هنا للموافقة عليها وتفعيلها.",
+                                        color = CafeTextSecondary,
+                                        fontSize = 12.sp,
+                                        lineHeight = 18.sp
+                                    )
                                 }
                             }
-                        )
+                        }
+                    } else {
+                        items(pendingCafes, key = { it.id }) { cafe ->
+                            PendingCafeteriaCard(
+                                cafe = cafe,
+                                onApprove = { viewModel.approveCafeteria(cafe) },
+                                onCopyId = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    val clip = ClipData.newPlainText("Cafeteria ID", "#${cafe.numericId}")
+                                    clipboard.setPrimaryClip(clip)
+                                    Toast.makeText(context, "تم نسخ الرقم التعريفي: #${cafe.numericId}", Toast.LENGTH_SHORT).show()
+                                },
+                                onWhatsApp = {
+                                    if (cafe.phone.isNotBlank()) {
+                                        val cleanPhone = cafe.phone.trim().removePrefix("+").removePrefix("00")
+                                        val formattedPhone = if (cleanPhone.startsWith("07")) "964" + cleanPhone.substring(1) else cleanPhone
+                                        val msg = "مرحباً إدارة ${cafe.cafeName} 👋\nنظام Q-Cafe لإدارة الكافتيريات. بخصوص طلب تسجيلكم."
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$formattedPhone?text=${Uri.encode(msg)}"))
+                                        try {
+                                            context.startActivity(intent)
+                                        } catch (_: Exception) {
+                                            Toast.makeText(context, "تطبيق واتساب غير مثبت", Toast.LENGTH_SHORT).show()
+                                        }
+                                    } else {
+                                        Toast.makeText(context, "رقم الهاتف غير مسجل", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                onCall = {
+                                    if (cafe.phone.isNotBlank()) {
+                                        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${cafe.phone.trim()}"))
+                                        context.startActivity(intent)
+                                    } else {
+                                        Toast.makeText(context, "رقم الهاتف غير مسجل", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
 
@@ -767,6 +928,150 @@ private fun CafeteriaAdminCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(if (cafe.isActive) "إيقاف الكافتيريا" else "تفعيل الكافتيريا", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PendingCafeteriaCard(
+    cafe: CafeteriaAdminSummary,
+    onApprove: () -> Unit,
+    onCopyId: () -> Unit,
+    onWhatsApp: () -> Unit,
+    onCall: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF071B16)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF2E7D32).copy(alpha = 0.7f)),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(3.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            // Header: Cafe Name + Numeric ID
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Color(0xFF1B5E20).copy(alpha = 0.35f),
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Storefront, contentDescription = null, tint = Color(0xFF81C784), modifier = Modifier.size(16.dp))
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = cafe.cafeName,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        text = "المالك: ${cafe.ownerName.ifBlank { "غير مسجل" }}",
+                        fontSize = 12.sp,
+                        color = CafeTextSecondary
+                    )
+                }
+
+                Surface(
+                    onClick = onCopyId,
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFF123428)
+                ) {
+                    Text(
+                        text = "معرّف: #${cafe.numericId}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF81C784),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Notice Banner
+            Surface(
+                color = Color(0xFF231B05),
+                shape = RoundedCornerShape(8.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, CafeGold.copy(alpha = 0.4f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "⏳ حساب كافتيريا جديد متوقف وبانتظار الموافقة والتفعيل من قِبل المطور للبدء في استخدام النظام.",
+                        fontSize = 11.sp,
+                        color = CafeGold,
+                        lineHeight = 16.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Contact Info
+            if (cafe.phone.isNotBlank() || cafe.email.isNotBlank()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    if (cafe.phone.isNotBlank()) {
+                        Text("📞 الهاتف: ${cafe.phone}", fontSize = 11.sp, color = CafeTextSecondary)
+                    }
+                    if (cafe.email.isNotBlank()) {
+                        Text("✉️ ${cafe.email}", fontSize = 11.sp, color = CafeTextSecondary)
+                    }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+
+            // Action Row: Big Approve Button + WhatsApp & Call
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = onApprove,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("تفعيل واعتماد الكافتيريا ✅", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
+                }
+
+                if (cafe.phone.isNotBlank()) {
+                    OutlinedButton(
+                        onClick = onWhatsApp,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF25D366)),
+                        modifier = Modifier.height(40.dp)
+                    ) {
+                        Text("واتساب 💬", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                    IconButton(
+                        onClick = onCall,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(Icons.Default.Phone, contentDescription = "اتصال", tint = Color(0xFF81C784))
+                    }
                 }
             }
         }

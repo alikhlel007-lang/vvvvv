@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
@@ -121,6 +122,7 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
     // بعد التسديد تعود الطاولة نظيفة وجاهزة تماماً لاستقبال طلبات جديدة
     var showActiveTablesDialog by remember { mutableStateOf(false) }
     var showRevenueDetailsDialog by remember { mutableStateOf(false) }
+    var showResetSalesConfirmDialog by remember { mutableStateOf(false) }
     var orderForAuthorizedDeletion by remember { mutableStateOf<com.example.data.model.OrderRecord?>(null) }
 
     // تجميع الطلبات في جلسات ومحطات مستقلة لكل طاولة
@@ -251,9 +253,10 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
     val activeTablesCount = activeTableNumbers.size
 
     val cafeName by viewModel.cafeName.collectAsState()
+    val salesResetTimestamp by viewModel.salesResetTimestamp.collectAsState()
 
     // حساب إجمالي الإيرادات المسددة (الصافي بدون النسبة + النسبة المتراكمة + الكلي مع النسبة)
-    val paidOrders = orders.filter { it.status == OrderStatus.PAID }
+    val paidOrders = orders.filter { it.status == OrderStatus.PAID && it.timestamp >= salesResetTimestamp }
     val paidSubtotalIqd = paidOrders.filter { it.currency != "$" && it.currency != "USD" }.sumOf { it.subtotal }
     val paidSubtotalUsd = paidOrders.filter { it.currency == "$" || it.currency == "USD" }.sumOf { it.subtotal }
     val paidFeesIqd = paidOrders.filter { it.currency != "$" && it.currency != "USD" }.sumOf { it.serviceFee }
@@ -722,14 +725,70 @@ fun CashierOrdersScreen(viewModel: MainViewModel) {
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text("عدد الفواتير المسددة:", fontSize = 11.sp, color = CafeTextSecondary)
+                                Text("عدد الفواتير المسددة المحسوبة:", fontSize = 11.sp, color = CafeTextSecondary)
                                 Text("${paidOrders.size} فاتورة", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = CafeTextPrimary)
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            // زر تصفير عداد المبيعات والصافي
+                            Button(
+                                onClick = { showResetSalesConfirmDialog = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E1906)),
+                                border = BorderStroke(1.dp, CafeGold.copy(alpha = 0.7f)),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Icon(Icons.Default.Refresh, contentDescription = null, tint = CafeGold, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("تصفير عداد المبيعات والصافي 🔄", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = CafeGold)
                             }
                         }
                     },
                     confirmButton = {
                         TextButton(onClick = { showRevenueDetailsDialog = false }) {
                             Text("إغلاق", color = CafeCyanPrimary, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                )
+            }
+
+            // نافذة تأكيد تصفير عداد المبيعات
+            if (showResetSalesConfirmDialog) {
+                AlertDialog(
+                    onDismissRequest = { showResetSalesConfirmDialog = false },
+                    containerColor = CafeSurface,
+                    shape = RoundedCornerShape(20.dp),
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Refresh, contentDescription = null, tint = CafeGold, modifier = Modifier.size(22.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("تصفير عداد المبيعات", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
+                    },
+                    text = {
+                        Text(
+                            text = "هل ترغب بتصفير عداد المبيعات الصافية والحساب الكلي لتبدأ من 0 د.ع؟\n\n(ملاحظة: سجل الفواتير السابقة سيبقى محفوظاً في أرشيف الفواتير دون أي حذف).",
+                            color = CafeTextSecondary,
+                            fontSize = 13.sp,
+                            lineHeight = 20.sp
+                        )
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                viewModel.resetSalesCounters()
+                                showResetSalesConfirmDialog = false
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC62828)),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("نعم، تصفير الآن 🔄", color = Color.White, fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showResetSalesConfirmDialog = false }) {
+                            Text("إلغاء", color = CafeTextSecondary)
                         }
                     }
                 )

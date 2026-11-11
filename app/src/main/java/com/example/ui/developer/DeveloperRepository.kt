@@ -70,6 +70,15 @@ class DeveloperRepository {
                 val storedReason = doc.getString("suspensionReason") ?: ""
                 val createdAt = doc.getLong("createdAt") ?: 0L
 
+                val isApproved = doc.getBoolean("isApproved")
+                    ?: (doc.getString("registrationStatus") == "APPROVED")
+                    ?: rawIsActive
+                val isPendingApproval = doc.getBoolean("isPendingApproval")
+                    ?: (doc.getString("registrationStatus") == "PENDING_APPROVAL")
+                    ?: (!isApproved && storedReason.contains("بانتظار"))
+                val regStatus = doc.getString("registrationStatus")
+                    ?: if (isPendingApproval) "PENDING_APPROVAL" else "APPROVED"
+
                 // Fetch orders for this cafeteria to calculate totals
                 var totalSales = 0.0
                 var paidCount = 0
@@ -93,15 +102,22 @@ class DeveloperRepository {
 
                 // Fetch fee collections
                 var collectedFees = 0.0
+                val docCollected = doc.getDouble("collectedFeesTotal")
+                    ?: (doc.getLong("collectedFeesTotal")?.toDouble())
+                    ?: 0.0
+                collectedFees = docCollected
+
                 try {
                     val collectionsSnap = db.collection("cafeterias").document(id).collection("fee_collections").get().awaitTask()
+                    var subColl = 0.0
                     for (colDoc in collectionsSnap.documents) {
                         val amt = colDoc.getDouble("amount")
                             ?: (colDoc.getLong("amount")?.toDouble())
                             ?: (colDoc.getString("amount")?.toDoubleOrNull())
                             ?: 0.0
-                        collectedFees += amt
+                        subColl += amt
                     }
+                    collectedFees = maxOf(collectedFees, subColl)
                 } catch (_: Exception) {}
 
                 val serviceFeeTotal = totalSales * 0.01
@@ -109,15 +125,17 @@ class DeveloperRepository {
 
                 // Automatic Suspension logic: If remaining unpaid fee exceeds maxDebtLimit
                 val isOverLimit = (maxDebtLimit > 0.0 && remainingFee >= maxDebtLimit)
-                val finalIsActive = if (isOverLimit) false else rawIsActive
-                val reason = if (isOverLimit) {
+                val finalIsActive = if (isOverLimit || isPendingApproval) false else rawIsActive
+                val reason = if (isPendingApproval) {
+                    storedReason.ifBlank { "الحساب جديد وبانتظار الموافقة والتفعيل من إدارة النظام" }
+                } else if (isOverLimit) {
                     "تجاوز حد الديون المسموح به (${maxDebtLimit.toLong()} $currency)"
                 } else if (!finalIsActive) {
                     storedReason.ifBlank { "إيقاف يدوي من قِبل المطور" }
                 } else ""
 
                 // If automatically suspended, sync isActive = false to Firestore
-                if (isOverLimit && rawIsActive) {
+                if (isOverLimit && rawIsActive && !isPendingApproval) {
                     try {
                         db.collection("cafeterias").document(id).set(
                             mapOf(
@@ -140,6 +158,9 @@ class DeveloperRepository {
                         email = email,
                         address = address,
                         isActive = finalIsActive,
+                        isApproved = isApproved,
+                        isPendingApproval = isPendingApproval,
+                        registrationStatus = regStatus,
                         createdAt = createdAt,
                         totalSales = totalSales,
                         paidOrdersCount = paidCount,
@@ -284,10 +305,17 @@ class DeveloperRepository {
             )
             db.collection("cafeterias").document(cafeId).collection("fee_collections").add(record).awaitTask()
 
-            // After fee collection, reset auto-suspension flag and reactivate if paid
+            // After fee collection, update total collected fees on cafeteria document, reset auto-suspension flag and reactivate
             try {
+                val cafeDoc = db.collection("cafeterias").document(cafeId).get().awaitTask()
+                val prevCollected = cafeDoc.getDouble("collectedFeesTotal")
+                    ?: (cafeDoc.getLong("collectedFeesTotal")?.toDouble())
+                    ?: 0.0
+                val newCollected = prevCollected + amount
                 db.collection("cafeterias").document(cafeId).set(
                     mapOf(
+                        "collectedFeesTotal" to newCollected,
+                        "lastFeeCollectedAt" to System.currentTimeMillis(),
                         "isAutoSuspended" to false,
                         "isActive" to true,
                         "suspensionReason" to ""
@@ -296,6 +324,27 @@ class DeveloperRepository {
                 ).awaitTask()
             } catch (_: Exception) {}
 
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun approveCafeteria(cafeId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        val db = firestore ?: return@withContext Result.failure(Exception("قاعدة البيانات غير متصلة"))
+        try {
+            val map = hashMapOf<String, Any>(
+                "isActive" to true,
+                "isApproved" to true,
+                "isPendingApproval" to false,
+                "registrationStatus" to "APPROVED",
+                "suspensionReason" to "",
+                "approvedAt" to System.currentTimeMillis()
+            )
+            db.collection("cafeterias").document(cafeId).set(map, SetOptions.merge()).awaitTask()
+            try {
+                db.collection("users").document(cafeId).set(map, SetOptions.merge()).awaitTask()
+            } catch (_: Exception) {}
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

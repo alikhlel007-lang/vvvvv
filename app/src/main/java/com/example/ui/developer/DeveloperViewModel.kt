@@ -223,6 +223,20 @@ class DeveloperViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun approveCafeteria(cafe: CafeteriaAdminSummary) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            val res = repository.approveCafeteria(cafe.id)
+            _isLoading.value = false
+            if (res.isSuccess) {
+                _statusMessage.value = "تمت الموافقة وتفعيل الكافتيريا (${cafe.cafeName}) بنجاح ✅"
+                refreshDashboard()
+            } else {
+                _errorMessage.value = "تعذر تفعيل الكافتيريا: ${res.exceptionOrNull()?.localizedMessage}"
+            }
+        }
+    }
+
     fun openCollectDialog(cafe: CafeteriaAdminSummary) {
         _cafeForCollection.value = cafe
     }

@@ -145,6 +145,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val cafeRemainingFee: StateFlow<Double> = repository.cafeRemainingFee.asStateFlow()
     val isOverDebtLimit: StateFlow<Boolean> = repository.isOverDebtLimit.asStateFlow()
     val cafeNotifications: StateFlow<List<com.example.data.model.CafeNotificationItem>> = repository.cafeNotifications.asStateFlow()
+    val salesResetTimestamp: StateFlow<Long> = repository.salesResetTimestamp.asStateFlow()
+
+    fun resetSalesCounters() {
+        repository.resetSalesCounters()
+    }
 
     fun setNotificationPref(key: String, enabled: Boolean) {
         repository.setNotificationPref(key, enabled)

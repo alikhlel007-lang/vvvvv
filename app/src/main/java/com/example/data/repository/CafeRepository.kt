@@ -75,6 +75,18 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
     val cafeNotifications = kotlinx.coroutines.flow.MutableStateFlow<List<com.example.data.model.CafeNotificationItem>>(emptyList())
     private val deletedOrderIds = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
+    val salesResetTimestamp = kotlinx.coroutines.flow.MutableStateFlow(
+        context?.getSharedPreferences("cafe_sales_prefs", android.content.Context.MODE_PRIVATE)
+            ?.getLong("sales_reset_timestamp", 0L) ?: 0L
+    )
+
+    fun resetSalesCounters() {
+        val now = System.currentTimeMillis()
+        context?.getSharedPreferences("cafe_sales_prefs", android.content.Context.MODE_PRIVATE)
+            ?.edit()?.putLong("sales_reset_timestamp", now)?.apply()
+        salesResetTimestamp.value = now
+    }
+
     fun startCafeteriaStatusListener(cafeId: String) {
         cafeStatusListenerRegistration?.remove()
         cafeStatusListenerRegistration = null
@@ -114,17 +126,28 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
                 val totalSales = localPaidOrders.sumOf { it.totalPrice }
                 val serviceFeeTotal = totalSales * 0.01
 
-                // Fetch fee collections
+                // Fetch fee collections from document and subcollection
                 var collectedFees = 0.0
                 try {
+                    val cafeDoc = fs.collection("cafeterias").document(cafeId).get().awaitTask()
+                    val docCollected = cafeDoc.getDouble("collectedFeesTotal")
+                        ?: (cafeDoc.getLong("collectedFeesTotal")?.toDouble())
+                        ?: (cafeDoc.getString("collectedFeesTotal")?.toDoubleOrNull())
+                        ?: 0.0
+                    collectedFees = docCollected
+                } catch (_: Exception) {}
+
+                try {
                     val collectionsSnap = fs.collection("cafeterias").document(cafeId).collection("fee_collections").get().awaitTask()
+                    var subColl = 0.0
                     for (colDoc in collectionsSnap.documents) {
                         val amt = colDoc.getDouble("amount")
                             ?: (colDoc.getLong("amount")?.toDouble())
                             ?: (colDoc.getString("amount")?.toDoubleOrNull())
                             ?: 0.0
-                        collectedFees += amt
+                        subColl += amt
                     }
+                    collectedFees = maxOf(collectedFees, subColl)
                 } catch (_: Exception) {}
 
                 val remaining = (serviceFeeTotal - collectedFees).coerceAtLeast(0.0)
@@ -1385,6 +1408,11 @@ class CafeRepository(private val dao: CafeDao, private val context: android.cont
                 "email" to cleanEmail,
                 "cafeName" to cleanCafeName,
                 "role" to "owner",
+                "isActive" to false,
+                "isApproved" to false,
+                "isPendingApproval" to true,
+                "registrationStatus" to "PENDING_APPROVAL",
+                "suspensionReason" to "الحساب جديد وبانتظار الموافقة والتفعيل من قِبل إدارة النظام",
                 "createdAt" to System.currentTimeMillis()
             )
             firestore?.collection("cafeterias")?.document(uid)?.set(userProfile)
